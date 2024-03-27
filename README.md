@@ -1,6 +1,6 @@
 
 <div style="display: flex; align-items: left;">
-  <img src="data/logo.webp" alt="Logo" width="30" height="30">
+  <img src="data/logo.webp" alt="Logo" width="40" height="40">
   <h1 align="center">BioPyAssist</h1>
 </div>
 
