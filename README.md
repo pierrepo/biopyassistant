@@ -47,7 +47,7 @@ conda activate biopyassistenv
 Next, create the Chroma database by running:
 
 ```python
-python create_database.py
+python src/create_database.py
 ```
 
 ### Step 3: Set up OpenAI Account
