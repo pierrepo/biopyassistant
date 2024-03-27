@@ -1,3 +1,14 @@
+# token
+.env
+
+# vector database
+chroma_*
+chroma
+.DS_Store.env
+
+# course content
+data/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
