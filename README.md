@@ -18,14 +18,7 @@ git clone https://github.com/pierrepo/biopyassist
 cd biopyassist
 ```
 
-2. Create and activate a new virtual environment (recommended):
-
-```bash
-python -m venv env
-source env/bin/activate  # On Windows, use `env\Scripts\activate`
-```
-
-3. Install the required dependencies:
+2. Create a Conda environment using the provided environment.yml file:
 
 ```bash
 conda env create -f environment.yml
@@ -34,9 +27,9 @@ conda env create -f environment.yml
 
 ## Usage
 
-### Step 1: Install Requirements
+### Step 1: Activate the Conda Environment
 
-First, install the required Python packages by running:
+First, activate the Conda environment by running:
 
 ```bash
 conda activate biopyassistenv
