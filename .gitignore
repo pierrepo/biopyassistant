@@ -7,7 +7,7 @@ chroma
 .DS_Store.env
 
 # course content
-data/*
+data/python_courses/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
