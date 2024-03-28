@@ -1,4 +1,4 @@
-"""Creates the ChromaDB database from Markdown files contained in the 'data' directory.
+"""Creates the ChromaDB database from Markdown files in the 'data' directory.
 
 Usage:
 ======
@@ -6,13 +6,12 @@ Usage:
 
 """
 
-
 # METADATA
 __authors__ = ("Pierre Poulain", "Essmay Touami")
-__contact__ = ("pierre.poulain@u-paris.fr")
+__contact__ = "pierre.poulain@u-paris.fr"
 __copyright__ = "BSD-3 clause"
 __date__ = "2024"
-__version__= "1.0.0"
+__version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
@@ -20,14 +19,13 @@ import os
 import re
 import shutil
 
-from langchain.schema import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain.vectorstores.chroma import Chroma
-from langchain_community.document_loaders import TextLoader
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_text_splitters import MarkdownHeaderTextSplitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
+from langchain_community.document_loaders import TextLoader, DirectoryLoader
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter
+)
 
 # CONSTANTS
 CHROMA_PATH = "chroma"
@@ -42,7 +40,8 @@ def main():
 
 def generate_data_store():
     global number_of_docs
-    """Generates data store by loading and cleaning documents, splitting text, and saving to ChromaDB."""
+    """Generates data store by loading and cleaning documents,
+    splitting text, and saving to ChromaDB."""
     documents, number_of_docs = load_documents()
     documents_cleaned = remove_comments_in_pythoncode(documents)
     chunks = split_text(documents_cleaned)
@@ -50,15 +49,18 @@ def generate_data_store():
 
 
 def load_documents():
-    """Loads Markdown documents and concatenates their content.
+    """Load Markdown documents and concatenates their content.
 
     Returns:
-        tuple: A tuple containing the concatenated content (str) of all Markdown documents and the number of loaded documents.
+        tuple: A tuple containing the concatenated content (str) of all Markdown
+            documents and the number of loaded documents.
     """
     concatenated_content = ""
     # Load Markdown documents from the specified directory
     print("\033[96mLoading Markdown documents...\033[0m")
-    loader = DirectoryLoader(DATA_PATH, glob="*.md", show_progress=True,loader_cls=TextLoader)
+    loader = DirectoryLoader(
+        DATA_PATH, glob="*.md", show_progress=True, loader_cls=TextLoader
+    )
     documents = loader.load()
     number_of_docs = len(documents)
     for document in documents:
@@ -84,7 +86,7 @@ def remove_comments_in_pythoncode(content: str):
     cleaned_content = []
     removed_lines = 0
     print("\033[96mCleaning the documents...\033[0m")
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         if line.strip().startswith("```python"):
             in_python_block = True
             cleaned_content.append(line)
@@ -92,20 +94,24 @@ def remove_comments_in_pythoncode(content: str):
             in_python_block = False
             cleaned_content.append(line)
         elif in_python_block:
-            line = re.sub(r'#.*', '', line)
+            line = re.sub(r"#.*", "", line)
             cleaned_content.append(line)
             removed_lines += 1
         else:
             cleaned_content.append(line)
-    
-    print(f"\033[92mNumber of comment lines removed: {removed_lines}\033[0m", end=" \n\n")
 
-    return '\n'.join(cleaned_content)
+    print(f"\033[92mNumber of comment lines removed: {removed_lines}\033[0m")
+    print(
+        f"\033[92mNumber of final content lines : {len(cleaned_content)}\033[0m",
+        end=" \n\n",
+    )
+
+    return "\n".join(cleaned_content)
 
 
 def split_text(content: str):
-    """Splits concatenated Markdown content into chunks based on headers and character limits.
-    
+    """Split concatenated Markdown content into chunks based on headers and character limits.
+
     Parameters:
     -----------
     content : str
@@ -131,13 +137,13 @@ def split_text(content: str):
     md_header_splits = markdown_splitter.split_text(content)
 
     # Create a character-based text splitter
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=100
-    )
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=100)
     # Split the resulting chunks further based on character limits
     chunks = text_splitter.split_documents(md_header_splits)
-    print(f"\033[92mSplit {number_of_docs} documents into {len(chunks)} chunks.\033[0m", end=" \n\n")
+    print(
+        f"\033[92mSplit {number_of_docs} documents into {len(chunks)} chunks.\033[0m",
+        end=" \n\n",
+    )
 
     # tests
     # print(chunks[1], end="\n\n")
@@ -148,7 +154,7 @@ def split_text(content: str):
 
 
 def save_to_chroma(chunks: list[str]):
-    """Saves text chunks to ChromaDB."""
+    """Save text chunks to ChromaDB."""
     print("\033[96mSaving to Chroma...\033[0m")
     # Clear out the database first.
     if os.path.exists(CHROMA_PATH):
