@@ -51,3 +51,5 @@ Create a `.env` file with a valid OpenAI API key:
 ```text
 OPENAI_API_KEY=<your-openai-api-key>
 ```
+
+Remark: The `.env` file est ignored by git.
