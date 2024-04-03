@@ -52,4 +52,13 @@ Create a `.env` file with a valid OpenAI API key:
 OPENAI_API_KEY=<your-openai-api-key>
 ```
 
-Remark: The `.env` file est ignored by git.
+Remark: The `.env` file is ignored by git.
+
+
+### Step 4: Query the Chroma DB.
+
+Query the Chroma database by running:
+
+```bash
+python src/query_data_openai.py "Enter your question here"
+```
