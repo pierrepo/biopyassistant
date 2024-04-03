@@ -1,24 +1,25 @@
 
 <div style="display: flex; align-items: left;">
   <img src="data/logo.webp" alt="Logo" width="40" height="40">
-  <h1 align="center">BioPyAssist</h1>
 </div>
 
-BioPyAssist is a Python-based chatbot designed to assist users with questions related to Python, with a focus on applications in the field of biology.
+# BioPyAssistant
+
+BioPyAssistant is a chatbot designed to assist students from life science curricula with questions related to Python programming.
 
 
 ## Installation
 
-To install BioPyAssist and its dependencies, run the following command:
+To install BioPyAssistant and its dependencies, run the following commands:
 
-1. Clone the repository:
+Clone the repository:
 
 ```bash
 git clone https://github.com/pierrepo/biopyassist
 cd biopyassist
 ```
 
-2. Create a Conda environment using the provided environment.yml file:
+Create a Conda environment:
 
 ```bash
 conda env create -f environment.yml
@@ -29,7 +30,7 @@ conda env create -f environment.yml
 
 ### Step 1: Activate the Conda Environment
 
-First, activate the Conda environment by running:
+Activate the Conda environment by running:
 
 ```bash
 conda activate biopyassistenv
@@ -37,16 +38,18 @@ conda activate biopyassistenv
 
 ### Step 2: Create Chroma DB
 
-Next, create the Chroma database by running:
+Create the Chroma database by running:
 
-```python
+```bash
 python src/create_database.py
 ```
 
-### Step 3: Set up OpenAI Account
+### Step 3: Set up OpenAI API key
 
-To use the OpenAI functionality, you need to set up an OpenAI account and obtain an API key. Once you have the key, set it in your environment variable as OPENAI_API_KEY.
+Create a `.env` file with a valid OpenAI API key:
 
-```bash
-export OPENAI_API_KEY=<your-openai-api-key>
+```text
+OPENAI_API_KEY=<your-openai-api-key>
 ```
+
+Remark: The `.env` file est ignored by git.
