@@ -63,6 +63,15 @@ def load_documents() -> str :
 def clean_python_comments(content: str) -> str:
     """Remove spaces between '#' and comments in Python code blocks in Markdown content.
 
+    Example:
+    ```python
+    # This is a comment.
+    ```
+    will be converted to:
+    ```python
+    #This is a comment.
+    ```
+
     Parameters
     ----------
     content : str
@@ -73,7 +82,7 @@ def clean_python_comments(content: str) -> str:
     str
         Markdown content with spaces removed between '#' and comments in Python code blocks.
     """
-    in_python_block = False
+    is_python_block = False
     cleaned_content = []
     modified_comment_lines = 0
 
@@ -81,12 +90,12 @@ def clean_python_comments(content: str) -> str:
     
     for line in content.split("\n"):
             if line.strip().startswith("```python"):
-                in_python_block = True
+                is_python_block = True
                 cleaned_content.append(line)
-            elif line.strip().startswith("```") and in_python_block:
-                in_python_block = False
+            elif line.strip().startswith("```") and is_python_block:
+                is_python_block = False
                 cleaned_content.append(line)
-            elif in_python_block:
+            elif is_python_block:
                 # Check if line has '#' followed by space(s) and remove them
                 modified_line = re.sub(r"#\s+", "#", line)
                 if modified_line != line:  # Check if any modification was made
