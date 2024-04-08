@@ -31,7 +31,7 @@ from langchain_text_splitters import (
 
 
 # CONSTANTS
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "chroma_db"
 DATA_PATH = "data/python_courses"
 
 
