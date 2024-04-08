@@ -144,10 +144,10 @@ def split_text(content: str) -> list[Document]:
 
     # Create a character-based text splitter
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=100,
-                                                   separators=["\n\n","\n"," "])
+                                                   # split on paragraphs, sentences, and words
+                                                   separators=["\n\n","\n"," "]) 
     # Split the resulting chunks further based on character limits
     chunks = text_splitter.split_documents(md_header_splits)
-
 
     logger.success(f"Split documents into {len(chunks)} chunks.\n")
 
@@ -195,19 +195,19 @@ def save_to_chroma(chunks: list[Document]) -> None:
     db = Chroma.from_documents(
         chunks,  model_embedding, persist_directory=CHROMA_PATH
     )
-    db.persist()
+    db.persist() # save the database to disk
     
     logger.success(f"Saved {len(chunks)} chunks to {CHROMA_PATH}.")
 
 
 def generate_data_store() -> None:
     """Generates data store by loading and cleaning documents,
-    splitting text, and saving to ChromaDB."""
+    splitting text into chunks, and saving the chunks to ChromaDB."""
     documents = load_documents()
     documents_cleaned = clean_python_comments(documents)
     chunks = split_text(documents_cleaned)
     save_to_chroma(chunks)
-
+    
 
 # MAIN PROGRAM
 if __name__ == "__main__":
