@@ -44,6 +44,8 @@ Create the Chroma database by running:
 python src/create_database.py
 ```
 
+> Remark: The vector database will be created in the 'chroma_db/' directory within the repository (on the disk).
+ 
 ### Step 3: Set up OpenAI API key
 
 Create a `.env` file with a valid OpenAI API key:
@@ -52,7 +54,7 @@ Create a `.env` file with a valid OpenAI API key:
 OPENAI_API_KEY=<your-openai-api-key>
 ```
 
-Remark: The `.env` file is ignored by git.
+> Remark: The `.env` file is ignored by git.
 
 
 ### Step 4: Query the Chroma DB.
