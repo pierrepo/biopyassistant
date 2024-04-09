@@ -33,7 +33,7 @@ conda env create -f environment.yml
 Activate the Conda environment by running:
 
 ```bash
-conda activate biopyassistenv
+conda activate biopyassistantenv
 ```
 
 ### Step 2: Create Chroma DB

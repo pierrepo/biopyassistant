@@ -1,4 +1,4 @@
-name: biopyassistenv
+name: biopyassistantenv
 channels:
   - defaults
 dependencies:
