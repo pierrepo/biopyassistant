@@ -7,5 +7,6 @@ dependencies:
   - chromadb # Vector storage
   - openai # For embeddings
   - tiktoken # For embeddings
-  - black
-  - loguru
+  - black # For code formatting
+  - loguru # For logging
+  - streamlit # For web app testing
