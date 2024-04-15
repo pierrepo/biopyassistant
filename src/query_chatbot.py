@@ -6,8 +6,29 @@ responses to the query using an OpenAI model.
 
 Usage:
 ======
-    python src/query_data_openai.py "Your question here"
+    python src/query_chatbot.py "Your question here" [--model "model_name"]
+                                                     [--question-type "type"]
+                                                     [--python-level "level"] 
+                                                     [--include-metadata]
 
+
+Arguments:
+==========
+    "Your question here" : The query text for which an answer is sought.
+    --model "model_name" : The name or identifier of the model to be used for generating responses.
+                           (Default model: "default_model_name")
+
+    Options:
+    ========
+    --question-type "type" : Optional argument to specify the type of question.
+                            If provided, it should be one of: "course" or "exercise".
+                            (Default: "course")
+    --python-level "level" : Optional argument to specify the proficiency level in Python.
+                              If provided, it should be one of: "beginner", "intermediate", or "advanced".
+                              (Default: "intermediate")
+    --include-metadata : Optional flag to specify whether to include metadata in the response.
+                         If provided, metadata will be included; otherwise, it will be excluded.
+                         (Default: metadata is excluded)
 """
 
 # METADATA
@@ -20,7 +41,7 @@ __version__ = "1.0.0"
 
 # LIBRARY IMPORTS
 import argparse
-from dataclasses import dataclass
+from typing import Tuple
 
 from loguru import logger
 from langchain_core.documents import Document
@@ -31,7 +52,8 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
-PROMPT_TEMPLATE_FR = """
+
+PROMPT_TEMPLATE_COURSE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
 Tu dois fournir des réponses à leurs questions basées sur les supports de cours.
 Utilise les morceaux de contexte suivants pour répondre à la question.
@@ -41,61 +63,64 @@ Question : "{question}"
 Contexte : "{contexte}"
 
 
-Répond à la question de manière claire et concise en français.
+Répond à la question de manière claire et concise en français de manière adapté à un niveau {python_level} en programmation.
 La réponse doit être facile à comprendre pour les étudiants.
 Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
-Si tu as besoin de plus d'informations, tu peux demander.
+Si tu as besoin de plus d'informations, tu peux le demander.
 Si tu as besoin de clarifier la question, tu peux le demander.
 """
-CHAPTER_LINKS = {
-    "01_introduction": "Introduction",
-    "02_variables": "Variables",
-    "03_affichage": "Affichage",
-    "04_liste": "Liste",
-    "05_boucles_comparaisons": "Boucles et Comparaisons",
-    "06_tests": "Tests",
-    "07_fichiers": "Fichiers",
-    "08_dictionnaires_tuples": "Dictionnaires et Tuples",
-    "09_modules": "Modules",
-    "10_fonctions": "Fonctions",
-    "11_plus_sur_les_chaines_de_caractères": "Plus sur les Chaînes de Caractères",
-    "12_plus_sur_les_listes": "Plus sur les Listes",
-    "13_plus_sur_les_fonctions": "Plus sur les Fonctions",
-    "14_conteneurs": "Conteneurs",
-    "15_creation_modules": "Création de Modules",
-    "16_bonnes_pratiques": "Bonnes Pratiques",
-    "17_expressions_regulieres": "Expressions Régulières",
-    "18_jupyter": "Jupyter",
-    "19_module_biopython": "Module Biopython",
-    "20_module_numpy": "Module Numpy",
-    "21_modules_pandas": "Modules Pandas",
-    "23_avoir_la_classe_avec_les_objets": "Avoir la Classe avec les Objets",
-    "24_avoir_plus_la_classe_avec_les_objets": "Avoir Plus la Classe avec les Objets",
-    "25_tkinter": "Tkinter",
-    "annexe_formats_fichiers": "Quelques Formats de Données en Biologie"
-}
+
+PROMPT_TEMPLATE_EXERCICE = """
+Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
+Tu dois donner les aider à résoudre des exercices basés sur les supports de cours.
+Utilise les morceaux de contexte suivants pour répondre à la question.
+
+Question : "{question}"
+
+Contexte : "{contexte}"
+
+Répond à la question de manière claire et concise en français de manière adapté à un niveau {python_level} en programmation.
+Mets en avant les étapes pour résoudre l'exercice.
+Ne donne jamais la réponse directement.
+La réponse doit être facile à comprendre pour les étudiants.
+Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
+Si tu as besoin de plus d'informations, tu peux le demander.
+Si tu as besoin de clarifier la question, tu peux le demander.
+"""
 
 
 # FUNCTIONS
-def get_the_query() -> str:
-    """Load the query text from the command line arguments.
+def get_the_query() -> Tuple[str, str, str, bool]:
+    """Load the query text and optional arguments from the command line.
 
     Returns
     -------
-    str
-        The query text parsed from the command line arguments.
+    Tuple[str, str, str, bool]
+        A tuple containing the query text, model name, python level, and a boolean indicating whether to include metadata.
     """
     logger.info("Parsing the command line arguments.")
     parser = argparse.ArgumentParser() # Create a parser object
-    # Add an argument to the parser
+    # Add arguments to the parser
     parser.add_argument("query_text", type=str, help="The query text.")
+    parser.add_argument("--model", type=str, default="gpt-3-turbo",
+                        help="The name or identifier of the model to be used for generating responses.")
+    parser.add_argument("--question-type", type=str, default="Cours",
+                        help="The type of question. It should be one of: 'Course' or 'Exercices'. (Default: 'Cours')")
+    parser.add_argument("--python-level", type=str, default="intermediate",
+                        help="The proficiency level in Python. It should be one of: 'beginner', 'intermediate', or 'advanced'. (Default: 'intermediate')")
+    parser.add_argument("--include-metadata", action="store_true", default=False,
+                        help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.")
     # Parse the command line arguments
     args = parser.parse_args()
 
     logger.info(f"Query text: {args.query_text}")
+    logger.info(f"Model name: {args.model}")
+    logger.info(f"Question type: {args.question_type}")
+    logger.info(f"Python level: {args.python_level}")
+    logger.info(f"Include metadata: {args.include_metadata}")
     logger.success("Command line arguments parsed successfully.")
 
-    return args.query_text
+    return args.query_text, args.model, args.question_type, args.python_level, args.include_metadata
 
 
 def load_database() -> Chroma:
@@ -171,7 +196,7 @@ def get_metadata(results : list[tuple[Document, float]]) -> list[dict]:
     return metadatas
 
 
-def generate_prompt(results : list[tuple[Document, float]], query_text : str) -> str:
+def generate_prompt(results : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> str:
     """Generate a prompt for the AI model.
 
     Parameters
@@ -180,6 +205,10 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str) ->
         List of top matching documents and their relevance scores.
     query_text : str
         The query text.
+    python_level : str
+        Python proficiency level.
+    question_type : str
+        Type of question (course or exercice).
 
     Returns
     -------
@@ -194,10 +223,13 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str) ->
     context_text = "\n\n---\n\n".join(contexts)
 
     # Create a prompt template
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_FR)
+    if question_type == "Cours":
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_COURSE)
+    else:
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_EXERCICE)
 
     # Fill in the prompt template with the extracted information
-    prompt = prompt_template.format(contexte=context_text, question=query_text)
+    prompt = prompt_template.format(contexte=context_text, question=query_text, python_level=python_level)
 
     logger.info(f"Prompt: {prompt}")
     logger.success("Prompt generated successfully.")
@@ -205,7 +237,7 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str) ->
     return prompt
 
 
-def predict_response(prompt: str) -> str:
+def predict_response(prompt: str, model_name: str) -> str:
     """Predict a response using an AI model.
 
     Parameters
@@ -220,7 +252,7 @@ def predict_response(prompt: str) -> str:
     """
     logger.info("Predicting the response using the AI model.")
 
-    model = ChatOpenAI() # Initialize the OpenAI model
+    model = ChatOpenAI(model= model_name) # Initialize the OpenAI model
 
     # Predict the response text
     response_text = model.predict(prompt)
@@ -231,7 +263,7 @@ def predict_response(prompt: str) -> str:
     return response_text
 
 
-def adding_metadata_to_response(response_from_model: str, metadatas: list[dict]) -> str: # NOT FINISHED
+def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]) -> str:
     """Add metadata to the response.
 
     Parameters
@@ -267,24 +299,24 @@ def adding_metadata_to_response(response_from_model: str, metadatas: list[dict])
             source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
         
         # Construct clickable link
-        chapter_link = CHAPTER_LINKS.get(chapter_name, None)
-        if chapter_link:
-            source_parts.append(f"(lien ici : [lien](https://python.sdv.univ-paris-diderot.fr/{chapter_link}/))")
+    #     chapter_link = CHAPTER_LINKS.get(chapter_name, None)
+    #     if chapter_link:
+    #         source_parts.append(f"(lien ici : <a href='https://python.sdv.univ-paris-diderot.fr/{chapter_link}/'>lien</a>)")
         
-        source = " ".join(source_parts)
+    #     source = " ".join(source_parts)
         
-        # Add the source to the set if it's not a duplicate
-        if source not in sources_set:
-            sources_set.add(source)
+    #     # Add the source to the set if it's not a duplicate
+    #     if source not in sources_set:
+    #         sources_set.add(source)
 
-    sources_list = list(sources_set)
-    sources_text = "\n- ".join(sources_list)
-    sources_string = f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
+    # sources_list = list(sources_set)
+    # sources_text = "<br>".join(sources_list)
+    # sources_string = f"Pour plus d'informations, consultez les sources suivantes :<br>{sources_text}"
 
-    # Add the sources to the response 
-    response_with_metadata = f"{response_from_model}\n\n{sources_string}"
+    # # Add the sources to the response 
+    # response_with_metadata = f"{response_from_model}<br><br>{sources_string}"
 
-    return response_with_metadata
+    # return response_with_metadata
 
 
 def print_results(query_text: str, final_response: str) -> None:
@@ -312,28 +344,32 @@ def print_results(query_text: str, final_response: str) -> None:
 def interrogate_model() -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the query text from the command line arguments
-    query_text = get_the_query()
+    user_query, model_name, question_type, python_level, include_metadata = get_the_query()
 
     # Load the vector database
-    db = load_database()
+    vector_db = load_database()
 
     # Search for relevant documents in the database
-    results = search_similarity_in_database(db, query_text)
+    results = search_similarity_in_database(vector_db, user_query)
 
     # Get the metadata of the top matching documents
     metadatas = get_metadata(results)
 
     # Generate a prompt for the AI model
-    prompt = generate_prompt(results, query_text)
+    prompt = generate_prompt(results, user_query, python_level, question_type)
 
     # Predict the response using the AI model
-    response_from_model = predict_response(prompt)
+    response_from_model = predict_response(prompt, model_name)
 
-    # Add metadata to the response
-    final_response = adding_metadata_to_response(response_from_model, metadatas)
+    if include_metadata:
+        # Add metadata to the response
+        final_response = adding_metadatas_to_response(response_from_model, metadatas)
 
-    # Display the results
-    print_results(query_text, final_response)
+        # Display the results
+        print_results(user_query, final_response)
+    else:
+        # Display the results
+        print_results(user_query, response_from_model)
 
 
 # MAIN PROGRAM
