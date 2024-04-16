@@ -118,82 +118,6 @@ def split_text(content: str) -> list[Document]:
     return chunks
 
 
-def add_url_to_chunk(chunks: list[Document], file_names: list[str]) -> list[Document]:
-    """Add URL to the metadata of each chunk.
-
-    Parameters
-    ----------
-    chunks : list of Document
-        List of text chunks after splitting with content and metadata.
-        Each Document object contains:
-            - page_content (str): The text content of the page.
-            - metadata (dict): Metadata associated with the page.
-
-    file_names : list of str
-        List of file names corresponding to the chapters.
-
-    Returns
-    -------
-    chunks :  list of Document
-        Each Document object contains:
-            - page_content (str): The text content of the page.
-            - metadata (dict): Metadata associated with the page.
-            - url (str): The URL associated with the metadata, providing a direct link to the corresponding page.
-    """
-    logger.info("Adding URL to the metadata of each chunk...")
-
-    # Base URL of the website where the content is hosted
-    base_url = "https://python.sdv.univ-paris-diderot.fr/"
-
-    # Iterate over each chunk to add the URL
-    for chunk in chunks:
-        # Get the index of the chapter in file_names
-        chapter_index = int(chunk.metadata.get("chapter_name", "").split("_")[0]) - 1
-        
-        # Ensure the chapter_index is within the range of file_names
-        if 0 <= chapter_index < len(file_names):
-            # Use the chapter name from file_names
-            chapter_name = file_names[chapter_index]
-        else:
-            # If chapter index is out of range, set chapter_name to an empty string
-            chapter_name = ""
-
-        # Construct the URL path based on metadata
-        url_path = chapter_name
-
-        # Combine the base URL and the URL path to create the full URL
-        chunk.url = base_url + url_path
-
-    logger.success("URL added to the metadata of each chunk.")
-    print(chunks[0].url)
-
-    return chunks
-    
-
-def save_chunks_details(chunks: list[Document]) -> None:
-    """Save the details of the chunks to a text file.
-
-    Parameters
-    ----------
-    chunks : list of str
-        List of text chunks to save to a file.
-    """
-    logger.info("Saving chunk details to a file...")
-    # Write chunks to a file
-    output_file_path = "chunks.txt"
-    with open(output_file_path, "w", encoding="utf-8") as file:
-        for index, chunk in enumerate(chunks):
-            file.write(f"Chunk {index + 1}:\n")
-            file.write("Metadata:\n")
-            for key, value in chunk.metadata.items():
-                file.write(f"    {key}: {value}\n")
-            file.write("Content:\n")
-            file.write(chunk.page_content)
-            file.write("\n\n")
-    logger.success(f"Saved chunk details to {output_file_path}.\n")
-    
-   
-
 def save_to_chroma(chunks: list[Document]) -> None:
     """Save text chunks to ChromaDB.
 
@@ -228,9 +152,7 @@ def generate_data_store() -> None:
 
     documents, file_names = load_documents()
     chunks = split_text(documents)
-    chunks = add_url_to_chunk(chunks, file_names)
-    save_chunks_details(chunks)
-    #save_to_chroma(chunks)
+    save_to_chroma(chunks)
     
 
 # MAIN PROGRAM

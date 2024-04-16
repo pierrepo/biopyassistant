@@ -323,24 +323,21 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
             source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
         
         # Construct clickable link
-    #     chapter_link = CHAPTER_LINKS.get(chapter_name, None)
-    #     if chapter_link:
-    #         source_parts.append(f"(lien ici : <a href='https://python.sdv.univ-paris-diderot.fr/{chapter_link}/'>lien</a>)")
+
+        source = " ".join(source_parts)
         
-    #     source = " ".join(source_parts)
-        
-    #     # Add the source to the set if it's not a duplicate
-    #     if source not in sources_set:
-    #         sources_set.add(source)
+        # Add the source to the set if it's not a duplicate
+        if source not in sources_set:
+            sources_set.add(source)
 
-    # sources_list = list(sources_set)
-    # sources_text = "<br>".join(sources_list)
-    # sources_string = f"Pour plus d'informations, consultez les sources suivantes :<br>{sources_text}"
+    sources_list = list(sources_set)
+    sources_text = "\n- ".join(sources_list)
+    sources_string = f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
 
-    # # Add the sources to the response 
-    # response_with_metadata = f"{response_from_model}<br><br>{sources_string}"
+    # Add the sources to the response 
+    response_with_metadata = f"{response_from_model}\n\n{sources_string}"
 
-    # return response_with_metadata
+    return response_with_metadata
 
 
 def print_results(query_text: str, final_response: str) -> None:
@@ -391,6 +388,7 @@ def interrogate_model() -> None:
 
         # Display the results
         print_results(user_query, final_response)
+
     else:
         # Display the results
         print_results(user_query, response_from_model)
