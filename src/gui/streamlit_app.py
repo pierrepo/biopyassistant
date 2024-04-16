@@ -2,7 +2,7 @@
 
 Usage:
 ======
-    streamlit run src/streamlit_app.py
+    streamlit run src/gui/streamlit_app.py
 
 """
 
@@ -18,7 +18,7 @@ __version__ = "1.0.0"
 import streamlit as st
 
 # MODULES IMPORT
-from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
+from rag_system.query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
 
 
 def create_header() -> None:

@@ -6,7 +6,7 @@ responses to the query using an OpenAI model.
 
 Usage:
 ======
-    python src/query_chatbot.py "Your question here" [--model "model_name"]
+    python src/rag_system/query_chatbot.py "Your question here" [--model "model_name"]
                                                      [--question-type "type"]
                                                      [--python-level "level"] 
                                                      [--include-metadata]
@@ -261,6 +261,30 @@ def predict_response(prompt: str, model_name: str) -> str:
     logger.success("Response predicted successfully.")
     
     return response_text
+
+
+def metadata_to_slug(metadatas: list[dict]) -> str:
+    """Convert metadata to a slug string.
+
+    Parameters
+    ----------
+    metadatas : list
+        List of metadata dictionaries for the top matching documents.
+
+    Returns
+    -------
+    str
+        The metadata converted to a slug string.
+    """
+    logger.info("Converting metadata to a slug string.")
+
+    # Convert metadata to a slug string
+    slug = "_".join([f"{metadata['chapter_name']}_{metadata.get('section_name', '')}_{metadata.get('subsection_name', '')}_{metadata.get('subsubsection_name', '')}" for metadata in metadatas])
+
+    logger.info(f"Slug: {slug}")
+    logger.success("Metadata converted to a slug string.")
+
+    return slug
 
 
 def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]) -> str:
