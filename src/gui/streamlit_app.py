@@ -131,7 +131,7 @@ def chat_with_bot(vector_db, question_type, python_level, model_name) -> None:
 
 def main():
     # Set the page configuration
-    st.set_page_config(page_title="BioPyAssistant", page_icon="data/logo.webp")
+    st.set_page_config(page_title="BioPyAssistant", page_icon="data/logo_round.webp")
 
     # Create the header
     create_header()
