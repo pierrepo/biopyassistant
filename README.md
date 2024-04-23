@@ -41,7 +41,7 @@ conda activate biopyassistantenv
 Create the Chroma database by running:
 
 ```bash
-python src/create_database.py
+python src/database/create_database.py
 ```
 
 > Remark: The vector database will be created in the 'chroma_db/' directory within the repository (on the disk).
@@ -62,5 +62,18 @@ OPENAI_API_KEY=<your-openai-api-key>
 Query the Chroma database by running:
 
 ```bash
-python src/query_data_openai.py "Enter your question here"
+python src/rag_system/query_chatbot.py "Your question here" [--model "model_name"]
+                                                            [--question-type "type"]
+                                                            [--python-level "level"] 
+                                                            [--include-metadata]
 ```
+
+#### Customization options:
+
+- 🤖 Model Selection: Choose between GPT-3 Turbo or GPT-4 to suit your needs and preferences. Default: "gpt-3-turbo".
+
+- 🔍 Question Type: Specify the type of question. Options: "course" or "exercise". Default: "course".
+
+- 📊 Python Level: Specify your proficiency level in Python. Options: "beginner", "intermediate", or "advanced". Default: "intermediate".
+
+- 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.

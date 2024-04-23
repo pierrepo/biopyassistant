@@ -1,4 +1,4 @@
-"""CLI application for searching answers in a textual database.
+"""CLI application for searching answers in a vectorial database.
 
 This program allows users to search for answers in a textual database based on a given query text. 
 It utilizes a similarity search algorithm to find relevant documents in the database and generates 
@@ -16,7 +16,7 @@ Arguments:
 ==========
     "Your question here" : The query text for which an answer is sought.
     --model "model_name" : The name or identifier of the model to be used for generating responses.
-                           (Default model: "default_model_name")
+                           (Default model: "gpt-3.5-turbo")
 
     Options:
     ========
