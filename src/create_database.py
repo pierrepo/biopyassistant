@@ -1,13 +1,12 @@
-"""Creates the ChromaDB database from Markdown files in the specified directory, 
+"""Creates the ChromaDB database from Markdown files in the specified directory.
 
 Usage:
 ======
-    python src/database/create_database.py [--data_dir]
+    python src/create_database.py [data_dir]
 
 Options:
-    --data_dir : str, optional
-        The directory containing the Markdown files to be processed. Default: processed_python_courses"
-
+    data_dir : str, optional
+        The directory containing the Markdown files to be processed. Default: 'data/processed_python_courses'"
 
 """
 
@@ -21,8 +20,8 @@ __version__ = "1.0.0"
 
 # LIBRARY IMPORTS
 import os
-import re
 import shutil
+import argparse
 
 from loguru import logger
 from langchain_openai import OpenAIEmbeddings
@@ -37,12 +36,31 @@ from langchain_text_splitters import (
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
-PROCESSED_DATA_PATH = "data/processed_python_courses"
+PROCESSED_DATA_PATH = "data/markdown_processed"
 
 
 # FUNCTIONS
-def load_documents() -> tuple[str, list[str]] :
+def get_dir() -> str:
+    """Get the directory containing the Markdown files to be processed from the command line arguments or defaults.
+
+    Returns
+    -------
+    data_dir : str
+        The directory containing the Markdown files to be processed.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("data_dir", nargs="?", default=PROCESSED_DATA_PATH, help="The directory containing the Markdown files to be processed. Default: PROCESSED_DATA_PATH")
+    args = parser.parse_args()
+    return args.data_dir
+
+
+def load_documents(data_dir: str) -> tuple[str, list[str]] :
     """Load Markdown documents, concatenate their content, and extract the name of the Markdown files.
+
+    Parameters
+    ----------
+    data_dir : str
+        The directory containing the Markdown files to be processed.
 
     Returns
     -------
@@ -58,7 +76,7 @@ def load_documents() -> tuple[str, list[str]] :
     # Load Markdown documents from the specified directory
     logger.info("Loading Markdown documents...")
     loader = DirectoryLoader(
-        PROCESSED_DATA_PATH, glob="*.md", show_progress=True, loader_cls=TextLoader
+        data_dir, glob="*.md", show_progress=True, loader_cls=TextLoader
     )
     documents = loader.load()
 
@@ -77,7 +95,7 @@ def load_documents() -> tuple[str, list[str]] :
     return concatenated_content, file_names
 
 
-def split_text(content: str) -> list[Document]:
+def split_text(content: str) -> list[Document]: # NOT FINISHED
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
     Parameters:
@@ -130,10 +148,6 @@ def save_to_chroma(chunks: list[Document]) -> None:
     ----------
     chunks : list of str
         List of text chunks to save to ChromaDB.
-
-    Returns
-    -------
-    None
     """
     logger.info("Saving to Chroma...")
 
@@ -153,7 +167,8 @@ def save_to_chroma(chunks: list[Document]) -> None:
 
 def generate_data_store() -> None:
     """Generates data store by loading, splitting text into chunks, and saving the chunks to ChromaDB."""
-    documents, file_names = load_documents()
+    data_dir = get_dir()
+    documents, file_names = load_documents(data_dir)
     chunks = split_text(documents)
     save_to_chroma(chunks)
     

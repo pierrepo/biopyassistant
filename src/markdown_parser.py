@@ -4,19 +4,19 @@ This module provides functions for processing Markdown files. It includes functi
 
 Usage:
 ======
-    python src/data_processing/markdown_parser.py [source_dir] [dest_dir]
+    python src/markdown_parser.py [source_dir] [dest_dir]
 
 Where:
     - source_dir : str, optional
-        The source directory containing Markdown files to be processed. Default: RAW_DATA_PATH = "data/raw_python_courses"
+        The source directory containing Markdown files to be processed. Default: RAW_DATA_PATH
     - dest_dir : str, optional
-        The destination directory to save the processed Markdown files. Default: PROCESSED_PATH = "data/processed_python_courses"
+        The destination directory to save the processed Markdown files. Default: PROCESSED_PATH
 
 Example:
 ========
-    python src/data_processing/markdown_parser.py
+    python src/markdown_parser.py
 
-This command will process Markdown files located in the 'data/raw_python_courses' directory and save the processed files to the 'data/processed_python_courses' directory.
+This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
 """
 
 
@@ -37,8 +37,8 @@ from loguru import logger
 
 
 # CONSTANTS
-RAW_DATA_PATH = "data/raw_python_courses"
-PROCESSED_PATH = "data/processed_python_courses"
+RAW_DATA_PATH = "data/markdown_raw"
+PROCESSED_PATH = "data/markdown_processed"
 
 
 # FUNCTIONS

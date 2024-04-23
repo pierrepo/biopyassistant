@@ -2,7 +2,7 @@
 
 Usage:
 ======
-    streamlit run src/gui/streamlit_app.py
+    streamlit run src/streamlit_app.py
 
 """
 
@@ -17,10 +17,12 @@ __version__ = "1.0.0"
 # LIBRAIRIES IMPORT
 import streamlit as st
 
+
 # MODULES IMPORT
-from rag_system.query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
 
 
+# FUNCTIONS
 def create_header() -> None:
     st.markdown(
         f"""
@@ -125,9 +127,7 @@ def chat_with_bot(vector_db, question_type, python_level, model_name) -> None:
                 st.write(response)
                 message = {"role": "assistant", "content": response}
                 st.session_state.messages.append(message) # Add response to message history
-        
 
-     
 
 def main():
     # Set the page configuration
@@ -146,5 +146,6 @@ def main():
     chat_with_bot(vector_db, question_type, python_level, model_name)
 
 
+# MAIN PROGRAM
 if __name__ == "__main__":
     main()

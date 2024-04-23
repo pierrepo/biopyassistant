@@ -41,22 +41,12 @@ conda activate biopyassistantenv
 Process the data by running:
 
 ```bash
-python src/data_processing/markdown_parser.py
+python src/markdown_parser.py [source_dir] [dest_dir]
 ```
 
-> Remark: The processed data will be stored in the 'data/processed_python_courses/' directory within the repository.
+> Remark: `source_dir` is the directory containing the markdown files to be processed and `dest_dir` is the directory where the processed files will be saved. By default, the source directory is `data/markdown_raw` and the destination directory is `data/markdown_processed`.
 
-### Step 3: Create Chroma DB
-
-Create the Chroma database by running:
-
-```bash
-python src/database/create_database.py
-```
-
-> Remark: The vector database will be created in the 'chroma_db/' directory within the repository (on the disk).
- 
-### Step 4: Set up OpenAI API key
+### Step 3: Set up OpenAI API key
 
 Create a `.env` file with a valid OpenAI API key:
 
@@ -66,6 +56,15 @@ OPENAI_API_KEY=<your-openai-api-key>
 
 > Remark: The `.env` file is ignored by git.
 
+### Step 4: Create Chroma DB
+
+Create the Chroma database by running:
+
+```bash
+python src/create_database.py [data_dir]
+```
+
+> Remark: `data_dir` is the directory containing the processed Markdown files. Default: `data/markdown_processed`. And the vector database will be created in the `chroma_db/` directory within the repository (on the disk).
 
 ### Step 5: Query the chatbot.
 
@@ -77,10 +76,10 @@ You can query the chatbot using either the command line or the graphical interfa
 Run the following command:
 
 ```bash
-python src/rag_system/query_chatbot.py "Your question here" [--model "model_name"]
-                                                            [--question-type "type"]
-                                                            [--python-level "level"] 
-                                                            [--include-metadata]
+python src/query_chatbot.py "Your question here" [--model "model_name"]
+                                                  [--question-type "type"]
+                                                  [--python-level "level"] 
+                                                  [--include-metadata]
 ```
 
 #### Customization options:
@@ -98,10 +97,7 @@ python src/rag_system/query_chatbot.py "Your question here" [--model "model_name
 Run the following command:
 
 ```bash
-streamlit run src/gui/streamlit_app.py
+streamlit run src/streamlit_app.py
 ```
 
 This will launch the Streamlit app in your browser, where you can start interacting with the RAG model.
-
-
-Feel free to choose the method that works best for you! 🌟

@@ -6,7 +6,7 @@ responses to the query using an OpenAI model.
 
 Usage:
 ======
-    python src/rag_system/query_chatbot.py "Your question here" [--model "model_name"]
+    python src/query_chatbot.py "Your question here" [--model "model_name"]
                                                      [--question-type "type"]
                                                      [--python-level "level"] 
                                                      [--include-metadata]
