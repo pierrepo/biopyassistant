@@ -4,7 +4,7 @@ This module provides functions for processing Markdown files. It includes functi
 
 Usage:
 ======
-    python src/data_processing/markdown_parser.py [source_dir] [dest_dir] []
+    python src/data_processing/markdown_parser.py [source_dir] [dest_dir]
 
 Where:
     - source_dir : str, optional
