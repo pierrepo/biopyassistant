@@ -15,8 +15,8 @@ To install BioPyAssistant and its dependencies, run the following commands:
 Clone the repository:
 
 ```bash
-git clone https://github.com/pierrepo/biopyassist
-cd biopyassist
+git clone https://github.com/pierrepo/biopyassistant.
+cd biopyassistant
 ```
 
 Create a Conda environment:
@@ -36,7 +36,17 @@ Activate the Conda environment by running:
 conda activate biopyassistantenv
 ```
 
-### Step 2: Create Chroma DB
+### Step 2: Process the Data
+
+Process the data by running:
+
+```bash
+python src/data_processing/markdown_parser.py
+```
+
+> Remark: The processed data will be stored in the 'data/processed_python_courses/' directory within the repository.
+
+### Step 3: Create Chroma DB
 
 Create the Chroma database by running:
 
@@ -46,7 +56,7 @@ python src/database/create_database.py
 
 > Remark: The vector database will be created in the 'chroma_db/' directory within the repository (on the disk).
  
-### Step 3: Set up OpenAI API key
+### Step 4: Set up OpenAI API key
 
 Create a `.env` file with a valid OpenAI API key:
 
@@ -57,9 +67,14 @@ OPENAI_API_KEY=<your-openai-api-key>
 > Remark: The `.env` file is ignored by git.
 
 
-### Step 4: Query the Chroma DB.
+### Step 5: Query the chatbot.
 
-Query the Chroma database by running:
+You can query the chatbot using either the command line or the graphical interface:
+
+
+#### **Command Line** :
+
+Run the following command:
 
 ```bash
 python src/rag_system/query_chatbot.py "Your question here" [--model "model_name"]
@@ -77,3 +92,16 @@ python src/rag_system/query_chatbot.py "Your question here" [--model "model_name
 - 📊 Python Level: Specify your proficiency level in Python. Options: "beginner", "intermediate", or "advanced". Default: "intermediate".
 
 - 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
+
+#### **Graphical Interface** :
+
+Run the following command:
+
+```bash
+streamlit run src/gui/streamlit_app.py
+```
+
+This will launch the Streamlit app in your browser, where you can start interacting with the RAG model.
+
+
+Feel free to choose the method that works best for you! 🌟
