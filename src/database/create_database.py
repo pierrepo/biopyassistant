@@ -1,8 +1,13 @@
-"""Creates the ChromaDB database from Markdown files in the 'processed_data' directory.
+"""Creates the ChromaDB database from Markdown files in the specified directory, 
 
 Usage:
 ======
-    python src/database/create_database.py
+    python src/database/create_database.py [--data_dir]
+
+Options:
+    --data_dir : str, optional
+        The directory containing the Markdown files to be processed. Default: processed_python_courses"
+
 
 """
 
@@ -147,9 +152,7 @@ def save_to_chroma(chunks: list[Document]) -> None:
 
 
 def generate_data_store() -> None:
-    """Generates data store by loading and cleaning documents,
-    splitting text into chunks, and saving the chunks to ChromaDB."""
-
+    """Generates data store by loading, splitting text into chunks, and saving the chunks to ChromaDB."""
     documents, file_names = load_documents()
     chunks = split_text(documents)
     save_to_chroma(chunks)
