@@ -5,7 +5,7 @@ and splits the content into chunks based on headers and word limits. The resulti
 
 Usage:
 ======
-    python src/create_database.py [data_dir] [chunk_size] [chunk_overlap] [txt_output]
+    python src/create_database.py [data_dir] [chunk_size] [chunk_overlap] [txt_output] [chroma_output]
 
 Options:
     data_dir : str, optional
@@ -16,6 +16,8 @@ Options:
         The overlap between text chunks. Default: 100.
     txt_output : str, optional
         The name of the output file to save the text chunks with metadata. Default: None.
+    chroma_output : str, optional
+        The name of the output path to save the ChromaDB database. Default: CHROMA_PATH.
 """
 
 # METADATA
@@ -89,9 +91,15 @@ def get_args() -> tuple[str, int, int]:
         default=None,
         help="The output file to save the text chunks with metadata. Default: None.",
     )
+    parser.add_argument(
+        "chroma_output",
+        nargs="?",
+        default=CHROMA_PATH,
+        help="The output path to save the ChromaDB database. Default: CHROMA_PATH.",
+    )
     args = parser.parse_args()
 
-    return args.data_dir, args.chunk_size, args.chunk_overlap, args.txt_output
+    return args.data_dir, args.chunk_size, args.chunk_overlap, args.txt_output, args.chroma_output
 
 
 def load_documents(data_dir: str) -> tuple[str, list[str]]:
@@ -357,32 +365,34 @@ def save_to_txt(
     logger.success(f"Saved text chunks to {txt_output_path}.")
 
 
-def save_to_chroma(chunks: list[Document]) -> None:
+def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
     """Save text chunks to ChromaDB.
 
     Parameters
     ----------
     chunks : list of str
         List of text chunks to save to ChromaDB.
+    chroma_output_path : str
+        The name of the output path to save the ChromaDB database.
     """
     logger.info("Saving to Chroma...")
 
     # Clear out the database first.
-    if os.path.exists(CHROMA_PATH):
-        shutil.rmtree(CHROMA_PATH)
+    if os.path.exists(chroma_output_path):
+        shutil.rmtree(chroma_output_path)
 
     # Create a new DB from the documents.
     model_embedding = OpenAIEmbeddings(model="text-embedding-3-large")
-    db = Chroma.from_documents(chunks, model_embedding, persist_directory=CHROMA_PATH)
+    db = Chroma.from_documents(chunks, model_embedding, persist_directory=chroma_output_path)
     db.persist()  # save the database to disk
 
-    logger.success(f"Saved {len(chunks)} chunks to {CHROMA_PATH}.")
+    logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path}.")
 
 
 def generate_data_store() -> None:
     """Generates data store by loading, splitting text into chunks, and saving the chunks to ChromaDB."""
     # get command-line arguments
-    data_dir, chunk_size, chunk_overlap, txt_output = get_args()
+    data_dir, chunk_size, chunk_overlap, txt_output, chroma_output_path = get_args()
 
     # load documents from the specified directory and extract file names
     documents, file_names = load_documents(data_dir)
@@ -401,7 +411,7 @@ def generate_data_store() -> None:
         save_to_txt(chunks_with_url, txt_output, chunk_size, chunk_overlap)
 
     # save the chunks to ChromaDB
-    save_to_chroma(chunks_with_url)
+    save_to_chroma(chunks_with_url, chroma_output_path)
 
 
 # MAIN PROGRAM
