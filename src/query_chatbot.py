@@ -10,6 +10,7 @@ Usage:
                                                      [--question-type "type"]
                                                      [--python-level "level"] 
                                                      [--include-metadata]
+                                                     [--db-path "path"]
 
 
 Arguments:
@@ -29,6 +30,9 @@ Arguments:
     --include-metadata : Optional flag to specify whether to include metadata in the response.
                          If provided, metadata will be included; otherwise, it will be excluded.
                          (Default: metadata is excluded)
+    --db-path "path" : Optional argument to specify the path to the vector database.
+                          If provided, the database will be loaded from the specified directory.
+                          (Default path: CHROMA_PATH)
 """
 
 # METADATA
@@ -90,7 +94,7 @@ Si tu as besoin de clarifier la question, tu peux le demander.
 
 
 # FUNCTIONS
-def get_the_query() -> Tuple[str, str, str, bool]:
+def get_args() -> Tuple[str, str, str, bool]:
     """Load the query text and optional arguments from the command line.
 
     Returns
@@ -110,6 +114,9 @@ def get_the_query() -> Tuple[str, str, str, bool]:
                         help="The proficiency level in Python. It should be one of: 'beginner', 'intermediate', or 'advanced'. (Default: 'intermediate')")
     parser.add_argument("--include-metadata", action="store_true", default=False,
                         help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.")
+    parser.add_argument("--db-path", type=str, default=CHROMA_PATH,
+                        help="The path to the vector database. If provided, the database will be loaded from the specified directory.")
+    
     # Parse the command line arguments
     args = parser.parse_args()
 
@@ -120,10 +127,10 @@ def get_the_query() -> Tuple[str, str, str, bool]:
     logger.info(f"Include metadata: {args.include_metadata}")
     logger.success("Command line arguments parsed successfully.")
 
-    return args.query_text, args.model, args.question_type, args.python_level, args.include_metadata
+    return args.query_text, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
 
 
-def load_database() -> Chroma:
+def load_database(vector_db_path: str) -> Chroma:
     """Prepare the vector database.
 
     Returns
@@ -133,7 +140,7 @@ def load_database() -> Chroma:
     logger.info("Loading the vector database.")
     embedding_function = OpenAIEmbeddings(model="text-embedding-3-large") # define the embdding model
     # Load the database from the specified directory
-    vector_db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+    vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embedding_function)
 
     logger.info(f"Chunks in the database: {vector_db._collection.count()}")
     logger.success("Vector database prepared successfully.")
@@ -157,7 +164,7 @@ def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[D
     """
     logger.info("Searching for relevant documents in the database.")
     # Perform a similarity search with relevance scores
-    results = db.similarity_search_with_relevance_scores(query_text, k=3)
+    results = db.similarity_search_with_relevance_scores(query_text)
 
     logger.info(f"There are {len(results)} relevant documents found.")
     logger.success("Search completed successfully.")
@@ -365,10 +372,10 @@ def print_results(query_text: str, final_response: str) -> None:
 def interrogate_model() -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the query text from the command line arguments
-    user_query, model_name, question_type, python_level, include_metadata = get_the_query()
+    user_query, model_name, question_type, python_level, include_metadata, vector_db_path= get_args()
 
     # Load the vector database
-    vector_db = load_database()
+    vector_db = load_database(vector_db_path)
 
     # Search for relevant documents in the database
     results = search_similarity_in_database(vector_db, user_query)
