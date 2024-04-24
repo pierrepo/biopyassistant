@@ -15,7 +15,7 @@ To install BioPyAssistant and its dependencies, run the following commands:
 Clone the repository:
 
 ```bash
-git clone https://github.com/pierrepo/biopyassistant.
+git clone https://github.com/pierrepo/biopyassistant.git
 cd biopyassistant
 ```
 
