@@ -32,9 +32,9 @@ __version__ = "1.0.0"
 import os
 import re
 import argparse
+from typing import Union
 
 from loguru import logger
-
 
 # CONSTANTS
 RAW_DATA_PATH = "data/markdown_raw"
@@ -111,89 +111,65 @@ def clean_python_comments(content: str) -> str:
     return "\n".join(cleaned_content)
 
 
-def renumber_headers_courses(content: str, global_counters_courses: list[int]) -> str:
+def renumber_headers(content: str, chapter_number) -> str:
     """Renumber headers in Markdown content.
 
     Parameters
     ----------
     content : str
         The Markdown content to renumber.
-    global_counters : list of int
-        Global counters for each level of header.
+    header : Union[int, str]
+        Renumber headers starting from the specified header number,
+        interpreting integers as chapters and strings as annexes.
 
     Returns
     -------
     str
         The Markdown content with renumbered headers.
     """
-    logger.info("Renumbering headers for annexes...")
-    header_pattern = r'^\s*(#+)\s+(?![#])\s*(.*)$'  # Regex pattern to match headers with leading '#' and no following '#'
-    new_content = []  # Stores the new content with renumbered headers
+    logger.info("Renumbering headers...")
+    # Regex pattern to match headers with leading '#' and no following '#'
+    header_pattern = r'^(#+)\s+([^#]*)$'
+    # Define default header levels.
+    # We should have no more than 4 levels of headers.
+    headers = {
+        1:chapter_number, # Level 1: chapter / annexe.
+        2:0, # Level 2: section.
+        3:0, # Level 3: Sub-section
+        4:0, # Level 4: Sub-sub-section.
+    }
+    # Stores the file content with renumbered headers
+    processed_content = []
 
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         match = re.match(header_pattern, line)
         if match:
             header_level = len(match.group(1))
             header_text = match.group(2)
+            # Show errors if we are above level 4
+            if header_level > 4:
+                logger.error("Header level beyond level 4!")
+                logger.error(line)
+                processed_content.append(line)
+                continue
+            # Increment the appropriate header level,
+            # if below chapter / annexe level:
+            if header_level != 1:
+                headers[header_level] += 1
+            # Reset subsequent levels
+            for level in range(header_level + 1, len(headers) + 1):
+                headers[level] = 0
 
-            # Increment the appropriate global level and reset subsequent levels
-            global_counters_courses[header_level - 1] += 1
-            global_counters_courses[header_level:] = [0] * (4 - header_level)
+            # Create the header with numbers
+            header_numbers = list(headers.keys())[:header_level]
+            header_numbers_as_str = ".".join([str(level) for level in  header_numbers])
+            line = f"{'#' * header_level} {header_numbers_as_str} {header_text}"
 
-            # Create the new header with renumbered level
-            new_level = '.'.join(map(str, global_counters_courses[:header_level]))
-            new_header = f"{'#' * header_level} {new_level} {header_text}"
-            line = new_header
+        processed_content.append(line)
 
-        new_content.append(line)
+    logger.success("Headers renumbered successfully.")
 
-    logger.success("Headers renumbered.")
-
-    return '\n'.join(new_content)
-
-
-def renumber_headers_annexes(content: str, global_counters_annexes: list[int]) -> str:
-    """Renumber headers in Markdown content for annexes.
-
-    Parameters
-    ----------
-    content : str
-        The Markdown content to renumber.
-    global_counters_annexes : list of int
-        Global counters for each level of header for annexes.
-
-    Returns
-    -------
-    str
-        The Markdown content with renumbered headers.
-    """
-    logger.info("Renumbering headers for annexes...")
-    header_pattern = r'^\s*(#+)\s+(?![#])\s*(.*)$'  # Regex pattern to match headers with leading '#' and no following '#'
-    new_content = []  # Stores the new content with renumbered headers
-
-    for line in content.split('\n'):
-        match = re.match(header_pattern, line)
-        if match:
-            header_level = len(match.group(1))
-            header_text = match.group(2)
-
-            # Get the appropriate letter for the header level
-            letter = chr(ord('B') + global_counters_annexes[header_level - 1] - 1)
-
-            # Increment the appropriate global level and reset subsequent levels
-            global_counters_annexes[header_level - 1] += 1
-            global_counters_annexes[header_level:] = [0] * (4 - header_level)
-
-            # Create the new header with renumbered level
-            new_level = f"{letter}" if header_level == 1 else f"A.{'.'.join(map(str, global_counters_annexes[1:header_level]))}"
-            new_header = f"{'#' * header_level} {new_level} {header_text}"
-            line = new_header
-
-        new_content.append(line)
-
-    logger.success("Headers renumbered for annexes.")
-
-    return '\n'.join(new_content) 
+    return "\n".join(processed_content)
 
 
 def process_md_files(source_dir: str, dest_dir: str) -> None:
@@ -210,10 +186,6 @@ def process_md_files(source_dir: str, dest_dir: str) -> None:
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
-    # Initialise global counters for header levels
-    global_counters_courses = [0, 0, 0, 0]
-    global_counters_annexes = [0, 0, 0, 0]
-
     # Get a sorted list of Markdown files in the source directory
     markdown_files = sorted([f for f in os.listdir(source_dir) if f.endswith('.md')])
 
@@ -229,10 +201,10 @@ def process_md_files(source_dir: str, dest_dir: str) -> None:
         content = clean_python_comments(content)
 
         if filename.startswith("annexe"):
-            content = renumber_headers_annexes(content, global_counters_annexes)
-        else:
-            # Renumber headers with global counters
-            content = renumber_headers_courses(content, global_counters_courses)
+            content = renumber_headers(content, "A")
+        if re.match("\d{2}_", filename):
+            chapter_number = int(filename.split("_")[0])
+            content = renumber_headers(content, chapter_number)
 
         with open(dest_path, 'w', encoding='utf-8') as file:
             file.write(content)
