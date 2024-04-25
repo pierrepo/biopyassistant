@@ -118,16 +118,15 @@ def clean_python_comments(content: str) -> str:
     return "\n".join(cleaned_content)
 
 
-def renumber_headers(content: str, chapter_number) -> str:
+def renumber_headers(content: str, chapter_number: Union[int, str]) -> str:
     """Renumber headers in Markdown content.
 
     Parameters
     ----------
     content : str
         The Markdown content to renumber.
-    header : Union[int, str]
-        Renumber headers starting from the specified header number,
-        interpreting integers as chapters and strings as annexes.
+    chapter_number : Union[int, str]
+        The chapter number to use for renumbering headers.
 
     Returns
     -------
