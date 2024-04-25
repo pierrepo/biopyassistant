@@ -128,8 +128,8 @@ def renumber_headers(content: str, chapter_number) -> str:
         The Markdown content with renumbered headers.
     """
     logger.info("Renumbering headers...")
-    # Regex pattern to match headers with leading '#' and no following '#'
-    header_pattern = r'^(#+)\s+([^#]*)$'
+    # Regex pattern to match headers with leading "#" and no following "#"
+    header_pattern = r"^(#+)\s+([^#]*)$"
     # Define default header levels.
     # We should have no more than 4 levels of headers.
     headers = {
@@ -140,7 +140,6 @@ def renumber_headers(content: str, chapter_number) -> str:
     }
     # Stores the file content with renumbered headers
     processed_content = []
-
     for line in content.split("\n"):
         match = re.match(header_pattern, line)
         if match:
@@ -156,19 +155,15 @@ def renumber_headers(content: str, chapter_number) -> str:
             # if below chapter / annexe level:
             if header_level != 1:
                 headers[header_level] += 1
-            # Reset subsequent levels
-            for level in range(header_level + 1, len(headers) + 1):
-                headers[level] = 0
-
+                # Reset subsequent levels
+                for level in range(header_level + 1, len(headers) + 1):
+                    headers[level] = 0
             # Create the header with numbers
-            header_numbers = list(headers.keys())[:header_level]
+            header_numbers = list(headers.values())[:header_level]
             header_numbers_as_str = ".".join([str(level) for level in  header_numbers])
             line = f"{'#' * header_level} {header_numbers_as_str} {header_text}"
-
         processed_content.append(line)
-
     logger.success("Headers renumbered successfully.")
-
     return "\n".join(processed_content)
 
 
