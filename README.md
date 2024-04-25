@@ -44,7 +44,7 @@ Process the data by running:
 python src/markdown_parser.py --in data/markdown_raw --out data/markdown_processed
 ```
 
-This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
+This command will process Markdown files located in the `data/markdown_raw` directory and save the processed files to the `data/markdown_processed` directory.
 
 ### Step 3: Set up OpenAI API key
 
