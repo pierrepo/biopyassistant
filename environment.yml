@@ -1,18 +1,15 @@
 name: biopyassistantenv
 channels:
   - defaults
+  - conda-forge
 dependencies:
   - chromadb # Vector storage
   - openai # For embeddings
-  - tiktoken # For embeddings
   - black # For code formatting
   - loguru # For logging
   - streamlit # For web app testing
   - langchain # For language processing
   - langchain-openai
-  - langchain-core 
+  - langchain-core
   - langchain-community
   - langchain-text-splitters
-  - langchain-chroma
-  - langchain-prompts
-  - langchain-vectorstores
