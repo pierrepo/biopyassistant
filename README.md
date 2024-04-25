@@ -41,10 +41,10 @@ conda activate biopyassistantenv
 Process the data by running:
 
 ```bash
-python src/markdown_parser.py [source_dir] [dest_dir]
+python src/markdown_parser.py --in data/markdown_raw --out data/markdown_processed
 ```
 
-> Remark: `source_dir` is the directory containing the markdown files to be processed and `dest_dir` is the directory where the processed files will be saved. By default, the source directory is `data/markdown_raw` and the destination directory is `data/markdown_processed`.
+This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
 
 ### Step 3: Set up OpenAI API key
 
