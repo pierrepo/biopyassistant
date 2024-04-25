@@ -4,21 +4,20 @@ This module provides functions for processing Markdown files. It includes functi
 
 Usage:
 ======
-    python src/markdown_parser.py [source_dir] [dest_dir]
+    python src/markdown_parser.py --in source_dir --out dest_dir
 
 Where:
-    - source_dir : str, optional
-        The source directory containing Markdown files to be processed. Default: RAW_DATA_PATH
-    - dest_dir : str, optional
-        The destination directory to save the processed Markdown files. Default: PROCESSED_PATH
+    source_dir : str
+        The source directory containing Markdown files to be processed.
+    dest_dir : str
+        The destination directory to save the processed Markdown files.
 
 Example:
 ========
-    python src/markdown_parser.py
+    python src/markdown_parser.py --in data/markdown_raw --out data/markdown_processed
 
 This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
 """
-
 
 # METADATA
 __authors__ = ("Pierre Poulain", "Essmay Touami")
@@ -36,14 +35,10 @@ from typing import Union
 
 from loguru import logger
 
-# CONSTANTS
-RAW_DATA_PATH = "data/markdown_raw"
-PROCESSED_PATH = "data/markdown_processed"
-
 
 # FUNCTIONS
 def get_args() -> tuple[str, str]:
-    """Get source and destination directories from command line arguments or defaults.
+    """Get source and destination directories from command line arguments.
 
     Returns
     -------
@@ -51,8 +46,18 @@ def get_args() -> tuple[str, str]:
         A tuple containing the source and destination directories.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("source_dir", nargs="?", default=RAW_DATA_PATH, help="The source directory containing Markdown files to be processed. Default: RAW_DATA_PATH")
-    parser.add_argument("dest_dir", nargs="?", default=PROCESSED_PATH, help="The destination directory to save the processed Markdown files. Default: PROCESSED_PATH")
+    parser.add_argument(
+        "--in",
+        dest="source_dir",
+        required=True,
+        help="Source directory containing Markdown files.",
+    )
+    parser.add_argument(
+        "--out",
+        dest="dest_dir",
+        required=True,
+        help="Destination directory to save processed files.",
+    )
     args = parser.parse_args()
     return args.source_dir, args.dest_dir
 
@@ -84,27 +89,29 @@ def clean_python_comments(content: str) -> str:
     modified_comment_lines = 0
 
     logger.info("Cleaning comments in Python code blocks...")
-    
+
     for line in content.split("\n"):
-            if line.strip().startswith("```python"):
-                is_python_block = True
-                cleaned_content.append(line)
-            elif line.strip().startswith("```") and is_python_block:
-                is_python_block = False
-                cleaned_content.append(line)
-            elif is_python_block:
-                # Check if line has '#' followed by space(s) and remove them
-                modified_line = re.sub(r"#\s+", "#", line)
-                if modified_line != line:  # Check if any modification was made
-                    modified_comment_lines += 1
-                    cleaned_content.append(modified_line)
-                else:
-                    cleaned_content.append(line)
-                
+        if line.strip().startswith("```python"):
+            is_python_block = True
+            cleaned_content.append(line)
+        elif line.strip().startswith("```") and is_python_block:
+            is_python_block = False
+            cleaned_content.append(line)
+        elif is_python_block:
+            # Check if line has '#' followed by space(s) and remove them
+            modified_line = re.sub(r"#\s+", "#", line)
+            if modified_line != line:  # Check if any modification was made
+                modified_comment_lines += 1
+                cleaned_content.append(modified_line)
             else:
                 cleaned_content.append(line)
 
-    logger.info(f"Number of space lines modified comment lines: {modified_comment_lines}")
+        else:
+            cleaned_content.append(line)
+
+    logger.info(
+        f"Number of space lines modified comment lines: {modified_comment_lines}"
+    )
     logger.info(f"Number of final content lines: {len(cleaned_content)}")
     logger.success(f"Cleaning comments in Python code blocks complete.")
 
@@ -133,10 +140,10 @@ def renumber_headers(content: str, chapter_number) -> str:
     # Define default header levels.
     # We should have no more than 4 levels of headers.
     headers = {
-        1:chapter_number, # Level 1: chapter / annexe.
-        2:0, # Level 2: section.
-        3:0, # Level 3: Sub-section
-        4:0, # Level 4: Sub-sub-section.
+        1: chapter_number,  # Level 1: chapter / annexe.
+        2: 0,  # Level 2: section.
+        3: 0,  # Level 3: Sub-section
+        4: 0,  # Level 4: Sub-sub-section.
     }
     # Stores the file content with renumbered headers
     processed_content = []
@@ -160,7 +167,7 @@ def renumber_headers(content: str, chapter_number) -> str:
                     headers[level] = 0
             # Create the header with numbers
             header_numbers = list(headers.values())[:header_level]
-            header_numbers_as_str = ".".join([str(level) for level in  header_numbers])
+            header_numbers_as_str = ".".join([str(level) for level in header_numbers])
             line = f"{'#' * header_level} {header_numbers_as_str} {header_text}"
         processed_content.append(line)
     logger.success("Headers renumbered successfully.")
@@ -182,26 +189,31 @@ def process_md_files(source_dir: str, dest_dir: str) -> None:
         os.makedirs(dest_dir)
 
     # Get a sorted list of Markdown files in the source directory
-    markdown_files = sorted([f for f in os.listdir(source_dir) if f.endswith('.md')])
+    markdown_files = sorted([f for f in os.listdir(source_dir) if f.endswith(".md")])
 
     for filename in markdown_files:
         logger.info(f"Processing file: {filename}")
+
+        # get the path of the source and destination files
         source_path = os.path.join(source_dir, filename)
         dest_path = os.path.join(dest_dir, filename)
 
-        with open(source_path, 'r', encoding='utf-8') as file:
+        # Read the content of the source file
+        with open(source_path, "r", encoding="utf-8") as file:
             content = file.read()
-        
+
         # Clean Python comments
         content = clean_python_comments(content)
 
+        # Renumber headers
         if filename.startswith("annexe"):
             content = renumber_headers(content, "A")
         if re.match("\d{2}_", filename):
             chapter_number = int(filename.split("_")[0])
             content = renumber_headers(content, chapter_number)
 
-        with open(dest_path, 'w', encoding='utf-8') as file:
+        # Save the processed content to the destination file
+        with open(dest_path, "w", encoding="utf-8") as file:
             file.write(content)
 
     logger.success("Markdown files processed successfully.\n")
@@ -209,5 +221,5 @@ def process_md_files(source_dir: str, dest_dir: str) -> None:
 
 # MAIN PROGRAM
 if __name__ == "__main__":
-    source_dir, dest_dir = get_args() # Get source and destination directories if provided
+    source_dir, dest_dir = get_args()  # Get source and destination directories
     process_md_files(source_dir, dest_dir)
