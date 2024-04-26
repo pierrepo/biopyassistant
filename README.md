@@ -61,10 +61,17 @@ OPENAI_API_KEY=<your-openai-api-key>
 Create the Chroma database by running:
 
 ```bash
-python src/create_database.py [data_dir]
+python src/create_database.py [data_dir] [chunk_size] [chunk_overlap] [txt_output] [chroma_output]
 ```
+Where :
+- `[data_dir]` (optional): Directory containing processed Markdown files. Default: `data/markdown_processed`.
+- `[chunk_size]` (optional): Size of text chunks to create. Default: 300.
+- `[chunk_overlap]` (optional): Overlap between text chunks. Default: 100.
+- `[txt_output]` (optional): Output file to save text chunks with metadata. Default: None.
+- `[chroma_output]` (optional): Output path to save ChromaDB database. Default: `chroma_db`.
 
-> Remark: `data_dir` is the directory containing the processed Markdown files. Default: `data/markdown_processed`. And the vector database will be created in the `chroma_db/` directory within the repository (on the disk).
+
+> Remark: The vector database will be saved on the disk.
 
 ### Step 5: Query the chatbot.
 
