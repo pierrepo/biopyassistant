@@ -106,6 +106,11 @@ def get_args() -> tuple[str, int, int]:
     )
     args = parser.parse_args()
 
+    # verify the data directory exists
+    if not os.path.exists(args.data_dir):
+        logger.error(f"Data directory '{args.data_dir}' does not exist.")
+        exit(1)
+
     return (
         args.data_dir,
         args.chunk_size,
