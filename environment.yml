@@ -13,3 +13,6 @@ dependencies:
   - langchain-core
   - langchain-community
   - langchain-text-splitters
+  - python-dotenv # For environment variables
+  - matplotlib # For plotting
+  - matplotlib-inline # For plotting in Jupyter
