@@ -67,9 +67,15 @@ Where :
 - `[data_dir]` (optional): Directory containing processed Markdown files. Default: `data/markdown_processed`.
 - `[chunk_size]` (optional): Size of text chunks to create. Default: 300.
 - `[chunk_overlap]` (optional): Overlap between text chunks. Default: 100.
-- `[txt_output]` (optional): Output file to save text chunks with metadata. Default: None.
+- `[txt_output]` (optional): Name of output file with details of each chunks. Default: None.
 - `[chroma_output]` (optional): Output path to save ChromaDB database. Default: `chroma_db`.
 
+Example:
+  
+```bash
+python src/create_database.py data/markdown_processed 500 50 chunks_details chroma_db
+```
+This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 500 characters with an overlap of 50 characters. The details of each chunk will be saved to the `chunks_details.txt` file, and the Chroma database will be saved to the `chroma_db` directory.
 
 > Remark: The vector database will be saved on the disk.
 

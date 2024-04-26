@@ -18,6 +18,13 @@ Options:
         The name of the output file to save the text chunks with metadata. Default: None.
     chroma_output : str, optional
         The name of the output path to save the ChromaDB database. Default: CHROMA_PATH.
+
+Example:
+========
+    python src/create_database.py data/markdown_processed 500 50 chunks_details chroma_db
+        
+This script will create a ChromaDB database from the Markdown files in the 'data/markdown_processed' directory, with text chunks of size 500 and overlap of 50.
+The text chunks with metadata will be saved to 'chunks_details.txt', and the ChromaDB database will be saved to 'chroma_db'.
 """
 
 # METADATA
