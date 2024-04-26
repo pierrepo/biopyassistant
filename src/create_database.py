@@ -99,7 +99,13 @@ def get_args() -> tuple[str, int, int]:
     )
     args = parser.parse_args()
 
-    return args.data_dir, args.chunk_size, args.chunk_overlap, args.txt_output, args.chroma_output
+    return (
+        args.data_dir,
+        args.chunk_size,
+        args.chunk_overlap,
+        args.txt_output,
+        args.chroma_output,
+    )
 
 
 def load_documents(data_dir: str) -> tuple[str, list[str]]:
@@ -145,9 +151,7 @@ def load_documents(data_dir: str) -> tuple[str, list[str]]:
     return concatenated_content, file_names
 
 
-def split_text(
-    content: str, chunk_size: int, chunk_overlap: int
-) -> list[Document]:
+def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Document]:
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
     Parameters:
@@ -194,7 +198,6 @@ def split_text(
 
     # tests
     # print(chunks[1], end="\n\n")
-    # print(chunks[60], end="\n\n")
     # print(chunks[100], end="\n\n")
     # print(chunks[3000], end="\n\n")
 
@@ -226,7 +229,7 @@ def adding_file_names_to_metadata(
         chapter_name = chunk.metadata.get("chapter_name", "")
         # Get the chapter number or appendix letter
         chapter_number = re.match(r"^\d+\s", chapter_name)
-        appendix_letter = re.search(r"^\d+[A-Z]$", chapter_name)
+        appendix_letter = re.search(r"\b[A-Z]+\s", chapter_name)
         # Corresponding chapter number or appendix letter with file name
         for file_name in file_names:
             if chapter_number and file_name.startswith(
@@ -234,7 +237,7 @@ def adding_file_names_to_metadata(
             ):  # zfill(2) to pad with zeros
                 chunk.metadata["file_name"] = file_name
                 break
-            elif appendix_letter and file_name.endswith(f"_{appendix_letter.group(0)}"):
+            elif appendix_letter and file_name.endswith(f"_{appendix_letter.group()}"):
                 chunk.metadata["file_name"] = file_name
                 break
 
@@ -243,7 +246,7 @@ def adding_file_names_to_metadata(
     return chunks
 
 
-def preprocess_for_url(text: str) -> str:
+def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
     """Preprocess text for creating URL.
 
     Parameters
@@ -266,14 +269,24 @@ def preprocess_for_url(text: str) -> str:
     # Convert to lowercase
     processed_text = processed_text.lower()
 
-    # Remove articles like 'de', 'le', etc.
-    # processed_text = re.sub(r'\b(de|le|la|les|des|du|au|aux)\b', '', processed_text)
+    # Remove characters other than letters, digits, spaces, or hyphens
+    processed_text = re.sub(r"[^\w\s-]", "", processed_text)
+
+    # Replace multiple spaces with a single space
+    processed_text = re.sub(r"\s+", " ", processed_text)
 
     # Remove points
     processed_text = processed_text.replace(".", "")
 
     # Replace spaces with hyphens
     processed_text = processed_text.replace(" ", "-")
+
+    # Remove non-alphabetic characters from the end
+    processed_text = re.sub(r"[^a-zA-Z]*$", "", processed_text)
+
+    # Remove the subsubsection number
+    if is_subsubsection:
+        processed_text = re.sub(r"^\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
     processed_text = "#" + processed_text
@@ -304,7 +317,7 @@ def adding_url_to_metadata(chunks: list[Document]) -> list[Document]:
         # Extract section_id from the metadata
         if chunk.metadata.get("subsubsection_name", ""):  # subsubsection
             section_id = preprocess_for_url(
-                chunk.metadata.get("subsubsection_name", "")
+                chunk.metadata.get("subsubsection_name", ""), True
             )
         elif chunk.metadata.get("subsection_name", ""):  # subsection
             section_id = preprocess_for_url(chunk.metadata.get("subsection_name", ""))
@@ -383,7 +396,12 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
 
     # Create a new DB from the documents.
     model_embedding = OpenAIEmbeddings(model="text-embedding-3-large")
-    db = Chroma.from_documents(chunks, model_embedding, persist_directory=chroma_output_path)
+    db = Chroma.from_documents(
+        chunks,
+        model_embedding,
+        persist_directory=chroma_output_path,
+        collection_metadata={"hnsw:space": "cosine"},
+    )  # distance metric
     db.persist()  # save the database to disk
 
     logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path}.")
