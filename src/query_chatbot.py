@@ -94,19 +94,19 @@ Si tu as besoin de clarifier la question, tu peux le demander.
 
 
 # FUNCTIONS
-def get_args() -> Tuple[str, str, str, bool]:
-    """Load the query text and optional arguments from the command line.
+def get_args() -> Tuple[str, str, str, bool, str]:
+    """Parse the command line arguments.
 
     Returns
     -------
-    Tuple[str, str, str, bool]
-        A tuple containing the query text, model name, python level, and a boolean indicating whether to include metadata.
+    Tuple[str, str, str, bool, str]
+        A tuple containing the query text, model name, python level, a boolean indicating whether to include metadata, and the path to the vector database.
     """
     logger.info("Parsing the command line arguments.")
     parser = argparse.ArgumentParser() # Create a parser object
     # Add arguments to the parser
     parser.add_argument("query_text", type=str, help="The query text.")
-    parser.add_argument("--model", type=str, default="gpt-3-turbo",
+    parser.add_argument("--model", type=str, default="gpt-3.5-turbo",
                         help="The name or identifier of the model to be used for generating responses.")
     parser.add_argument("--question-type", type=str, default="Cours",
                         help="The type of question. It should be one of: 'Course' or 'Exercices'. (Default: 'Cours')")
@@ -130,22 +130,24 @@ def get_args() -> Tuple[str, str, str, bool]:
     return args.query_text, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
 
 
-def load_database(vector_db_path: str) -> Chroma:
+def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     """Prepare the vector database.
 
     Returns
     -------
         Chroma: The prepared vector database.
+        int: The number of chunks in the database.
     """
     logger.info("Loading the vector database.")
     embedding_function = OpenAIEmbeddings(model="text-embedding-3-large") # define the embdding model
     # Load the database from the specified directory
     vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embedding_function)
+    nb_chunks = vector_db._collection.count()
 
-    logger.info(f"Chunks in the database: {vector_db._collection.count()}")
+    logger.info(f"Chunks in the database: {nb_chunks}")
     logger.success("Vector database prepared successfully.")
 
-    return vector_db
+    return vector_db, nb_chunks
 
 
 def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[Document, float]]:
@@ -375,7 +377,7 @@ def interrogate_model() -> None:
     user_query, model_name, question_type, python_level, include_metadata, vector_db_path= get_args()
 
     # Load the vector database
-    vector_db = load_database(vector_db_path)
+    vector_db = load_database(vector_db_path)[0]
 
     # Search for relevant documents in the database
     results = search_similarity_in_database(vector_db, user_query)
