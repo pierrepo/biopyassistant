@@ -22,6 +22,10 @@ import streamlit as st
 from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
 
 
+# CONSTANTS
+vector_db_path = "chroma_db"
+
+
 # FUNCTIONS
 def create_header() -> None:
     st.markdown(
@@ -140,7 +144,7 @@ def main():
     question_type, python_level, model_name = create_sidebar()
 
     # Load the vector database
-    vector_db = load_database()
+    vector_db = load_database(vector_db_path)[0]
 
     # Chat with the bot
     chat_with_bot(vector_db, question_type, python_level, model_name)
