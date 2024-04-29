@@ -16,3 +16,4 @@ dependencies:
   - python-dotenv # For environment variables
   - matplotlib # For plotting
   - matplotlib-inline # For plotting in Jupyter
+  - plotly # For plotting
