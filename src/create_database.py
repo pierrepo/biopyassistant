@@ -2,11 +2,10 @@
 
 This script loads Markdown files from the specified directory, concatenates their content, 
 and splits the content into chunks based on headers and word limits. The resulting chunks are saved to a ChromaDB database.
-It can also save the details of each chunks with metadatas to a text file. Additionally, it can save the number of tokens and chunks for each Markdown files to a CSV file.
 
 Usage:
 ======
-    python src/create_database.py --data_dir [data_dir] --chroma_out [chroma_output] --chunk_size [chunk_size] --chunk_overlap [chunk_overlap] --txt_out [txt_output] --csv_out [csv_output]
+    python src/create_database.py --data_dir [data_dir] --chroma_out [chroma_output] --chunk_size [chunk_size] --chunk_overlap [chunk_overlap] 
 
 Options:
     data_dir : str, optional
@@ -17,19 +16,13 @@ Options:
         The size of the text chunks to be created. Default: 600.
     chunk_overlap : int, optional
         The overlap between text chunks. Default: 100.
-    txt_output : str, optional
-        The name of the output file to save the text chunks with metadata. Default: None.
-    csv_output : str, optional
-        The name of the output file to save the number of tokens for each files of the course. Default: None.
 
 Example:
 ========
-    python src/create_database.py --data_dir data/markdown_processed --chroma_out chroma_db --chunk_size 500 --chunk_overlap 50 --txt_out chunks_details --csv_out tokens_count
+    python src/create_database.py --data_dir data/markdown_processed --chroma_out chroma_db --chunk_size 500 --chunk_overlap 50
 
         
-This command will create a ChromaDB database from the Markdown files in the 'data/markdown_processed' directory.
-It will use a chunk size of 500 and an overlap of 50. The text chunks with metadata will be saved to 'chunks_details.txt', and the token count for each Markdown file will be saved to 'tokens_count.csv'.
-The ChromaDB database will be saved to 'chroma_db'.
+This command will load the Markdown files from the 'data/markdown_processed' directory, split the content into chunks of size 500 with an overlap of 50, and save the chunks to a ChromaDB database in the 'chroma_db' directory.
 """
 
 # METADATA
@@ -46,7 +39,6 @@ import re
 import shutil
 import argparse
 import unicodedata
-from statistics import mean
 
 import tiktoken
 from loguru import logger
@@ -66,12 +58,12 @@ PROCESSED_DATA_PATH = "data/markdown_processed"
 
 
 # FUNCTIONS
-def get_args() -> tuple[str,str,int,int,str,str]:
+def get_args() -> tuple[str,str,int,int]:
     """Parse command-line arguments.
 
     Returns
     -------
-    data_dir, chroma_output_path, chunk_size, chunk_overlap, txt_output, csv_output : Tuple[str, str, int, int, str, str]
+    data_dir, chroma_output_path, chunk_size, chunk_overlap : Tuple[str, str, int, int]
         - data_dir : str
             The directory containing the processed Markdown files of the python course.
         - chroma_output_path : str
@@ -80,10 +72,6 @@ def get_args() -> tuple[str,str,int,int,str,str]:
             The size of the text chunks to be created.
         - chunk_overlap : int
             The overlap between text chunks.
-        - txt_output : str
-            The name of the output file to save the details of chunks with metadata.
-        - csv_output : str
-            The name of the output file to save the number of tokens for each files of the course.
     """
     # Create the parser
     parser = argparse.ArgumentParser(
@@ -115,19 +103,6 @@ def get_args() -> tuple[str,str,int,int,str,str]:
         default=100,
         help="The overlap between text chunks.",
     )
-    parser.add_argument(
-        "--txt_out",
-        type=str,
-        default=None,
-        help="The name of the output file to save the text chunks with metadata.",
-    )
-    parser.add_argument(
-        "--csv_out",
-        type=str,
-        default=None,
-        help="The name of the output file to save the number of tokens for each files of the course.",
-    )
-
     # Parse the arguments
     args = parser.parse_args()
 
@@ -136,8 +111,6 @@ def get_args() -> tuple[str,str,int,int,str,str]:
         args.chroma_out,
         args.chunk_size,
         args.chunk_overlap,
-        args.txt_out,
-        args.csv_out,
     )
 
 
@@ -237,7 +210,7 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     return chunks
 
 
-def adding_index_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
     """Add an index to the metadata of the text chunks.
 
     Parameters
@@ -256,12 +229,12 @@ def adding_index_to_metadata(chunks: list[Document]) -> list[Document]:
     for index, chunk in enumerate(chunks):
         chunk.metadata["id"] = index
 
-    logger.success("Added index to metadata.\n")
+    logger.success("Added index to metadata successfully.\n")
 
     return chunks
 
 
-def adding_tokens_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
     """Add the number of tokens to the metadata of the text chunks.
 
     Parameters
@@ -277,7 +250,8 @@ def adding_tokens_to_metadata(chunks: list[Document]) -> list[Document]:
     logger.info("Adding the number of tokens to metadata...")
 
     # Get the encoding for tokenization
-    encoding = tiktoken.get_encoding("cl100k_base") # for openai embeddings
+    # for openai embeddings
+    encoding = tiktoken.get_encoding("cl100k_base")
 
     # Add the number of tokens to metadata of each chunk
     for chunk in chunks:
@@ -292,7 +266,7 @@ def adding_tokens_to_metadata(chunks: list[Document]) -> list[Document]:
     return chunks
 
 
-def adding_file_names_to_metadata(
+def add_file_names_to_metadata(
     chunks: list[Document], file_names: list[str]
 ) -> list[Document]:
     """Add file names to the metadata of the text chunks.
@@ -325,11 +299,11 @@ def adding_file_names_to_metadata(
             ):  # zfill(2) to pad with zeros
                 chunk.metadata["file_name"] = file_name
                 break
-            elif appendix_letter and file_name.endswith(f"_{appendix_letter.group()}"):
+            elif appendix_letter and file_name.endswith(f"_{appendix_letter.group(0).strip()}"):
                 chunk.metadata["file_name"] = file_name
                 break
 
-    logger.success("Added file names to metadata.\n")
+    logger.success("Added file names to metadata successfully.\n")
 
     return chunks
 
@@ -382,7 +356,7 @@ def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
     return processed_text
 
 
-def adding_url_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
     """Add URL to the metadata of the text chunks.
 
     Parameters
@@ -419,98 +393,9 @@ def adding_url_to_metadata(chunks: list[Document]) -> list[Document]:
             f"https://python.sdv.univ-paris-diderot.fr/{file_name}/{section_id}"
         )
 
-    logger.success("Added URL to metadata.\n")
+    logger.success("Added URL to metadata successfully.\n")
 
     return chunks
-
-
-def save_to_txt(
-    chunks: list[Document], txt_output: str, chunk_size: int, chunk_overlap: int
-) -> None:
-    """Save text chunks to a text file with metadata.
-
-    Parameters
-    ----------
-    chunks : list of Document
-        List of text chunks to save to a text file.
-    txt_output : str
-        The name of the output file to save the text chunks with metadata.
-    chunk_size : int
-        The size of the text chunks to be created.
-    chunk_overlap : int
-        The overlap between text chunks.
-    """
-    logger.info(f"Saving into text file...")
-
-    txt_output_path = txt_output + ".txt"  # add .txt extension
-
-    # Get statistics of the tokens for all the chunks
-    all_tokens = sum(chunk.metadata.get('nb_tokens', 0) for chunk in chunks)
-    mean_tokens = mean(chunk.metadata.get('nb_tokens', 0) for chunk in chunks)
-    min_tokens = min(chunk.metadata.get('nb_tokens', 0) for chunk in chunks)
-    max_tokens = max(chunk.metadata.get('nb_tokens', 0) for chunk in chunks)
-
-    # Save the details of the chunks to a text file
-    with open(txt_output_path, "w") as f:
-        f.write(
-            "Chunks were obtained with the following parameters, and here are the details:\n"
-        )
-        f.write(f"- Chunk size: {chunk_size}\n")
-        f.write(f"- Chunk overlap: {chunk_overlap}\n\n")
-
-        # statistics of the tokens for all the chunks
-        f.write("Statistics of the tokens for all the chunks:\n")
-        f.write(f"- Count : {all_tokens}\n")
-        f.write(f"- Mean : {round(mean_tokens, 3)}\n")
-        f.write(f"- Min : {min_tokens}\n")
-        f.write(f"- Max : {max_tokens}\n\n")
-
-        for chunk in chunks:
-            f.write(f"Chunk id: {chunk.metadata.get('id', '')}\n")
-            f.write(f"Number of Tokens: {chunk.metadata.get('nb_tokens', '')}\n")
-            f.write(f"Url: {chunk.metadata.get('url', '')}\n")
-            f.write(f"File Name: {chunk.metadata.get('file_name', '')}\n")
-            f.write(f"Chapter Name: {chunk.metadata.get('chapter_name', '')}\n")
-            f.write(f"Section Name: {chunk.metadata.get('section_name', '')}\n")
-            f.write(f"Subsection Name: {chunk.metadata.get('subsection_name', '')}\n")
-            f.write(
-                f"Subsubsection Name: {chunk.metadata.get('subsubsection_name', '')}\n"
-            )
-            f.write(f"Content:\n")
-            f.write(f"{chunk.page_content}\n\n")
-
-    logger.success(f"Saved the details of each chunks successfully to '{txt_output_path}'.\n")
-
-
-def save_to_csv(file_names: list[str], chunks: list[Document], csv_output: str) -> None:
-    """Save the number of tokens and chunks for each files 
-
-    Parameters
-    ----------
-    file_names : list of str
-        List of file names of the Markdown documents.
-    chunks : list of Document
-        List of text chunks to save to a CSV file.
-    csv_output : str
-        The name of the output file to save the text chunks with metadata.
-    """
-    logger.info(f"Saving into CSV file...")
-
-    csv_output_path = csv_output + ".csv"  # add .csv extension
-
-    # Save the number of tokens and chunks for each files to a CSV file
-    with open(csv_output_path, "w") as f:
-        f.write("File name, Number of Tokens, Number of Chunks\n")
-        for file_name in file_names:
-            nb_tokens = 0
-            nb_chunks = 0
-            for chunk in chunks:
-                if chunk.metadata.get("file_name", "") == file_name:
-                    nb_tokens += chunk.metadata.get("nb_tokens", 0)
-                    nb_chunks += 1
-            f.write(f"{file_name}, {nb_tokens}, {nb_chunks}\n")
-
-    logger.success(f"Saved the number of tokens and chunks for each files successfully to '{csv_output_path}'.\n")
 
 
 def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
@@ -543,11 +428,9 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
 
 
 def generate_data_store() -> None:
-    """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB.
-    it can also save the details of each chunks with metadatas to a text file and save the number of tokens for each files to a CSV file.
-    """
+    """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
     # get command-line arguments
-    data_dir, chroma_output_path, chunk_size, chunk_overlap, txt_output, csv_output = get_args()
+    data_dir, chroma_output_path, chunk_size, chunk_overlap = get_args()
 
     # load documents from the specified directory and extract file names
     documents, file_names = load_documents(data_dir)
@@ -556,24 +439,16 @@ def generate_data_store() -> None:
     chunks = split_text(documents, chunk_size, chunk_overlap)
 
     # add index to the metadata
-    chunks_with_index = adding_index_to_metadata(chunks)
+    chunks_with_index = add_index_to_metadata(chunks)
 
     # add number of tokens to the metadata
-    chunks_with_tokens = adding_tokens_to_metadata(chunks_with_index)
+    chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
 
     # add file names to the chunks
-    chunks_with_file_names = adding_file_names_to_metadata(chunks_with_tokens, file_names)
+    chunks_with_file_names = add_file_names_to_metadata(chunks_with_tokens, file_names)
 
     # add URL to the chunks
-    chunks_with_url = adding_url_to_metadata(chunks_with_file_names)
-
-    # save the details of the chunks to a text file
-    if txt_output is not None:
-        save_to_txt(chunks_with_url, txt_output, chunk_size, chunk_overlap)
-
-    # save the number of tokens for each files to a CSV file
-    if csv_output is not None:
-        save_to_csv(file_names,chunks_with_url, csv_output)
+    chunks_with_url = add_url_to_metadata(chunks_with_file_names)
 
     # save the chunks to ChromaDB
     save_to_chroma(chunks_with_url, chroma_output_path)
