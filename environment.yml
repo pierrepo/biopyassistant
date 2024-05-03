@@ -17,3 +17,4 @@ dependencies:
   - matplotlib # For plotting
   - matplotlib-inline # For plotting in Jupyter
   - plotly # For plotting
+  - tiktoken # For tokenization
