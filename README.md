@@ -61,25 +61,50 @@ OPENAI_API_KEY=<your-openai-api-key>
 Create the Chroma database by running:
 
 ```bash
-python src/create_database.py [data_dir] [chunk_size] [chunk_overlap] [txt_output] [chroma_output]
+python src/create_database.py --data_dir [data_dir] --chroma_out [chroma_output] --chunk_size [chunk_size] --chunk_overlap [chunk_overlap] 
 ```
 Where :
 - `[data_dir]` (optional): Directory containing processed Markdown files. Default: `data/markdown_processed`.
-- `[chunk_size]` (optional): Size of text chunks to create. Default: 300.
-- `[chunk_overlap]` (optional): Overlap between text chunks. Default: 100.
-- `[txt_output]` (optional): Name of output file with details of each chunks. Default: None.
 - `[chroma_output]` (optional): Output path to save ChromaDB database. Default: `chroma_db`.
+- `[chunk_size]` (optional): Size of text chunks to create. Default: 600.
+- `[chunk_overlap]` (optional): Overlap between text chunks. Default: 100.
 
 Example:
   
 ```bash
-python src/create_database.py data/markdown_processed 500 50 chunks_details chroma_db
+python src/create_database.py --data_dir data/markdown_processed --chroma_out chroma_db --chunk_size 500 --chunk_overlap 50
 ```
-This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 500 characters with an overlap of 50 characters. The details of each chunk will be saved to the `chunks_details.txt` file, and the Chroma database will be saved to the `chroma_db` directory.
+This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 500 characters with an overlap of 50 characters. And finally the Chroma database will be saved to the `chroma_db` directory.
 
 > Remark: The vector database will be saved on the disk.
 
-### Step 5: Query the chatbot.
+### Step 5 (Optional): Save Chroma Details
+
+To save the details of each chunk to a text file and the number of tokens and chunks for each file to a CSV file, you can run:
+
+```bash
+python src/save_chroma_details.py --data_dir [data_dir] --chroma_path [chroma_path] [--txt_output <txt_output>] [--csv_output <csv_output>]
+```
+
+Where:
+- [data_dir]: Directory containing Markdown files.
+- [chroma_path]: Path to the Chroma database.
+- [--txt_output] (optional): Name of the output text file to save the chunks with metadata.
+- [--csv_output] (optional): Name of the output CSV file to save the number of tokens and chunks for each Markdown file.
+
+> **Note:** Make sure that the `data_dir` matches the `data_dir` used in the creation of the Chroma database. For more information, refer to [Step 4: Create Chroma DB](#step-4-create-chroma-db).
+
+
+Example:
+
+```bash
+python src/save_chroma_details.py --data_dir data/markdown_processed --chroma_path chroma_db --txt_output chroma_details.txt --csv_output chroma_stats.csv
+```
+
+This command command will load the processed Markdown files from the `data/markdown_processed` directory and load the Chroma database from the `chroma_db` directory. And save the details of each chunk to a text file named `chroma_details.txt` and the number of tokens and chunks for each file to a CSV file named `chroma_stats.csv`.
+
+
+### Step 6: Query the chatbot.
 
 You can query the chatbot using either the command line or the graphical interface:
 
