@@ -21,8 +21,8 @@ Example:
 ========
     python src/create_database.py --data_dir data/markdown_processed --chroma_out chroma_db --chunk_size 500 --chunk_overlap 50
 
-        
-This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 500 characters with an overlap of 50 characters. And finally the Chroma database will be saved to the `chroma_db` directory.
+This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. 
+The text will be split into chunks of 500 characters with an overlap of 50 characters. And finally the Chroma database will be saved to the `chroma_db` directory.
 """
 
 # METADATA
@@ -60,7 +60,7 @@ CHUNK_OVERLAP = 100
 
 
 # FUNCTIONS
-def get_args() -> tuple[str,str,int,int]:
+def get_args() -> tuple[str, str, int, int]:
     """Parse command-line arguments.
 
     Returns
@@ -343,7 +343,9 @@ def add_file_names_to_metadata(
             ):  # zfill(2) to pad with zeros
                 chunk.metadata["file_name"] = file_name
                 break
-            elif appendix_letter and file_name.endswith(f"_{appendix_letter.group(0).strip()}"):
+            elif appendix_letter and file_name.endswith(
+                f"_{appendix_letter.group(0).strip()}"
+            ):
                 chunk.metadata["file_name"] = file_name
                 break
 
