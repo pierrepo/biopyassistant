@@ -13,16 +13,16 @@ Options:
     chroma_output : str, optional
         The name of the output path to save the ChromaDB database. Default: CHROMA_PATH.
     chunk_size : int, optional
-        The size of the text chunks to be created. Default: 600.
+        The size of the text chunks to be created. Default: CHUNK_SIZE.
     chunk_overlap : int, optional
-        The overlap between text chunks. Default: 100.
+        The overlap between text chunks. Default: CHUNK_OVERLAP.
 
 Example:
 ========
     python src/create_database.py --data_dir data/markdown_processed --chroma_out chroma_db --chunk_size 500 --chunk_overlap 50
 
         
-This command will load the Markdown files from the 'data/markdown_processed' directory, split the content into chunks of size 500 with an overlap of 50, and save the chunks to a ChromaDB database in the 'chroma_db' directory.
+This command will create a Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 500 characters with an overlap of 50 characters. And finally the Chroma database will be saved to the `chroma_db` directory.
 """
 
 # METADATA
@@ -55,6 +55,8 @@ from langchain_text_splitters import (
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
 PROCESSED_DATA_PATH = "data/markdown_processed"
+CHUNK_SIZE = 600
+CHUNK_OVERLAP = 100
 
 
 # FUNCTIONS
@@ -94,13 +96,13 @@ def get_args() -> tuple[str,str,int,int]:
     parser.add_argument(
         "--chunk_size",
         type=int,
-        default=600,
+        default=CHUNK_SIZE,
         help="The size of the text chunks to be created.",
     )
     parser.add_argument(
         "--chunk_overlap",
         type=int,
-        default=100,
+        default=CHUNK_OVERLAP,
         help="The overlap between text chunks.",
     )
     # Parse the arguments
@@ -114,7 +116,7 @@ def get_args() -> tuple[str,str,int,int]:
     )
 
 
-def load_documents(data_dir: str) -> tuple[str, list[str]]:
+def load_documents(data_dir: str) -> list[Document]:
     """Load Markdown documents, concatenate their content, and extract the name of the Markdown files.
 
     Parameters
@@ -124,11 +126,8 @@ def load_documents(data_dir: str) -> tuple[str, list[str]]:
 
     Returns
     -------
-    concatenated_content, file_names : Tuple[str, List[str]]
-        - concatenated_content : str
-            The concatenated content of all the Markdown documents.
-        - file_names : List[str]
-            The list of file names of the Markdown documents.
+    documents : list of Document
+        List of Markdown documents.
     """
     concatenated_content = ""
     file_names = []
@@ -140,10 +139,28 @@ def load_documents(data_dir: str) -> tuple[str, list[str]]:
     )
     documents = loader.load()
 
-    for document in documents:
-        # Add the document content to the concatenated content
-        concatenated_content += document.page_content + "\n"
+    logger.success(f"Markdown document loading complete.\n")
 
+    return documents
+
+
+def get_file_names(documents: list[Document]) -> list[str]:
+    """Extract the file names of the Markdown documents.
+
+    Parameters
+    ----------
+    documents : list of Document
+        List of Markdown documents.
+
+    Returns
+    -------
+    file_names : list of str
+        List of file names of the Markdown documents.
+    """
+    logger.info("Extracting file names...")
+
+    file_names = []
+    for document in documents:
         # Extract the file name from the metadata source
         source = document.metadata.get("source", "")
         if source:
@@ -152,9 +169,35 @@ def load_documents(data_dir: str) -> tuple[str, list[str]]:
             ]  # Extract the file name without extension
             file_names.append(file_name)
 
-    logger.success(f"Markdown document loading complete.\n")
+    logger.success("Extracted file names successfully.\n")
 
-    return concatenated_content, file_names
+    return sorted(file_names)
+
+
+def concatenate_content(documents: list[Document]) -> str:
+    """Concatenate the content of the Markdown documents.
+
+    Parameters
+    ----------
+    documents : list of Document
+        List of Markdown documents.
+
+    Returns
+    -------
+    concatenated_content : str
+        The concatenated content of all the Markdown documents.
+    """
+    logger.info("Concatenating content...")
+
+    concatenated_content = ""
+    for document in documents:
+        # Add the document content to the concatenated content
+        concatenated_content += document.page_content + "\n"
+    logger.info(f"Content length: {len(concatenated_content)}")
+
+    logger.success("Concatenated content successfully.\n")
+
+    return concatenated_content
 
 
 def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Document]:
@@ -173,6 +216,7 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     --------
     chunks : list of Document
         List of text chunks after splitting with content and metadata.
+        format : [{"page_content": str, "metadata": dict}, ...]
     """
     logger.info("Splitting the documents...")
 
@@ -432,11 +476,17 @@ def generate_data_store() -> None:
     # get command-line arguments
     data_dir, chroma_output_path, chunk_size, chunk_overlap = get_args()
 
-    # load documents from the specified directory and extract file names
-    documents, file_names = load_documents(data_dir)
+    # load documents from the specified directory
+    documents = load_documents(data_dir)
+
+    # extract file names from the documents
+    file_names = get_file_names(documents)
+
+    # concatenate the content of the documents
+    content = concatenate_content(documents)
 
     # split text into chunks
-    chunks = split_text(documents, chunk_size, chunk_overlap)
+    chunks = split_text(content, chunk_size, chunk_overlap)
 
     # add index to the metadata
     chunks_with_index = add_index_to_metadata(chunks)
