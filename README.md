@@ -78,12 +78,12 @@ This command will create a Chroma database from the processed Markdown files loc
 
 > Remark: The vector database will be saved on the disk.
 
-### Step 5 (Optional): Save Chroma Details
+### Step 5 (Optional): Get Chunk Statistics
 
 To save the details of each chunk to a text file and the number of tokens and chunks for each file to a CSV file, you can run:
 
 ```bash
-python src/save_chroma_details.py --data_dir [data_dir] --chroma_path [chroma_path] [--txt_output <txt_output>] [--csv_output <csv_output>]
+python src/get_chunk_stats.py --data_dir [data_dir] --chroma_path [chroma_path] [--txt_output <txt_output>] [--csv_output <csv_output>]
 ```
 
 Where:
@@ -98,7 +98,7 @@ Where:
 Example:
 
 ```bash
-python src/save_chroma_details.py --data_dir data/markdown_processed --chroma_path chroma_db --txt_output chroma_details.txt --csv_output chroma_stats.csv
+python src/get_chunk_stats.py --data_dir data/markdown_processed --chroma_path chroma_db --txt_output chroma_details.txt --csv_output chroma_stats.csv
 ```
 
 This command command will load the processed Markdown files from the `data/markdown_processed` directory and load the Chroma database from the `chroma_db` directory. And save the details of each chunk to a text file named `chroma_details.txt` and the number of tokens and chunks for each file to a CSV file named `chroma_stats.csv`.
@@ -139,3 +139,10 @@ streamlit run src/streamlit_app.py
 ```
 
 This will launch the Streamlit app in your browser, where you can start interacting with the RAG model.
+
+
+### Analysis
+
+#### Chunk size :
+
+Run the jupyter notebook `src/analysis_chunk_size.ipynb` to analyze the impact of the chunk size on the performance of the RAG model.
