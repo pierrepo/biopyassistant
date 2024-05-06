@@ -264,7 +264,7 @@ def save_to_txt(chunks: List[Document], txt_output: str) -> None:
 
     # Save the details of the chunks to a text file
     with open(txt_output_path, "w") as f:
-        f.write("Chunks Details\n")
+        f.write("Chunks Details :\n\n")
         # statistics of the tokens for all the chunks
         f.write("Statistics of the tokens for all the chunks:\n")
         f.write(f"- Count : {all_tokens}\n")
