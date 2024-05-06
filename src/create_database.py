@@ -57,6 +57,7 @@ CHUNK_SIZE = 600
 CHUNK_OVERLAP = 100
 CHROMA_PATH = f"chroma_db"
 PROCESSED_DATA_PATH = "data/markdown_processed"
+EMBEDDING_MODEL = "text-embedding-3-large"
 
 
 # FUNCTIONS
@@ -462,7 +463,7 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
         shutil.rmtree(chroma_output_path)
 
     # Create a new DB from the documents.
-    model_embedding = OpenAIEmbeddings(model="text-embedding-3-large")
+    model_embedding = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     db = Chroma.from_documents(
         chunks,
         model_embedding,
