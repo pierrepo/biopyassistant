@@ -53,10 +53,10 @@ from langchain_text_splitters import (
 
 
 # CONSTANTS
-CHROMA_PATH = "chroma_db"
-PROCESSED_DATA_PATH = "data/markdown_processed"
 CHUNK_SIZE = 600
 CHUNK_OVERLAP = 100
+CHROMA_PATH = f"chroma_db"
+PROCESSED_DATA_PATH = "data/markdown_processed"
 
 
 # FUNCTIONS
@@ -192,7 +192,9 @@ def concatenate_content(documents: list[Document]) -> str:
     for document in documents:
         # Add the document content to the concatenated content
         concatenated_content += document.page_content + "\n"
-    logger.info(f"Content length: {len(concatenated_content)}")
+    logger.info(
+        f"There is {len(concatenated_content)} characters in the concatenated content."
+    )
 
     logger.success("Concatenated content successfully.\n")
 
