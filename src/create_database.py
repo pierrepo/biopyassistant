@@ -130,7 +130,6 @@ def load_documents(data_dir: str) -> list[Document]:
         List of Markdown documents.
     """
     concatenated_content = ""
-    file_names = []
 
     # Load Markdown documents from the specified directory
     logger.info("Loading Markdown documents...")
