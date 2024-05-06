@@ -2,7 +2,7 @@
 
 Usage:
 ------
-    python src/save_chroma_details.py --data_dir [data_dir] --chroma_path [chroma_path] [--txt_output <txt_output>] [--csv_output <csv_output>]
+    python src/get_chunk_stats.py --data_dir [data_dir] --chroma_path [chroma_path] [--txt_output <txt_output>] [--csv_output <csv_output>]
 
 Arguments:
 --------
@@ -17,9 +17,11 @@ Arguments:
 
 Example:
 --------
-    python src/save_chroma_details.py --data_dir "data/markdown_processed" --chroma_path "chroma_db" --txt_output "chunks_details_no_overlap" --csv_output "nb_tokens_chunks_no_overlap"
+    python src/get_chunk_stats.py --data_dir "data/markdown_processed" --chroma_path "chroma_db" --txt_output "chunks_details_no_overlap" --csv_output "nb_tokens_chunks_no_overlap"
 
-This command will 
+This command will load the Markdown documents from the 'data/markdown_processed' directory, load the Chroma database from the 'chroma_db' directory, 
+reconstruct the chunks from the vector database, save the details of each chunk to a text file named 'chunks_details_no_overlap.txt' 
+and save the number of tokens and chunks for each Markdown files to a CSV file named 'nb_tokens_chunks_no_overlap.csv'.
 """
 
 # METADATA
@@ -48,7 +50,7 @@ from query_chatbot import load_database
 
 
 # FUNCTIONS
-def get_args() -> Tuple[str, str, str]:
+def get_args() -> Tuple[str, str, str, str]:
     """Get the command line arguments.
 
     Returns
@@ -71,13 +73,11 @@ def get_args() -> Tuple[str, str, str]:
     parser.add_argument(
         "--data_dir",
         type=str,
-        required=True,
         help="The path to the directory containing the Markdown documents.",
     )
     parser.add_argument(
         "--chroma_path",
         type=str,
-        required=True,
         help="The path to the directory containing the Chroma database.",
     )
     parser.add_argument(
@@ -95,6 +95,18 @@ def get_args() -> Tuple[str, str, str]:
 
     # Parse the command line arguments
     args = parser.parse_args()
+
+    # Check the required arguments
+    if args.data_dir == None:
+        logger.error(
+            "Please specify the path to the directory containing the Markdown documents."
+        )
+        sys.exit(1)
+    if args.chroma_path == None:
+        logger.error(
+            "Please specify the path to the directory containing the Chroma database."
+        )
+        sys.exit(1)
 
     # Check if the directories exist
     if not os.path.exists(args.data_dir):
@@ -252,12 +264,7 @@ def save_to_txt(chunks: List[Document], txt_output: str) -> None:
 
     # Save the details of the chunks to a text file
     with open(txt_output_path, "w") as f:
-        f.write(
-            "Chunks were obtained with the following parameters, and here are the details:\n"
-        )
-        f.write(f"- Chunk size: \n")
-        f.write(f"- Chunk overlap: \n\n")
-
+        f.write("Chunks Details\n")
         # statistics of the tokens for all the chunks
         f.write("Statistics of the tokens for all the chunks:\n")
         f.write(f"- Count : {all_tokens}\n")
