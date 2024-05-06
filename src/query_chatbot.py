@@ -52,7 +52,7 @@ __version__ = "1.0.0"
 import os
 import sys
 import argparse
-from typing import Tuple
+from typing import Tuple, Union
 
 
 
@@ -257,7 +257,7 @@ def get_metadata(results : list[tuple[Document, float]]) -> list[dict]:
     return metadatas
 
 
-def generate_prompt(results : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> str:
+def generate_prompt(results : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> Tuple[str, int]:
     """Generate a prompt for the AI model.
 
     Parameters
@@ -274,6 +274,7 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str, py
     Returns
     -------
         str: The generated prompt.
+        int: The number of tokens in the prompt.
     """
     logger.info("Generating a prompt for the AI model.")
 
@@ -303,7 +304,7 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str, py
     return prompt, nb_token_in_prompt
 
 
-def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> str:
+def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> dict:
     """Predict a response using an AI model.
 
     Parameters
@@ -317,8 +318,8 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> s
 
     Returns
     -------
-    str
-        The predicted response.
+    dict
+        The predicted response from the AI model with the metadata.
     """
     logger.info("Predicting the response using the AI model.")
     """
@@ -342,7 +343,7 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> s
     return response_text
 
 
-def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]) -> str:
+def adding_metadatas_to_response(response_from_model: dict, metadatas: list[dict]) -> str:
     """Add metadata to the response.
 
     Parameters
@@ -398,7 +399,7 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
 
 
 
-def print_results(query_text: str, final_response: str) -> None:
+def print_results(query_text: str, final_response: Union[str, dict]) -> None:
     """Display the results.
 
     Parameters
