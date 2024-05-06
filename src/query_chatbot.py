@@ -221,7 +221,8 @@ def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[D
 
     # Display the number of tokens for each document
     for doc, _score in results:
-        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {_score}, Number of tokens: {doc.metadata['nb_tokens']}")
+        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {_score}, 
+                    Number of tokens: {doc.metadata['nb_tokens']}")
 
     logger.success("Search completed successfully.\n")
 
