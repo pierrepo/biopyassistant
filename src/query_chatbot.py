@@ -6,21 +6,24 @@ responses to the query using an OpenAI model.
 
 Usage:
 ======
-    python src/query_chatbot.py "Your question here" [--model "model_name"]
-                                                     [--question-type "type"]
-                                                     [--python-level "level"] 
-                                                     [--include-metadata]
-                                                     [--db-path "path"]
+    python src/query_chatbot.py --query "Your question here" [--model "model_name"]
+                                                            [--question-type "type"]
+                                                            [--python-level "level"] 
+                                                            [--include-metadata]
+                                                            [--db-path "path"]
 
 
 Arguments:
 ==========
-    "Your question here" : The query text for which an answer is sought.
-    --model "model_name" : The name or identifier of the model to be used for generating responses.
-                           (Default model: "gpt-3.5-turbo")
+    "Your question here" : The query text for which you want to search for answers.
 
     Options:
     ========
+    --db-path "path" : Optional argument to specify the path to the vector database.
+                          If provided, the database will be loaded from the specified directory.
+                          (Default path: CHROMA_PATH)
+    --model "model_name" : The name or identifier of the model to be used for generating responses.
+                           (Default model: "gpt-3.5-turbo")
     --question-type "type" : Optional argument to specify the type of question.
                             If provided, it should be one of: "course" or "exercise".
                             (Default: "course")
@@ -30,9 +33,11 @@ Arguments:
     --include-metadata : Optional flag to specify whether to include metadata in the response.
                          If provided, metadata will be included; otherwise, it will be excluded.
                          (Default: metadata is excluded)
-    --db-path "path" : Optional argument to specify the path to the vector database.
-                          If provided, the database will be loaded from the specified directory.
-                          (Default path: CHROMA_PATH)
+
+Example:
+========
+    python src/query_chatbot.py --query "Qu'est-ce que Python ?" --model "gpt-3.5-turbo" --question-type "course" --python-level "beginner" --include-metadata --db-path "chroma_db"
+
 """
 
 # METADATA
@@ -44,9 +49,14 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
+import sys
 import argparse
 from typing import Tuple
 
+from openai import OpenAI
+
+client = OpenAI()
 from loguru import logger
 from langchain_core.documents import Document
 from langchain.vectorstores.chroma import Chroma
@@ -56,6 +66,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
+EMBEDDING_MODEL = "text-embedding-3-large"
 
 PROMPT_TEMPLATE_COURSE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
@@ -94,40 +105,78 @@ Si tu as besoin de clarifier la question, tu peux le demander.
 
 
 # FUNCTIONS
-def get_args() -> Tuple[str, str, str, bool, str]:
+def check_model_validity(model_name):
+    # Get the list of available 
+    models =  client.models.list()
+
+    # Extract model IDs
+    model_ids = [model.id for model in models]
+
+    # Check if the model name is valid
+    if model_name in model_ids:
+        return True
+    else:
+        return False
+
+
+def get_args() -> Tuple[str, str, str, str, bool, str]:
     """Parse the command line arguments.
 
     Returns
     -------
-    Tuple[str, str, str, bool, str]
+    Tuple[str, str, str, str, bool, str]
         A tuple containing the query text, model name, python level, a boolean indicating whether to include metadata, and the path to the vector database.
     """
     logger.info("Parsing the command line arguments.")
     parser = argparse.ArgumentParser() # Create a parser object
     # Add arguments to the parser
-    parser.add_argument("query_text", type=str, help="The query text.")
+    parser.add_argument("--query", type=str, default="",
+                        help="The query text for which you want to search for answers.")
     parser.add_argument("--model", type=str, default="gpt-3.5-turbo",
                         help="The name or identifier of the model to be used for generating responses.")
-    parser.add_argument("--question-type", type=str, default="Cours",
-                        help="The type of question. It should be one of: 'Course' or 'Exercices'. (Default: 'Cours')")
+    parser.add_argument("--question-type", type=str, default="Course",
+                        help="The type of question. It should be one of: 'Course' or 'Exercice'. (Default: 'Course')")
     parser.add_argument("--python-level", type=str, default="intermediate",
                         help="The proficiency level in Python. It should be one of: 'beginner', 'intermediate', or 'advanced'. (Default: 'intermediate')")
     parser.add_argument("--include-metadata", action="store_true", default=False,
                         help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.")
     parser.add_argument("--db-path", type=str, default=CHROMA_PATH,
                         help="The path to the vector database. If provided, the database will be loaded from the specified directory.")
-    
+
     # Parse the command line arguments
     args = parser.parse_args()
 
-    logger.info(f"Query text: {args.query_text}")
+    # Checks
+    # query is required
+    if args.query == "":
+        logger.error("Please provide a query")
+        sys.exit(1)
+    # question type should be either "Cours" or "Exercices"
+    if args.question_type.lower() not in ["course", "exercice"]:
+        logger.error("The question type should be either 'Course' or 'Exercice'")
+        sys.exit(1)
+    # python level should be either "beginner", "intermediate" or "advanced"
+    if args.python_level not in ["beginner", "intermediate", "advanced"]:
+        logger.error("The python level should be either 'beginner', 'intermediate' or 'advanced'")
+        sys.exit(1)
+    # model name validity
+    if not check_model_validity(args.model):
+        logger.error(f"The model {args.model} is not valid.")
+        sys.exit(1)
+    # db path should be a valid path
+    if not os.path.exists(args.db_path):
+        logger.error(f"The database path {args.db_path} is not valid.")
+        sys.exit(1)
+
+    logger.info(f"Query text: {args.query}")
     logger.info(f"Model name: {args.model}")
     logger.info(f"Question type: {args.question_type}")
     logger.info(f"Python level: {args.python_level}")
     logger.info(f"Include metadata: {args.include_metadata}")
+    logger.info(f"Database path: {args.db_path}")
     logger.success("Command line arguments parsed successfully.")
 
-    return args.query_text, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
+    return args.query, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
 
 
 def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
@@ -139,13 +188,13 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
         int: The number of chunks in the database.
     """
     logger.info("Loading the vector database.")
-    embedding_function = OpenAIEmbeddings(model="text-embedding-3-large") # define the embdding model
+    embedding_function = OpenAIEmbeddings(model=EMBEDDING_MODEL) # define the embedding model
     # Load the database from the specified directory
     vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embedding_function)
     nb_chunks = vector_db._collection.count()
 
     logger.info(f"Chunks in the database: {nb_chunks}")
-    logger.success("Vector database prepared successfully.")
+    logger.success("Vector database prepared successfully.\n")
 
     return vector_db, nb_chunks
 
@@ -268,7 +317,7 @@ def predict_response(prompt: str, model_name: str) -> str:
 
     logger.info(f"Response text from the {model}: {response_text}")
     logger.success("Response predicted successfully.")
-    
+
     return response_text
 
 
@@ -321,7 +370,7 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
         section_name = metadata.get('section_name', '') # get the section name if it exists
         subsection_name = metadata.get('subsection_name', '') # get the subsection name if it exists
         subsubsection_name = metadata.get('subsubsection_name', '') # get the subsubsection name if it exists
-        
+
         # Construct the source string
         source_parts = [f"Le chapitre *{chapter_name}*"]
         if section_name:
@@ -330,11 +379,11 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
             source_parts.append(f"la sous-section *{subsection_name}*")
         if subsubsection_name:
             source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
-        
+
         # Construct clickable link
 
         source = " ".join(source_parts)
-        
+
         # Add the source to the set if it's not a duplicate
         if source not in sources_set:
             sources_set.add(source)
@@ -406,4 +455,4 @@ def interrogate_model() -> None:
 # MAIN PROGRAM
 if __name__ == "__main__":
     interrogate_model()
-    
+
