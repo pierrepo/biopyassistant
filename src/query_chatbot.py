@@ -54,10 +54,11 @@ import sys
 import argparse
 from typing import Tuple
 
-from openai import OpenAI
 
-client = OpenAI()
+
+import tiktoken
 from loguru import logger
+from openai import OpenAI
 from langchain_core.documents import Document
 from langchain.vectorstores.chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
@@ -105,15 +106,14 @@ Si tu as besoin de clarifier la question, tu peux le demander.
 
 
 # FUNCTIONS
-def check_model_validity(model_name):
+def check_openai_model_validity(model_name):
     # Get the list of available 
-    models =  client.models.list()
-
-    # Extract model IDs
-    model_ids = [model.id for model in models]
+    models =  OpenAI().models.list()
+    # Extract GPT models
+    models_gpt = [model.id for model in models if "gpt" in model.id]
 
     # Check if the model name is valid
-    if model_name in model_ids:
+    if model_name in models_gpt:
         return True
     else:
         return False
@@ -151,16 +151,16 @@ def get_args() -> Tuple[str, str, str, str, bool, str]:
     if args.query == "":
         logger.error("Please provide a query")
         sys.exit(1)
-    # question type should be either "Cours" or "Exercices"
+    # question type should be either "Course" or "Exercice"
     if args.question_type.lower() not in ["course", "exercice"]:
         logger.error("The question type should be either 'Course' or 'Exercice'")
         sys.exit(1)
     # python level should be either "beginner", "intermediate" or "advanced"
-    if args.python_level not in ["beginner", "intermediate", "advanced"]:
+    if args.python_level.lower() not in ["beginner", "intermediate", "advanced"]:
         logger.error("The python level should be either 'beginner', 'intermediate' or 'advanced'")
         sys.exit(1)
     # model name validity
-    if not check_model_validity(args.model):
+    if not check_openai_model_validity(args.model):
         logger.error(f"The model {args.model} is not valid.")
         sys.exit(1)
     # db path should be a valid path
@@ -174,7 +174,7 @@ def get_args() -> Tuple[str, str, str, str, bool, str]:
     logger.info(f"Python level: {args.python_level}")
     logger.info(f"Include metadata: {args.include_metadata}")
     logger.info(f"Database path: {args.db_path}")
-    logger.success("Command line arguments parsed successfully.")
+    logger.success("Command line arguments parsed successfully.\n")
 
     return args.query, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
 
@@ -191,9 +191,10 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     embedding_function = OpenAIEmbeddings(model=EMBEDDING_MODEL) # define the embedding model
     # Load the database from the specified directory
     vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embedding_function)
+    # Count the number of chunks in the database
     nb_chunks = vector_db._collection.count()
-
     logger.info(f"Chunks in the database: {nb_chunks}")
+
     logger.success("Vector database prepared successfully.\n")
 
     return vector_db, nb_chunks
@@ -215,10 +216,14 @@ def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[D
     """
     logger.info("Searching for relevant documents in the database.")
     # Perform a similarity search with relevance scores
-    results = db.similarity_search_with_relevance_scores(query_text)
-
+    results = db.similarity_search_with_relevance_scores(query_text, score_threshold=0.40)
     logger.info(f"There are {len(results)} relevant documents found.")
-    logger.success("Search completed successfully.")
+
+    # Display the number of tokens for each document
+    for doc, _score in results:
+        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {_score}, Number of tokens: {doc.metadata['nb_tokens']}")
+
+    logger.success("Search completed successfully.\n")
 
     """
     # Print the top matching documents and their relevance scores
@@ -247,9 +252,7 @@ def get_metadata(results : list[tuple[Document, float]]) -> list[dict]:
     """
     logger.info("Extracting metadata of the top matching documents.")
     metadatas = [doc.metadata for doc, _score in results]
-
-    logger.info(f"Metadata: {metadatas}")
-    logger.success("Metadata extracted successfully.")
+    logger.success("Metadata extracted successfully.\n")
 
     return metadatas
 
@@ -288,20 +291,29 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str, py
 
     # Fill in the prompt template with the extracted information
     prompt = prompt_template.format(contexte=context_text, question=query_text, python_level=python_level)
-
     logger.info(f"Prompt: {prompt}")
-    logger.success("Prompt generated successfully.")
 
-    return prompt
+    # Count the number of tokens in the prompt
+    encoding = tiktoken.get_encoding("cl100k_base")
+    nb_token_in_prompt = len(encoding.encode(prompt))
+    logger.info(f"Number of tokens in the prompt: {nb_token_in_prompt}")
+    
+    logger.success("Prompt generated successfully.\n")
+
+    return prompt, nb_token_in_prompt
 
 
-def predict_response(prompt: str, model_name: str) -> str:
+def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> str:
     """Predict a response using an AI model.
 
     Parameters
     ----------
     prompt: str
         The prompt for the AI model.
+    model_name: str
+        The name or identifier of the AI model.
+    nb_token_in_prompt: int
+        The number of tokens in the prompt.
 
     Returns
     -------
@@ -309,40 +321,25 @@ def predict_response(prompt: str, model_name: str) -> str:
         The predicted response.
     """
     logger.info("Predicting the response using the AI model.")
-
-    model = ChatOpenAI(model= model_name) # Initialize the OpenAI model
+    """
+    # Check the token limit for the model
+    model_details = OpenAI().models.retrieve(model_name)
+    token_limit = model_details.
+    logger.info(f"Token limit for the model {model_name}: {token_limit}, type: {type(token_limit)}")
+    if nb_token_in_prompt > token_limit:
+        logger.error(f"The prompt has {nb_token_in_prompt} tokens, it's too long for the model {model_name}. The token limit is {token_limit}.")
+        sys.exit(1)
+    """
+    # Initialize the OpenAI model
+    model = ChatOpenAI(model= model_name) 
 
     # Predict the response text
-    response_text = model.predict(prompt)
+    response_text = model.invoke(prompt).content
 
     logger.info(f"Response text from the {model}: {response_text}")
-    logger.success("Response predicted successfully.")
+    logger.success("Response predicted successfully.\n")
 
     return response_text
-
-
-def metadata_to_slug(metadatas: list[dict]) -> str:
-    """Convert metadata to a slug string.
-
-    Parameters
-    ----------
-    metadatas : list
-        List of metadata dictionaries for the top matching documents.
-
-    Returns
-    -------
-    str
-        The metadata converted to a slug string.
-    """
-    logger.info("Converting metadata to a slug string.")
-
-    # Convert metadata to a slug string
-    slug = "_".join([f"{metadata['chapter_name']}_{metadata.get('section_name', '')}_{metadata.get('subsection_name', '')}_{metadata.get('subsubsection_name', '')}" for metadata in metadatas])
-
-    logger.info(f"Slug: {slug}")
-    logger.success("Metadata converted to a slug string.")
-
-    return slug
 
 
 def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]) -> str:
@@ -370,8 +367,9 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
         section_name = metadata.get('section_name', '') # get the section name if it exists
         subsection_name = metadata.get('subsection_name', '') # get the subsection name if it exists
         subsubsection_name = metadata.get('subsubsection_name', '') # get the subsubsection name if it exists
+        url = metadata.get('url', '') # get the URL if it exists
 
-        # Construct the source string
+        # Construct the source string with a clickable URL
         source_parts = [f"Le chapitre *{chapter_name}*"]
         if section_name:
             source_parts.append(f"la section *{section_name}*")
@@ -380,22 +378,24 @@ def adding_metadatas_to_response(response_from_model: str, metadatas: list[dict]
         if subsubsection_name:
             source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
 
-        # Construct clickable link
+        # Add the URL as a clickable link if it exists
+        if url:
+            source_parts.append(f"(Lien vers la source : {url})")
 
         source = " ".join(source_parts)
 
-        # Add the source to the set if it's not a duplicate
-        if source not in sources_set:
-            sources_set.add(source)
+        # Add the source to the set
+        sources_set.add(source)
 
-    sources_list = list(sources_set)
+    sources_list = list(sources_set) # cast to join into a string
     sources_text = "\n- ".join(sources_list)
     sources_string = f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
 
     # Add the sources to the response 
     response_with_metadata = f"{response_from_model}\n\n{sources_string}"
 
-    return response_with_metadata
+    return response_with_metadata 
+
 
 
 def print_results(query_text: str, final_response: str) -> None:
@@ -431,14 +431,20 @@ def interrogate_model() -> None:
     # Search for relevant documents in the database
     results = search_similarity_in_database(vector_db, user_query)
 
+    # Check if there are relevant documents
+    if not results:
+        print(f"Peux-reformuler ou préciser ta question, je n'ai pas trouvé de réponse.")
+        sys.exit(0)
+
+    # if there are relevant documents
     # Get the metadata of the top matching documents
     metadatas = get_metadata(results)
 
     # Generate a prompt for the AI model
-    prompt = generate_prompt(results, user_query, python_level, question_type)
+    prompt, nb_tokens_in_prompt = generate_prompt(results, user_query, python_level, question_type)
 
     # Predict the response using the AI model
-    response_from_model = predict_response(prompt, model_name)
+    response_from_model = predict_response(prompt, model_name, nb_tokens_in_prompt)
 
     if include_metadata:
         # Add metadata to the response
