@@ -224,8 +224,8 @@ def search_similarity_in_database(db : Chroma, query_text : str, nb_chunks: int 
     most_similar_chunks = db.similarity_search_with_relevance_scores(query_text, k=nb_chunks)
 
     # Display the number of tokens for each document
-    for doc, _score in most_similar_chunks:
-        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {_score}, 
+    for doc, score in most_similar_chunks:
+        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {score}, 
                     Number of tokens: {doc.metadata['nb_tokens']},
                     Content: {doc.page_content[:20]}...")
     
