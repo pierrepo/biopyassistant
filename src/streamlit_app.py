@@ -19,7 +19,7 @@ import streamlit as st
 
 
 # MODULES IMPORT
-from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response, calculate_nb_tokens
 
 
 # CONSTANTS
@@ -68,7 +68,7 @@ def create_sidebar():
         # Get the cost of the discussion
         counter_placeholder = st.sidebar.empty()
         counter_placeholder.write(f"Coût total de cette conversation : <span style='color:#8DD3C3'>" +
-                                  f"{st.session_state.total_cost:.3f}$</span>", unsafe_allow_html=True)
+                                  f"{st.session_state.total_cost:.5f}$</span>", unsafe_allow_html=True)
         # Insert multiple spaces
         insert_multiple_spaces(3)
 
@@ -79,31 +79,45 @@ def create_sidebar():
             ]
             st.session_state.total_cost = 0.0
 
-        return question_type, python_level, model_name
+        return question_type, python_level, model_name, counter_placeholder
 
 
 def generate_response(user_query, vector_db, question_type, python_level, model_name):
     """Generate a response to the user question."""
 
     # Search for relevant documents in the database
-    results = search_similarity_in_database(vector_db, user_query)
-    
-    # Get the metadata of the most similar document
-    metadatas = get_metadata(results)
+    relevant_chunks = search_similarity_in_database(vector_db, user_query)
 
     # Generate a prompt for the AI model
-    prompt = generate_prompt(results, user_query, python_level, question_type)
+    prompt, nb_tokens_in_prompt = generate_prompt(relevant_chunks, user_query, python_level, question_type)
 
-    # Predict the response using the AI model
-    response_from_model = predict_response(prompt, model_name)
-    
-    # Add metadata to the response
-    response = adding_metadatas_to_response(response_from_model, metadatas)
+    # Add the history of the conversation to the prompt
+    if "messages" in st.session_state.keys():
+        prompt += "Conversation History:"
+        for message in st.session_state.messages:
+            if message["role"] == "user":
+                prompt += f"\nUser: {message['content']}"
+            elif message["role"] == "assistant":
+                prompt += f"\nAssistant: {message['content']}"
 
-    return response
+    # Predict the response using the AI model and get the number of tokens in the response
+    response_from_model, nb_tokens_in_response = predict_response(prompt, model_name, nb_tokens_in_prompt)
+
+    # If no relevant document was found, return the response from the model
+    if relevant_chunks == []:
+        return response_from_model, nb_tokens_in_prompt, nb_tokens_in_response
+    # If relevant documents were found, add metadata to the response
+    else:
+        # Get the metadata of the most similar document
+        metadatas = get_metadata(relevant_chunks)
+        
+        # Add metadata to the response
+        response_with_metadata = adding_metadatas_to_response(response_from_model, metadatas, iu=True)
+
+        return response_with_metadata, nb_tokens_in_prompt, nb_tokens_in_response
 
 
-def chat_with_bot(vector_db, question_type, python_level, model_name) -> None:
+def chat_with_bot(vector_db, question_type, python_level, model_name, counter_placeholder) -> None:
     """Chat with the bot"""
     # Initialize the chat with a welcome message
     if "messages" not in st.session_state.keys(): # Initialize the chat message history
@@ -126,11 +140,21 @@ def chat_with_bot(vector_db, question_type, python_level, model_name) -> None:
     # If last message is not from assistant, generate a new response
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = generate_response(user_query, vector_db, question_type, python_level, model_name)
+            with st.spinner("En réflexion..."):
+                response, nb_tokens_in_prompt, nb_tokens_in_response = generate_response(user_query, vector_db, question_type, python_level, model_name)
                 st.write(response)
+
+                # Add the response to the chat history
                 message = {"role": "assistant", "content": response}
-                st.session_state.messages.append(message) # Add response to message history
+                st.session_state.messages.append(message)
+
+                # Update the total cost of the conversation
+                if model_name == "gpt-3.5-turbo":
+                    st.session_state.total_cost += 0.0000005 * nb_tokens_in_prompt
+                    st.session_state.total_cost += 0.0000015 * nb_tokens_in_response
+                elif model_name == "gpt-4":
+                    st.session_state.total_cost += 0.00003 * nb_tokens_in_prompt
+                    st.session_state.total_cost += 0.00006 * nb_tokens_in_response
 
 
 def main():
@@ -141,13 +165,13 @@ def main():
     create_header()
     
     # Create a sidebar and get the user inputs
-    question_type, python_level, model_name = create_sidebar()
+    question_type, python_level, model_name, counter_placeholder = create_sidebar()
 
     # Load the vector database
     vector_db = load_database(vector_db_path)[0]
 
     # Chat with the bot
-    chat_with_bot(vector_db, question_type, python_level, model_name)
+    chat_with_bot(vector_db, question_type, python_level, model_name, counter_placeholder)
 
 
 # MAIN PROGRAM
