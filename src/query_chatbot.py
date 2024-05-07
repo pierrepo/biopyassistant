@@ -257,6 +257,28 @@ def get_metadata(relevant_chunks : list[tuple[Document, float]]) -> list[dict]:
     return metadatas
 
 
+def calculate_nb_tokens(text: str) -> int:
+    """Calculate the number of tokens in a text.
+
+    Parameters
+    ----------
+    text : str
+        The text for which to calculate the number of tokens.
+
+    Returns
+    -------
+    int
+        The number of tokens in the text.
+    """
+    logger.info("Calculating the number of tokens...")
+    # Tokenize the text
+    encoding = tiktoken.get_encoding("cl100k_base")
+    nb_tokens = len(encoding.encode(text))
+    logger.success("Number of tokens calculated successfully.\n")
+
+    return nb_tokens
+
+
 def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> Tuple[str, int]:
     """Generate a prompt for the AI model.
 
@@ -295,8 +317,7 @@ def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text :
     logger.info(f"Prompt: {prompt}")
 
     # Count the number of tokens in the prompt
-    encoding = tiktoken.get_encoding("cl100k_base")
-    nb_token_in_prompt = len(encoding.encode(prompt))
+    nb_token_in_prompt = calculate_nb_tokens(prompt)
     logger.info(f"Number of tokens in the prompt: {nb_token_in_prompt}")
     
     logger.success("Prompt generated successfully.\n")
@@ -304,7 +325,7 @@ def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text :
     return prompt, nb_token_in_prompt
 
 
-def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> dict:
+def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> Tuple[dict, int]:
     """Predict a response using an AI model.
 
     Parameters
@@ -318,10 +339,12 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> d
 
     Returns
     -------
-    dict
+    response_text : dict
         The predicted response from the AI model with the metadata.
+    nb_tokens_in_response : int
+        The number of tokens in the response.
     """
-    logger.info("Predicting the response using the AI model.")
+    logger.info(f"Predicting the response using the AI model : {model_name}.")
 
     # to do : get the token limit for the model from the OpenAI API
     """
@@ -339,14 +362,18 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> d
 
     # Predict the response text
     response_text = model.invoke(prompt).content
+    logger.info(f"Response : {response_text}")
 
-    logger.info(f"Response text from the {model}: {response_text}")
+    # Calculate the number of tokens in the response
+    nb_tokens_in_response = calculate_nb_tokens(response_text)
+    logger.info(f"Number of tokens in the response: {nb_tokens_in_response}")
+
     logger.success("Response predicted successfully.\n")
 
-    return response_text
+    return response_text, nb_tokens_in_response
 
 
-def adding_metadatas_to_response(response_from_model: dict, metadatas: list[dict]) -> str:
+def adding_metadatas_to_response(response_from_model: dict, metadatas: list[dict], iu: bool = False) -> str:
     """Add metadata to the response.
 
     Parameters
@@ -355,6 +382,8 @@ def adding_metadatas_to_response(response_from_model: dict, metadatas: list[dict
         The response text predicted by the AI model.
     metadatas : list
         List of metadata dictionaries for the top matching documents.
+    iu : bool
+        Flag to specify interface user or not.
 
     Returns
     -------
@@ -373,18 +402,30 @@ def adding_metadatas_to_response(response_from_model: dict, metadatas: list[dict
         subsubsection_name = metadata.get('subsubsection_name', '') # get the subsubsection name if it exists
         url = metadata.get('url', '') # get the URL if it exists
 
-        # Construct the source string with a clickable URL
-        source_parts = [f"Le chapitre *{chapter_name}*"]
-        if section_name:
-            source_parts.append(f"la section *{section_name}*")
-        if subsection_name:
-            source_parts.append(f"la sous-section *{subsection_name}*")
-        if subsubsection_name:
-            source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
-
-        # Add the URL as a clickable link if it exists
-        if url:
+        
+        if not iu:
+            # Construct the source string  + URL
+            source_parts = [f"Le chapitre *{chapter_name}*"]
+            if section_name:
+                source_parts.append(f"la section *{section_name}*")
+            if subsection_name:
+                source_parts.append(f"la sous-section *{subsection_name}*")
+            if subsubsection_name:
+                source_parts.append(f"la sous-sous-section *{subsubsection_name}*")
+            # Add the URL to the source string 
             source_parts.append(f"(Lien vers la source : {url})")
+        
+        else:
+            # Construct the source string with a clickable URL
+            source_parts = [f"[Le chapitre **{chapter_name}**,"]
+            if section_name:
+                source_parts.append(f"la section **{section_name}**,")
+            if subsection_name:
+                source_parts.append(f"la sous-section **{subsection_name}**,")
+            if subsubsection_name:
+                source_parts.append(f"la sous-sous-section **{subsubsection_name}**")
+            # Add the URL to the source string 
+            source_parts.append(f"]({url})")
 
         source = " ".join(source_parts)
 
@@ -448,7 +489,7 @@ def interrogate_model() -> None:
     prompt, nb_tokens_in_prompt = generate_prompt(results, user_query, python_level, question_type)
 
     # Predict the response using the AI model
-    response_from_model = predict_response(prompt, model_name, nb_tokens_in_prompt)
+    response_from_model = predict_response(prompt, model_name, nb_tokens_in_prompt)[0]
 
     if include_metadata:
         # Add metadata to the response
