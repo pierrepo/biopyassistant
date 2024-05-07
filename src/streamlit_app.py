@@ -65,10 +65,6 @@ def create_sidebar():
         if 'total_cost' not in st.session_state:
             st.session_state.total_cost = 0.0
 
-        # Get the cost of the discussion
-        counter_placeholder = st.sidebar.empty()
-        counter_placeholder.write(f"Coût total de cette conversation : <span style='color:#8DD3C3'>" +
-                                  f"{st.session_state.total_cost:.5f}$</span>", unsafe_allow_html=True)
         # Insert multiple spaces
         insert_multiple_spaces(3)
 
@@ -155,6 +151,7 @@ def chat_with_bot(vector_db, question_type, python_level, model_name, counter_pl
                 elif model_name == "gpt-4":
                     st.session_state.total_cost += 0.00003 * nb_tokens_in_prompt
                     st.session_state.total_cost += 0.00006 * nb_tokens_in_response
+                print(f"Total cost: {st.session_state.total_cost:.5f}")
 
 
 def main():
