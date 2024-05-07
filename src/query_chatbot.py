@@ -200,7 +200,7 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     return vector_db, nb_chunks
 
 
-def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[Document, float]]:
+def search_similarity_in_database(db : Chroma, query_text : str, nb_chunks: int = 3, score_threshold: float = 0.35) -> list[tuple[Document, float]]:
     """Search the database for relevant documents.
 
     Parameters
@@ -209,42 +209,41 @@ def search_similarity_in_database(db : Chroma, query_text : str) -> list[tuple[D
         The textual database to search.
     query_text : str
         The query text.
+    nb_chunks : int
+        The number of top matching documents to retrieve.
+    score_threshold : float
+        The relevance score threshold for filtering the results.
 
     Returns
     -------
-        list: A list of top matching documents and their relevance scores.
+    relevant_chunks : list
+        List of relevant documents found in the database.
     """
     logger.info("Searching for relevant documents in the database.")
     # Perform a similarity search with relevance scores
-    results = db.similarity_search_with_relevance_scores(query_text, score_threshold=0.40)
-    logger.info(f"There are {len(results)} relevant documents found.")
+    most_similar_chunks = db.similarity_search_with_relevance_scores(query_text, k=nb_chunks)
 
     # Display the number of tokens for each document
-    for doc, _score in results:
+    for doc, _score in most_similar_chunks:
         logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {_score}, 
-                    Number of tokens: {doc.metadata['nb_tokens']}")
-
+                    Number of tokens: {doc.metadata['nb_tokens']},
+                    Content: {doc.page_content[:20]}...")
+    
+    # Filter the results based on the relevance score threshold
+    relevant_chunks = [(doc, score) for doc, score in most_similar_chunks if score >= score_threshold]
+    logger.info(f"Number of relevant documents found: {len(relevant_chunks)}")
+    
     logger.success("Search completed successfully.\n")
 
-    """
-    # Print the top matching documents and their relevance scores
-    for i, (doc, score) in enumerate(results):
-        print(f"Document {i + 1}:")
-        print(f"Relevance Score: {score}")
-        print(f"Page Content: {doc.page_content}")
-        print(f"Metadata: {doc.metadata}")
-        print("----")
-    """
-
-    return results
+    return relevant_chunks
 
 
-def get_metadata(results : list[tuple[Document, float]]) -> list[dict]:
+def get_metadata(relevant_chunks : list[tuple[Document, float]]) -> list[dict]:
     """Get the metadata of the top matching documents.
 
     Parameters
     ----------
-    results : list
+    relevant_chunks : list
         List of top matching documents and their relevance scores.
 
     Returns
@@ -252,18 +251,18 @@ def get_metadata(results : list[tuple[Document, float]]) -> list[dict]:
         list: List of metadata dictionaries for the top matching documents.
     """
     logger.info("Extracting metadata of the top matching documents.")
-    metadatas = [doc.metadata for doc, _score in results]
+    metadatas = [doc.metadata for doc, _score in relevant_chunks]
     logger.success("Metadata extracted successfully.\n")
 
     return metadatas
 
 
-def generate_prompt(results : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> Tuple[str, int]:
+def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> Tuple[str, int]:
     """Generate a prompt for the AI model.
 
     Parameters
     ----------
-    results : list
+    relevant_chunks : list
         List of top matching documents and their relevance scores.
     query_text : str
         The query text.
@@ -280,7 +279,7 @@ def generate_prompt(results : list[tuple[Document, float]], query_text : str, py
     logger.info("Generating a prompt for the AI model.")
 
     # Extract the context text from the top matching documents
-    contexts = [doc.page_content for doc, _score in results]
+    contexts = [doc.page_content for doc, _score in relevant_chunks]
 
     # Combine context text using appropriate delimiters
     context_text = "\n\n---\n\n".join(contexts)
@@ -323,6 +322,8 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> d
         The predicted response from the AI model with the metadata.
     """
     logger.info("Predicting the response using the AI model.")
+
+    # to do : get the token limit for the model from the OpenAI API
     """
     # Check the token limit for the model
     model_details = OpenAI().models.retrieve(model_name)
@@ -332,6 +333,7 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> d
         logger.error(f"The prompt has {nb_token_in_prompt} tokens, it's too long for the model {model_name}. The token limit is {token_limit}.")
         sys.exit(1)
     """
+
     # Initialize the OpenAI model
     model = ChatOpenAI(model= model_name) 
 
