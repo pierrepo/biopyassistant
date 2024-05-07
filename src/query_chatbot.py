@@ -225,9 +225,10 @@ def search_similarity_in_database(db : Chroma, query_text : str, nb_chunks: int 
 
     # Display the number of tokens for each document
     for doc, score in most_similar_chunks:
-        logger.info(f"Chunk ID: {doc.metadata["id"]}, Score: {score}, "
-                    f"Number of tokens: {doc.metadata['nb_tokens']},"
-                    f"Content: {doc.page_content[:20]}...")
+        logger.info(f"Chunk ID: {doc.metadata["id"]}")
+        logger.info(f"Score: {score}")
+        logger.info(f"Number of tokens: {doc.metadata['nb_tokens']}")
+        logger.info(f"Content: {doc.page_content[:20]}...")
 
     # Filter the results based on the relevance score threshold
     relevant_chunks = [(doc, score) for doc, score in most_similar_chunks if score >= score_threshold]
