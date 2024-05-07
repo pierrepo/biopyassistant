@@ -8,6 +8,7 @@ dependencies:
   - black # For code formatting
   - loguru # For logging
   - streamlit # For web app testing
+  - gradio # For web app testing
   - langchain # For language processing
   - langchain-openai
   - langchain-core
