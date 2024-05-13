@@ -4,7 +4,7 @@ This module provides functions for processing Markdown files. It includes functi
 
 Usage:
 ======
-    python src/markdown_parser.py --in source_dir --out dest_dir
+    python src/parse_clean_markdown.py --in source_dir --out dest_dir
 
 Where:
     source_dir : str
@@ -14,7 +14,7 @@ Where:
 
 Example:
 ========
-    python src/markdown_parser.py --in data/markdown_raw --out data/markdown_processed
+    python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
 
 This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
 """
