@@ -240,7 +240,7 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         # split on paragraphs, sentences, and words
-        separators=["\n\n", "\n", " "],
+        separators=["\n\n", "\n"],
     )
 
     # Split the resulting chunks further based on character limits
@@ -254,6 +254,32 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     # print(chunks[3000], end="\n\n")
 
     return chunks
+
+def remove_small_chunks(chunks: list[Document], min_nb_char: int = 100) -> list[Document]:
+    """Remove small chunks from the list of text chunks.
+
+    Parameters
+    ----------
+    chunks : list of Document
+        List of text chunks to be filtered.
+    min_nb_char : int
+        Minimum number of characters for a chunk to be kept.
+
+    Returns
+    -------
+    chunks : list of Document
+        List of text chunks after removing small chunks.
+    """
+    logger.info("Removing small chunks...")
+    logger.info(f"Number of chunks before removing small chunks: {len(chunks)}")
+
+    # Remove chunks with less than min_nb_char characters
+    chunks_cleaned = [chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char]
+
+    logger.info(f"Number of chunks after removing small chunks: {len(chunks_cleaned)}")
+    logger.success("Removed small chunks successfully.\n")
+
+    return chunks_cleaned
 
 
 def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
@@ -492,8 +518,11 @@ def generate_data_store() -> None:
     # split text into chunks
     chunks = split_text(content, chunk_size, chunk_overlap)
 
+    # remove small chunks
+    chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
+
     # add index to the metadata
-    chunks_with_index = add_index_to_metadata(chunks)
+    chunks_with_index = add_index_to_metadata(chunks_cleaned)
 
     # add number of tokens to the metadata
     chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
