@@ -115,10 +115,6 @@ def get_args() -> tuple[str, str, int, int]:
     if not os.path.exists(args.data_dir):
         logger.error(f"The data directory '{args.data_dir}' does not exist.")
         sys.exit(1)
-    # chroma_output_path should be a valid path
-    if not os.path.isdir(args.chroma_out):
-        logger.error(f"The Chroma output path '{args.chroma_out}' is not valid.")
-        sys.exit(1)
     # chunk_size should be a positive integer
     if not isinstance(args.chunk_size, int):
         logger.error("The chunk size should be an integer.")
