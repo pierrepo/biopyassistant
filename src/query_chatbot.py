@@ -7,7 +7,6 @@ responses to the query using an OpenAI model.
 Usage:
 ======
     python src/query_chatbot.py --query "Your question here" [--model "model_name"]
-                                                            [--question-type "type"]
                                                             [--python-level "level"] 
                                                             [--include-metadata]
                                                             [--db-path "path"]
@@ -24,9 +23,6 @@ Arguments:
                           (Default path: CHROMA_PATH)
     --model "model_name" : The name or identifier of the model to be used for generating responses.
                            (Default model: "gpt-3.5-turbo")
-    --question-type "type" : Optional argument to specify the type of question.
-                            If provided, it should be one of: "course" or "exercise".
-                            (Default: "course")
     --python-level "level" : Optional argument to specify the proficiency level in Python.
                               If provided, it should be one of: "beginner", "intermediate", or "advanced".
                               (Default: "intermediate")
@@ -36,7 +32,7 @@ Arguments:
 
 Example:
 ========
-    python src/query_chatbot.py --query "Qu'est-ce que Python ?" --model "gpt-3.5-turbo" --question-type "course" --python-level "beginner" --include-metadata --db-path "chroma_db"
+    python src/query_chatbot.py --query "Qu'est-ce que Python ?" --model "gpt-3.5-turbo" --python-level "beginner" --include-metadata --db-path "chroma_db"
 
 """
 
@@ -54,8 +50,6 @@ import sys
 import argparse
 from typing import Tuple, Union
 
-
-
 import tiktoken
 from loguru import logger
 from openai import OpenAI
@@ -69,7 +63,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 CHROMA_PATH = "chroma_db"
 EMBEDDING_MODEL = "text-embedding-3-large"
 
-PROMPT_TEMPLATE_COURSE = """
+PROMPT_TEMPLATE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
 Tu dois fournir des réponses à leurs questions basées sur les supports de cours.
 Utilise les morceaux de contexte suivants pour répondre à la question.
@@ -80,24 +74,6 @@ Contexte : "{contexte}"
 
 
 Répond à la question de manière claire et concise en français de manière adapté à un niveau {python_level} en programmation.
-La réponse doit être facile à comprendre pour les étudiants.
-Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
-Si tu as besoin de plus d'informations, tu peux le demander.
-Si tu as besoin de clarifier la question, tu peux le demander.
-"""
-
-PROMPT_TEMPLATE_EXERCICE = """
-Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
-Tu dois donner les aider à résoudre des exercices basés sur les supports de cours.
-Utilise les morceaux de contexte suivants pour répondre à la question.
-
-Question : "{question}"
-
-Contexte : "{contexte}"
-
-Répond à la question de manière claire et concise en français de manière adapté à un niveau {python_level} en programmation.
-Mets en avant les étapes pour résoudre l'exercice.
-Ne donne jamais la réponse directement.
 La réponse doit être facile à comprendre pour les étudiants.
 Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
 Si tu as besoin de plus d'informations, tu peux le demander.
@@ -119,12 +95,12 @@ def check_openai_model_validity(model_name):
         return False
 
 
-def get_args() -> Tuple[str, str, str, str, bool, str]:
+def get_args() -> Tuple[str, str, str, bool, str]:
     """Parse the command line arguments.
 
     Returns
     -------
-    Tuple[str, str, str, str, bool, str]
+    Tuple[str, str, str, bool, str]
         A tuple containing the query text, model name, python level, a boolean indicating whether to include metadata, and the path to the vector database.
     """
     logger.info("Parsing the command line arguments.")
@@ -134,8 +110,6 @@ def get_args() -> Tuple[str, str, str, str, bool, str]:
                         help="The query text for which you want to search for answers.")
     parser.add_argument("--model", type=str, default="gpt-3.5-turbo",
                         help="The name or identifier of the model to be used for generating responses.")
-    parser.add_argument("--question-type", type=str, default="Course",
-                        help="The type of question. It should be one of: 'Course' or 'Exercice'. (Default: 'Course')")
     parser.add_argument("--python-level", type=str, default="intermediate",
                         help="The proficiency level in Python. It should be one of: 'beginner', 'intermediate', or 'advanced'. (Default: 'intermediate')")
     parser.add_argument("--include-metadata", action="store_true", default=False,
@@ -150,10 +124,6 @@ def get_args() -> Tuple[str, str, str, str, bool, str]:
     # query is required
     if args.query == "":
         logger.error("Please provide a query")
-        sys.exit(1)
-    # question type should be either "Course" or "Exercice"
-    if args.question_type.lower() not in ["course", "exercice"]:
-        logger.error("The question type should be either 'Course' or 'Exercice'")
         sys.exit(1)
     # python level should be either "beginner", "intermediate" or "advanced"
     if args.python_level.lower() not in ["beginner", "intermediate", "advanced"]:
@@ -170,13 +140,12 @@ def get_args() -> Tuple[str, str, str, str, bool, str]:
 
     logger.info(f"Query text: {args.query}")
     logger.info(f"Model name: {args.model}")
-    logger.info(f"Question type: {args.question_type}")
     logger.info(f"Python level: {args.python_level}")
     logger.info(f"Include metadata: {args.include_metadata}")
     logger.info(f"Database path: {args.db_path}")
     logger.success("Command line arguments parsed successfully.\n")
 
-    return args.query, args.model, args.question_type, args.python_level, args.include_metadata, args.db_path
+    return args.query, args.model, args.python_level, args.include_metadata, args.db_path
 
 
 def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
@@ -225,7 +194,7 @@ def search_similarity_in_database(db : Chroma, query_text : str, nb_chunks: int 
 
     # Display the number of tokens for each document
     for doc, score in most_similar_chunks:
-        logger.info(f"Chunk ID: {doc.metadata["id"]}")
+        logger.info(f"Chunk ID: {doc.metadata['id']}")
         logger.info(f"Score: {score}")
         logger.info(f"Number of tokens: {doc.metadata['nb_tokens']}")
         logger.info(f"Content: {doc.page_content[:20]}...")
@@ -271,16 +240,14 @@ def calculate_nb_tokens(text: str) -> int:
     int
         The number of tokens in the text.
     """
-    logger.info("Calculating the number of tokens...")
     # Tokenize the text
     encoding = tiktoken.get_encoding("cl100k_base")
     nb_tokens = len(encoding.encode(text))
-    logger.success("Number of tokens calculated successfully.\n")
 
     return nb_tokens
 
 
-def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text : str, python_level: str, question_type: str) -> Tuple[str, int]:
+def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text : str, python_level: str) -> Tuple[str, int] :
     """Generate a prompt for the AI model.
 
     Parameters
@@ -291,8 +258,6 @@ def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text :
         The query text.
     python_level : str
         Python proficiency level.
-    question_type : str
-        Type of question (course or exercice).
 
     Returns
     -------
@@ -308,10 +273,8 @@ def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text :
     context_text = "\n\n---\n\n".join(contexts)
 
     # Create a prompt template
-    if question_type == "Cours":
-        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_COURSE)
-    else:
-        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE_EXERCICE)
+    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+
 
     # Fill in the prompt template with the extracted information
     prompt = prompt_template.format(contexte=context_text, question=query_text, python_level=python_level)
@@ -326,7 +289,7 @@ def generate_prompt(relevant_chunks : list[tuple[Document, float]], query_text :
     return prompt, nb_token_in_prompt
 
 
-def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> Tuple[dict, int]:
+def predict_response(prompt: str, model_name: str) -> Tuple[dict, int]:
     """Predict a response using an AI model.
 
     Parameters
@@ -347,16 +310,6 @@ def predict_response(prompt: str, model_name: str, nb_token_in_prompt: int) -> T
     """
     logger.info(f"Predicting the response using the AI model : {model_name}.")
 
-    # to do : get the token limit for the model from the OpenAI API
-    """
-    # Check the token limit for the model
-    model_details = OpenAI().models.retrieve(model_name)
-    token_limit = model_details.
-    logger.info(f"Token limit for the model {model_name}: {token_limit}, type: {type(token_limit)}")
-    if nb_token_in_prompt > token_limit:
-        logger.error(f"The prompt has {nb_token_in_prompt} tokens, it's too long for the model {model_name}. The token limit is {token_limit}.")
-        sys.exit(1)
-    """
 
     # Initialize the OpenAI model
     model = ChatOpenAI(model= model_name) 
@@ -469,28 +422,28 @@ def print_results(query_text: str, final_response: Union[str, dict]) -> None:
 def interrogate_model() -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the query text from the command line arguments
-    user_query, model_name, question_type, python_level, include_metadata, vector_db_path= get_args()
+    user_query, model_name, python_level, include_metadata, vector_db_path= get_args()
 
     # Load the vector database
     vector_db = load_database(vector_db_path)[0]
 
     # Search for relevant documents in the database
-    results = search_similarity_in_database(vector_db, user_query)
+    relevant_chunks = search_similarity_in_database(vector_db, user_query)
 
     # Check if there are relevant documents
-    if not results:
+    if not relevant_chunks:
         print(f"Peux-reformuler ou préciser ta question, je n'ai pas trouvé de réponse.")
         sys.exit(0)
 
     # if there are relevant documents
     # Get the metadata of the top matching documents
-    metadatas = get_metadata(results)
+    metadatas = get_metadata(relevant_chunks)
 
     # Generate a prompt for the AI model
-    prompt, nb_tokens_in_prompt = generate_prompt(results, user_query, python_level, question_type)
+    prompt = generate_prompt(relevant_chunks, user_query, python_level)[0]
 
     # Predict the response using the AI model
-    response_from_model = predict_response(prompt, model_name, nb_tokens_in_prompt)[0]
+    response_from_model = predict_response(prompt, model_name)[0]
 
     if include_metadata:
         # Add metadata to the response
@@ -507,4 +460,3 @@ def interrogate_model() -> None:
 # MAIN PROGRAM
 if __name__ == "__main__":
     interrogate_model()
-
