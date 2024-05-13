@@ -175,7 +175,7 @@ def add_file_names_to_metadata(documents: List[Document]) -> List[Document]:
     return documents
 
 
-def add__nb_tokens_to_metadata(documents: List[Document]) -> List[Document]:
+def add_nb_tokens_to_metadata(documents: List[Document]) -> List[Document]:
     """Add the number of tokens in the metadata of the documents.
 
     Parameters
@@ -272,6 +272,9 @@ def save_to_txt(chunks: List[Document], txt_output: str) -> None:
         f.write(f"- Min : {min_tokens}\n")
         f.write(f"- Max : {max_tokens}\n\n")
 
+        # sort the chunks by the id
+        chunks = sorted(chunks, key=lambda x: x.metadata["id"])
+
         for chunk in chunks:
             f.write(f"Chunk id: {chunk.metadata['id']}\n")
             f.write(f"Number of Tokens: {chunk.metadata['nb_tokens']}\n")
@@ -357,7 +360,7 @@ def main() -> None:
     documents_with_file_names = add_file_names_to_metadata(documents)
 
     # get the number of tokens for each document
-    documents_with_nb_tokens = add__nb_tokens_to_metadata(documents_with_file_names)
+    documents_with_nb_tokens = add_nb_tokens_to_metadata(documents_with_file_names)
 
     # load the Chroma database
     vector_db = load_database(chroma_path)[0]
