@@ -55,7 +55,7 @@ from langchain_text_splitters import (
 # CONSTANTS
 CHUNK_SIZE = 600
 CHUNK_OVERLAP = 100
-CHROMA_PATH = f"chroma_db"
+CHROMA_PATH = "chroma_db"
 PROCESSED_DATA_PATH = "data/markdown_processed"
 EMBEDDING_MODEL = "text-embedding-3-large"
 
@@ -130,8 +130,6 @@ def load_documents(data_dir: str) -> list[Document]:
     documents : list of Document
         List of Markdown documents.
     """
-    concatenated_content = ""
-
     # Load Markdown documents from the specified directory
     logger.info("Loading Markdown documents...")
     loader = DirectoryLoader(
@@ -139,7 +137,7 @@ def load_documents(data_dir: str) -> list[Document]:
     )
     documents = loader.load()
 
-    logger.success(f"Markdown document loading complete.\n")
+    logger.success("Markdown document loading complete.\n")
 
     return documents
 
@@ -255,7 +253,10 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
 
     return chunks
 
-def remove_small_chunks(chunks: list[Document], min_nb_char: int = 100) -> list[Document]:
+
+def remove_small_chunks(
+    chunks: list[Document], min_nb_char: int = 100
+) -> list[Document]:
     """Remove small chunks from the list of text chunks.
 
     Parameters
@@ -274,7 +275,9 @@ def remove_small_chunks(chunks: list[Document], min_nb_char: int = 100) -> list[
     logger.info(f"Number of chunks before removing small chunks: {len(chunks)}")
 
     # Remove chunks with less than min_nb_char characters
-    chunks_cleaned = [chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char]
+    chunks_cleaned = [
+        chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char
+    ]
 
     logger.info(f"Number of chunks after removing small chunks: {len(chunks_cleaned)}")
     logger.success("Removed small chunks successfully.\n")
