@@ -36,6 +36,7 @@ __version__ = "1.0.0"
 # LIBRARY IMPORTS
 import os
 import re
+import sys
 import shutil
 import argparse
 import unicodedata
@@ -84,30 +85,60 @@ def get_args() -> tuple[str, str, int, int]:
     # Add the arguments
     parser.add_argument(
         "--data_dir",
-        type=str,
         default=PROCESSED_DATA_PATH,
         help="The directory containing the processed Markdown files of the python course.",
     )
     parser.add_argument(
         "--chroma_out",
-        type=str,
         default=CHROMA_PATH,
         help="The name of the output path to save the ChromaDB database.",
     )
     parser.add_argument(
         "--chunk_size",
-        type=int,
         default=CHUNK_SIZE,
         help="The size of the text chunks to be created.",
     )
     parser.add_argument(
         "--chunk_overlap",
-        type=int,
         default=CHUNK_OVERLAP,
         help="The overlap between text chunks.",
     )
     # Parse the arguments
     args = parser.parse_args()
+
+    # Convert the arguments to the correct types
+    args.chunk_size = int(args.chunk_size)
+    args.chunk_overlap = int(args.chunk_overlap)
+
+    # Checks
+    # db_path should exist
+    if not os.path.exists(args.data_dir):
+        logger.error(f"The data directory '{args.data_dir}' does not exist.")
+        sys.exit(1)
+    # chroma_output_path should be a valid path
+    if not os.path.isdir(args.chroma_out):
+        logger.error(f"The Chroma output path '{args.chroma_out}' is not valid.")
+        sys.exit(1)
+    # chunk_size should be a positive integer
+    if not isinstance(args.chunk_size, int):
+        logger.error("The chunk size should be an integer.")
+        sys.exit(1)
+    if args.chunk_size <= 0:
+        logger.error("The chunk size should be a positive integer.")
+        sys.exit(1)
+    # chunk_overlap should be a positive integer
+    if not isinstance(args.chunk_overlap, int):
+        logger.error("The chunk overlap should be an integer.")
+        sys.exit(1)
+    if args.chunk_overlap <= 0:
+        logger.error("The chunk overlap should be a positive integer.")
+        sys.exit(1)
+    # chunk_overlap should be less than chunk_size
+    if args.chunk_overlap >= args.chunk_size:
+        logger.error(
+            f"The chunk overlap ({args.chunk_overlap}) should be less than the chunk size ({args.chunk_size})."
+        )
+        sys.exit(1)
 
     return (
         args.data_dir,
