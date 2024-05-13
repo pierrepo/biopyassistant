@@ -41,7 +41,7 @@ conda activate biopyassistantenv
 Process the data by running:
 
 ```bash
-python src/markdown_parser.py --in data/markdown_raw --out data/markdown_processed
+python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
 ```
 
 This command will process Markdown files located in the `data/markdown_raw` directory and save the processed files to the `data/markdown_processed` directory.
@@ -132,6 +132,8 @@ python src/query_chatbot.py "Your question here" [--model "model_name"]
 
 #### **Graphical Interface** :
 
+##### Streamlit App:
+
 Run the following command:
 
 ```bash
@@ -140,9 +142,13 @@ streamlit run src/streamlit_app.py
 
 This will launch the Streamlit app in your browser, where you can start interacting with the RAG model.
 
+##### Gradio App:
 
-### Analysis
+Run the following command:
 
-#### Chunk size :
+```bash
+python src/gradio_app.py
+```
 
-Run the jupyter notebook `src/analysis_chunk_size.ipynb` to analyze the impact of the chunk size on the performance of the RAG model.
+This will launch the Gradio app in your browser, where you can start interacting with the RAG model.
+
