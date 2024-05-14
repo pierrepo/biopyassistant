@@ -264,7 +264,7 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        # split on paragraphs, sentences, and words
+        # split on paragraphs and sentences
         separators=["\n\n", "\n"],
     )
 
