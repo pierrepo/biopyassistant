@@ -80,6 +80,11 @@ Si tu as besoin de plus d'informations, tu peux le demander.
 Si tu as besoin de clarifier la question, tu peux le demander.
 """
 
+MSGS_QUERY_NOT_RELATED = [
+    "Je suis désolé, je ne peux pas répondre à cette question. Mon domaine d'expertise est la programmation Python. N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider.",
+    "Désolé, je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions.",
+]
+
 
 # FUNCTIONS
 def check_openai_model_validity(model_name):
@@ -432,7 +437,7 @@ def interrogate_model() -> None:
 
     # Check if there are relevant documents
     if not relevant_chunks:
-        print(f"Peux-reformuler ou préciser ta question, je n'ai pas trouvé de réponse.")
+        print(f"\n{MSGS_QUERY_NOT_RELATED[0]}\n")
         sys.exit(0)
 
     # if there are relevant documents
