@@ -3,19 +3,28 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - python=3.11
+  - pip
+  - python-dotenv # For environment variables
+  # Linters and formaters
+  - pycodestyle
+  - pydocstyle
+  - pylint
+  - black
+  - ruff
+  - mypy
+  # LLM tools
   - chromadb # Vector storage
-  - openai # For embeddings
-  - black # For code formatting
-  - loguru # For logging
-  - streamlit # For web app testing
-  - gradio # For web app testing
+  - openai # For embeddings and models
+  - tiktoken # For tokenization
   - langchain # For language processing
   - langchain-openai
   - langchain-core
   - langchain-community
   - langchain-text-splitters
-  - python-dotenv # For environment variables
-  - matplotlib # For plotting
-  - matplotlib-inline # For plotting in Jupyter
-  - plotly # For plotting
-  - tiktoken # For tokenization
+  # Logging
+  - loguru
+  # IU : Web app
+  - streamlit
+  - gradio
+
