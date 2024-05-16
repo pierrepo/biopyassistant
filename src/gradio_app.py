@@ -108,15 +108,17 @@ def display_python_level(data: gr.LikeData):
 def create_interface():
     """Create the Gradio interface."""
     with gr.Blocks(theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"), title="BioPyAssistant") as demo:
-        # Add a title to the interface
+        # Add a title
         gr.HTML("""<h1 text-align="center" style="font-size: 3em;"><center> 🐍 BioPyAssistant 🐍 </center></h1>""")
-        # Add a description to the interface
-        gr.HTML("""<p text-align="center" style="font-size: 1em;">
-                Bienvenue sur BioPyAssistant, ton assistant Python pour apprendre à coder en Python. Pose-moi une question sur le cours et je te répondrai !
-                Tu peux aussi me poser des questions sur un chapitre spécifique du cours ou faire un QCM pour tester tes connaissances.
-        </p>""")
-        # Add the github link
-        gr.HTML("""<p text-align="center" style="font-size: 1em;">Pour plus d'informations sur le projet, consulte notre <a href="https://github.com/pierrepo/biopyassistant" target="_blank">dépôt GitHub</a>.</p>""")
+        
+        # Add a description
+        with gr.Accordion(label="Description du projet :", open=True):
+            gr.HTML("""<p text-align="center" style="font-size: 1em;">
+                    Bienvenue sur BioPyAssistant, ton assistant Python pour apprendre à coder en Python. Pose-moi une question sur le cours et je te répondrai !
+                    Tu peux aussi me poser des questions sur un chapitre spécifique du cours ou faire un QCM pour tester tes connaissances.
+            </p>""")
+            # Add the github link
+            gr.HTML("""<p text-align="center" style="font-size: 1em;">Pour plus d'informations sur le projet, consulte notre <a href="https://github.com/pierrepo/biopyassistant" target="_blank">dépôt GitHub</a>.</p>""")
     
         # Add a section for asking a question to the chatbot about the course
         with gr.Tab("Chatbot"):
