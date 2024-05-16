@@ -23,10 +23,11 @@ from loguru import logger
 
 
 # MODULES IMPORT
-from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, generate_prompt, predict_response, adding_metadatas_to_response, MSGS_QUERY_NOT_RELATED
 
 
 # CONSTANTS
+VOTES_DATA = []
 VECTOR_DB_PATH = "chroma_db"
 OPENAI_MODEL_NAME = "gpt-3.5-turbo"
 FLAVICON_RELATIVE_PATH = 'data/logo_round.ico'
@@ -37,25 +38,27 @@ QUERY_EXAMPLES= [
 ]
 
 
+
 # FUNCTIONS
-def generate_response_with_gradio(user_query, question_type, python_level):
+def generate_response_with_gradio(user_query, python_level):
     """Generate a response to the user question."""
 
     # Search for relevant documents in the database
     relevant_chunks = search_similarity_in_database(vector_db, user_query)
 
-    # Generate a prompt for the AI model
-    prompt = generate_prompt(relevant_chunks, user_query, python_level)[0]
-
-    # Predict the response using the AI model and get the number of tokens in the response
-    response_from_model = predict_response(prompt, OPENAI_MODEL_NAME)[0]
-
     # If no relevant document was found, return the response from the model
     if relevant_chunks == []:
-        return response_from_model
+        logger.info("No relevant documents found in the database.")
+        logger.success("Returning an automatic response without calling the model.")
+        return MSGS_QUERY_NOT_RELATED[0]
 
-    # If relevant documents were found, add metadata to the response
-    else:
+    else: # If relevant documents were found
+        # Generate a prompt for the AI model
+        prompt = generate_prompt(relevant_chunks, user_query, python_level)[0]
+
+        # Predict the response using the AI model and get the number of tokens in the response
+        response_from_model = predict_response(prompt, OPENAI_MODEL_NAME)[0]
+    
         # Get the metadata of the most similar document
         metadatas = get_metadata(relevant_chunks)
         
@@ -65,7 +68,31 @@ def generate_response_with_gradio(user_query, question_type, python_level):
         return response_with_metadata
 
 
-def vote(data: gr.LikeData) -> None:
+def respond(message, chat_history, python_level):
+    bot_message = generate_response_with_gradio(message, python_level)
+    chat_history.append((message, bot_message))
+    return "", chat_history
+
+
+def undo(msg, chat_history):
+    """Undo the last message."""
+    pass
+
+
+def retry(chat_history, python_level): # DOES NOT WORK
+    """Retry the last message."""
+    logger.info("Retrying the last message.")
+    # Check if there is a chat history
+    if chat_history:
+        # Get the last message
+        last_msg = chat_history[-1][0]
+        logger.info(f"Last message: {last_msg}")
+        # Respond to the last message
+        response = respond(last_msg, chat_history, python_level)
+    return response
+    
+
+def vote(data: gr.LikeData) -> None: # TODO: Save the votes in a file to do some statistics
     """Vote for a response to a user query."""
     if data.liked:
         logger.info(f"You upvoted this response: {data.value}\n")
@@ -105,35 +132,37 @@ def create_interface():
                     ("data/user_avatar.png"), "data/logo_round.webp"),
                 value  = [["Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?", "Coucou"]], 
             )
-            # Define the query textbox
-            msg = gr.Textbox(placeholder="Pose moi une question sur le cours !", render=False, show_label=False, elem_id="msg")
-            # Define example questions
+            # Define the query textbox 
+            msg = gr.Textbox(placeholder="Pose moi une question sur le cours !", render=False, show_label=False)
 
-
-            # Define the buttons
+            # Define the buttons for retrying, undoing and clearing the chat history
             with gr.Row():
-                # Define buttons
-                retry_btn = gr.Button("🔄 Réessayer")
-                undo_btn = gr.Button("↩️ Annuler")
-                clear = gr.ClearButton([msg, chatbot], value= "🗑️ Supprimer")
+                retry_btn = gr.Button("🔄 Réessayer", size='sm' )
+                undo_btn = gr.Button("↩️ Annuler", size='sm' )
+                clear = gr.ClearButton([msg, chatbot], value= "🗑️ Supprimer", size='sm' )
+            msg.render() # render the message box after the buttons
 
-            msg.render()
+            # Define example questions 
+            query_exemple = gr.Examples(examples=QUERY_EXAMPLES, inputs=[msg], fn=respond, label= "Exemples de questions:")
 
+            # Define the accordion for advanced options
             with gr.Accordion("Options avancées", open=False):
                 # Define the button for python level
                 python_level = gr.Radio(["débutant", "intermédiaire", "avancé"], label="Choisis ton niveau en Python:", value="intermédiaire")
-
+            # Display the python level selected
             python_level.select(display_python_level)
-        
-            def respond(message, chat_history, python_level):
-                bot_message = generate_response_with_gradio(message, python_level, OPENAI_MODEL_NAME)
-                chat_history.append((message, bot_message))
-                return "", chat_history
 
+            # Define the button for submitting the message
             msg.submit(respond, inputs=[msg, chatbot, python_level], outputs=[msg, chatbot])
 
             # Adding a like/dislike feature
             chatbot.like(vote)
+
+            # Define the undo button
+            undo_btn.click(undo, inputs=[msg, chatbot])
+
+            # Define the retry button
+            retry_btn.click(retry, inputs=[chatbot, python_level])
 
         # Add a section for asking a qcm about a specific chapter
         with gr.Tab("QCM"):
