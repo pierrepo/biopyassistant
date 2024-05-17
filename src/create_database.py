@@ -307,6 +307,7 @@ def remove_small_chunks(
     ]
 
     logger.info(f"Number of chunks after removing small chunks: {len(chunks_cleaned)}")
+    logger.info(f"Number of chunks removed: {len(chunks) - len(chunks_cleaned)}\n")
     logger.success("Removed small chunks successfully.\n")
 
     return chunks_cleaned
