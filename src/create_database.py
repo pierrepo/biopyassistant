@@ -519,7 +519,7 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
     if os.path.exists(chroma_output_path):
         shutil.rmtree(chroma_output_path)
 
-    # Create a new DB from the documents.
+    # Create a new DB from the documents and save it to disk
     model_embedding = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     db = Chroma.from_documents(
         chunks,
@@ -527,7 +527,6 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
         persist_directory=chroma_output_path,
         collection_metadata={"hnsw:space": "cosine"},
     )  # distance metric
-    db.persist()  # save the database to disk
 
     logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path}.")
 
