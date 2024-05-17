@@ -34,6 +34,8 @@ Example:
 ========
     python src/query_chatbot.py --query "Qu'est-ce que Python ?" --model "gpt-3.5-turbo" --python-level "beginner" --include-metadata --db-path "chroma_db"
 
+This command will search for answers to the question "Qu'est-ce que Python ?" in the vector database located at "chroma_db" using the "gpt-3.5-turbo" model.
+The response will be generated at a beginner level of proficiency in Python and will include metadata.
 """
 
 # METADATA

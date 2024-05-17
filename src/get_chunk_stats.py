@@ -42,7 +42,7 @@ from typing import List, Tuple
 import tiktoken
 from loguru import logger
 from langchain_core.documents import Document
-from langchain.vectorstores.chroma import Chroma
+from langchain_community.vectorstores import Chroma
 
 # MODULE IMPORTS
 from create_database import load_documents, get_file_names
