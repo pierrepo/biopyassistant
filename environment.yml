@@ -27,4 +27,6 @@ dependencies:
   # IU : Web app
   - streamlit
   - gradio
+  # Evaluation
+  - ragas
 
