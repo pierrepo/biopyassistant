@@ -6,10 +6,11 @@ responses to the query using an OpenAI model.
 
 Usage:
 ======
-    python src/query_chatbot.py --query "Your question here" [--model "model_name"]
-                                                            [--python-level "level"] 
-                                                            [--include-metadata]
-                                                            [--db-path "path"]
+    python src/query_chatbot.py --query "Your question here"  [--db-path "path"]
+                                                              [--model "model_name"]
+                                                              [--python-level "level"] 
+                                                              [--include-metadata]
+                                                           
 
 
 Arguments:
@@ -67,6 +68,7 @@ from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
 EMBEDDING_MODEL = "text-embedding-3-large"
+OPENAI_MODEL_NAME = "gpt-3.5-turbo"
 
 PROMPT_TEMPLATE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
@@ -87,8 +89,8 @@ Si tu as besoin de clarifier la question, tu peux le demander.
 
 PROMPT_REFORMULATE_QUESTION = """
 Étant donné un historique de chat et la dernière question de l'utilisateur qui pourrait faire référence au contexte
-de l'historique de chat, formulez une question autonome qui peut être comprise sans l'historique de chat. 
-NE RÉPONDEZ PAS à la question, reformulez-la simplement si nécessaire et sinon, retournez-la telle quelle.
+de l'historique de chat, formule une question autonome qui peut être comprise sans l'historique de chat. 
+NE RÉPOND PAS à la question, reformule-la simplement si nécessaire et sinon, retourne-la telle quelle.
 """
 
 MSGS_QUERY_NOT_RELATED = [
@@ -126,7 +128,7 @@ def get_args() -> Tuple[str, str, str, bool, str]:
     # Add arguments to the parser
     parser.add_argument("--query", type=str, default="",
                         help="The query text for which you want to search for answers.")
-    parser.add_argument("--model", type=str, default="gpt-3.5-turbo",
+    parser.add_argument("--model", type=str, default=OPENAI_MODEL_NAME,
                         help="The name or identifier of the model to be used for generating responses.")
     parser.add_argument("--python-level", type=str, default="intermediate",
                         help="The proficiency level in Python. It should be one of: 'beginner', 'intermediate', or 'advanced'. (Default: 'intermediate')")
@@ -365,10 +367,13 @@ def generate_answer(query_contextualized: str, relevant_chunks: list, model_name
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
     input_data = { 'contexte': relevant_chunks, 'niveau_python' : python_level, 'question': query_contextualized}
-    # Generate the answer
-    answer = answer_chain.invoke(input_data)
+    # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     logger.info(f"Filled prompt: {filled_prompt}")
+    nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
+    logger.info(f"Number of tokens in the prompt: {nb_tokens_prompt}\n")
+    # Generate the answer
+    answer = answer_chain.invoke(input_data)
     logger.info(f"Answer: {answer}")
     logger.success("Answer generated successfully.\n")
 
@@ -492,6 +497,10 @@ def interrogate_model() -> None:
         metadatas = get_metadata(relevant_chunks)
         # Generate the answer
         answer = generate_answer(user_query, relevant_chunks, model_name, python_level)
+        # Calculate the number of tokens in the answer
+        logger.info("Calculating the number of tokens in the answer.")
+        nb_tokens_answer = calculate_nb_tokens(answer)
+        logger.success(f"Number of tokens in the answer: {nb_tokens_answer}\n")
         
         # ANSWER FORMATTING
         # Add metadata to the answer
