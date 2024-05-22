@@ -84,14 +84,14 @@ MSGS_QUERY_NOT_RELATED = [
     "Je suis désolé, je ne peux pas répondre à cette question. Mon domaine d'expertise est la programmation Python. N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider.",
     "Désolé, je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions.",
     "Je suis désolé, je ne suis pas sûr de comprendre votre question. Pouvez-vous reformuler votre question en utilisant des termes plus simples ?",
-    "Je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions en dehors de ce domaine. Pouvez-vous poser une question liée à la programmation Python ?"
+    "Je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions en dehors de ce domaine. Pouvez-vous poser une question liée à la programmation Python ?",
 ]
 
 
 # FUNCTIONS
 def check_openai_model_validity(model_name):
-    # Get the list of available 
-    models =  OpenAI().models.list()
+    # Get the list of available
+    models = OpenAI().models.list()
     # Extract GPT models
     models_gpt = [model.id for model in models if "gpt" in model.id]
 
@@ -111,14 +111,26 @@ def get_args() -> Tuple[str, str, bool]:
         A tuple containing the query text, model name and a flag to include metadata.
     """
     logger.info("Parsing the command line arguments.")
-    parser = argparse.ArgumentParser() # Create a parser object
+    parser = argparse.ArgumentParser()  # Create a parser object
     # Add arguments to the parser
-    parser.add_argument("--query", type=str, default="",
-                        help="The query text for which you want to search for answers.")
-    parser.add_argument("--model", type=str, default=OPENAI_MODEL_NAME,
-                        help="The name or identifier of the model to be used for generating responses.")
-    parser.add_argument("--include-metadata", action="store_true", default=False,
-                        help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.")
+    parser.add_argument(
+        "--query",
+        type=str,
+        default="",
+        help="The query text for which you want to search for answers.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=OPENAI_MODEL_NAME,
+        help="The name or identifier of the model to be used for generating responses.",
+    )
+    parser.add_argument(
+        "--include-metadata",
+        action="store_true",
+        default=False,
+        help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.",
+    )
     # Parse the command line arguments
     args = parser.parse_args()
 
@@ -131,7 +143,7 @@ def get_args() -> Tuple[str, str, bool]:
     if not check_openai_model_validity(args.model):
         logger.error(f"The model {args.model} is not valid.")
         sys.exit(1)
-    
+
     logger.info(f"Query text: {args.query}")
     logger.info(f"Model name: {args.model}")
     logger.info(f"Include metadata: {args.include_metadata}")
@@ -149,9 +161,13 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
         int: The number of chunks in the database.
     """
     logger.info("Loading the vector database.")
-    embedding_function = OpenAIEmbeddings(model=EMBEDDING_MODEL) # define the embedding model
+    embedding_function = OpenAIEmbeddings(
+        model=EMBEDDING_MODEL
+    )  # define the embedding model
     # Load the database from the specified directory
-    vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embedding_function)
+    vector_db = Chroma(
+        persist_directory=vector_db_path, embedding_function=embedding_function
+    )
     # Count the number of chunks in the database
     nb_chunks = vector_db._collection.count()
     logger.info(f"Chunks in the database: {nb_chunks}")
@@ -161,7 +177,12 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     return vector_db, nb_chunks
 
 
-def search_similarity_in_database(vector_db : Chroma, user_query : str, nb_chunks: int = 3, score_threshold: float = 0.35) -> List[Document]:
+def search_similarity_in_database(
+    vector_db: Chroma,
+    user_query: str,
+    nb_chunks: int = 3,
+    score_threshold: float = 0.35,
+) -> List[Document]:
     """Search for relevant documents in the database based on the query text.
 
     Parameters
@@ -182,7 +203,10 @@ def search_similarity_in_database(vector_db : Chroma, user_query : str, nb_chunk
     """
     logger.info("Searching for relevant documents in the database.")
     # Define the retriever
-    retriever = vector_db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"k":nb_chunks, "score_threshold": score_threshold})
+    retriever = vector_db.as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={"k": nb_chunks, "score_threshold": score_threshold},
+    )
 
     # Perform a similarity search with relevance scores
     relevant_chunks = retriever.invoke(user_query)
@@ -192,55 +216,62 @@ def search_similarity_in_database(vector_db : Chroma, user_query : str, nb_chunk
         logger.info(f"Chunk ID: {chunk.metadata['id']}")
         logger.info(f"Number of tokens: {chunk.metadata['nb_tokens']}")
         logger.info(f"Content: {chunk.page_content[:20]}...")
-    
 
     logger.success("Search completed successfully.\n")
 
     return relevant_chunks
 
 
-def format_chat_history(chat_history: list[Tuple[str, str]] = [], len_history: int = 10) -> List[Union[HumanMessage, AIMessage]]:
-        """Format the chat history for the promt template.
+def format_chat_history(
+    chat_history: list[Tuple[str, str]] = [], len_history: int = 10
+) -> List[Union[HumanMessage, AIMessage]]:
+    """Format the chat history for the promt template.
 
-        Parameters
-        ----------
-        chat_history : list[tuple[str, str]], optional
-            The chat history to format, by default [].
-        len_history : int, optional
-            The number of chat history entries to consider, by default 10.
+    Parameters
+    ----------
+    chat_history : list[tuple[str, str]], optional
+        The chat history to format, by default [].
+    len_history : int, optional
+        The number of chat history entries to consider, by default 10.
 
-        Returns
-        -------
-        list[Union[HumanMessage, AIMessage]]
-            The formatted chat history.
-        """
-        logger.info("Formatting the chat history.")
-        formatted_history = []
-        # Define the pattern to identify and remove metadata
-        metadata_pattern = re.compile(r'Pour plus d\'informations, consultez les sources suivantes :.*$', re.DOTALL)
-        # if chat history is not empty
-        if len(chat_history) >0:
-            logger.info(f"Chat history is not empty : {len(chat_history)}")
-            for human, ai in chat_history[-len_history:]:
-                # Append the human and AI messages to the formatted history
-                formatted_history.append(HumanMessage(content=human))
-                logger.info(f"Human message: {human}")
+    Returns
+    -------
+    list[Union[HumanMessage, AIMessage]]
+        The formatted chat history.
+    """
+    logger.info("Formatting the chat history.")
+    formatted_history = []
+    # Define the pattern to identify and remove metadata
+    metadata_pattern = re.compile(
+        r"Pour plus d\'informations, consultez les sources suivantes :.*$", re.DOTALL
+    )
+    # if chat history is not empty
+    if len(chat_history) > 0:
+        logger.info(f"Chat history is not empty : {len(chat_history)}")
+        for human, ai in chat_history[-len_history:]:
+            # Append the human and AI messages to the formatted history
+            formatted_history.append(HumanMessage(content=human))
+            logger.info(f"Human message: {human}")
 
-                # Remove metadata from AI message
-                cleaned_ai = re.sub(metadata_pattern, '', ai).strip()
-                formatted_history.append(AIMessage(content=cleaned_ai))
-                logger.info(f"AI message (cleaned): {cleaned_ai}")
+            # Remove metadata from AI message
+            cleaned_ai = re.sub(metadata_pattern, "", ai).strip()
+            formatted_history.append(AIMessage(content=cleaned_ai))
+            logger.info(f"AI message (cleaned): {cleaned_ai}")
 
-            logger.success(f"Chat history formatted successfully with {len(formatted_history)} entries.\n")
-            return formatted_history
-        
-        else: # if chat history is empty
-            logger.info("Chat history is empty.")
-            logger.success("Chat history formatted successfully with 0 entries.\n")
-            return chat_history
+        logger.success(
+            f"Chat history formatted successfully with {len(formatted_history)} entries.\n"
+        )
+        return formatted_history
+
+    else:  # if chat history is empty
+        logger.info("Chat history is empty.")
+        logger.success("Chat history formatted successfully with 0 entries.\n")
+        return chat_history
 
 
-def contextualize_question(user_query: str, chat_history_formatted: list[Union[HumanMessage, AIMessage]]) -> str:
+def contextualize_question(
+    user_query: str, chat_history_formatted: list[Union[HumanMessage, AIMessage]]
+) -> str:
     """Add context to the user query using the chat history.
 
     Parameters
@@ -277,7 +308,7 @@ def contextualize_question(user_query: str, chat_history_formatted: list[Union[H
     return context
 
 
-def get_metadata(relevant_chunks : list) -> list[dict]:
+def get_metadata(relevant_chunks: list) -> list[dict]:
     """Get the metadata of the top matching documents.
 
     Parameters
@@ -317,7 +348,9 @@ def calculate_nb_tokens(text: str) -> int:
     return nb_tokens
 
 
-def generate_answer(query_contextualized: str, relevant_chunks: list, model_name: str) -> str:
+def generate_answer(
+    query_contextualized: str, relevant_chunks: list, model_name: str
+) -> str:
     """Generate an answer to the user query.
 
     Parameters
@@ -345,7 +378,11 @@ def generate_answer(query_contextualized: str, relevant_chunks: list, model_name
     # Define the chained prompt
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
-    input_data = { 'contexte': relevant_chunks, 'niveau_python' : PYTHON_LEVEL, 'question': query_contextualized}
+    input_data = {
+        "contexte": relevant_chunks,
+        "niveau_python": PYTHON_LEVEL,
+        "question": query_contextualized,
+    }
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     logger.info(f"Filled prompt: {filled_prompt}")
@@ -359,7 +396,9 @@ def generate_answer(query_contextualized: str, relevant_chunks: list, model_name
     return answer
 
 
-def add_metadata_to_answer(answer_from_model, metadatas: list[dict], iu: bool = False) -> str:
+def add_metadata_to_answer(
+    answer_from_model, metadatas: list[dict], iu: bool = False
+) -> str:
     """Add metadata to the response.
 
     Parameters
@@ -382,11 +421,17 @@ def add_metadata_to_answer(answer_from_model, metadatas: list[dict], iu: bool = 
     sources_set = set()  # Use a set to store unique sources
 
     for metadata in metadatas:
-        chapter_name = metadata['chapter_name'] # get the chapter name
-        section_name = metadata.get('section_name', '') # get the section name if it exists
-        subsection_name = metadata.get('subsection_name', '') # get the subsection name if it exists
-        subsubsection_name = metadata.get('subsubsection_name', '') # get the subsubsection name if it exists
-        url = metadata.get('url', '') # get the URL if it exists
+        chapter_name = metadata["chapter_name"]  # get the chapter name
+        section_name = metadata.get(
+            "section_name", ""
+        )  # get the section name if it exists
+        subsection_name = metadata.get(
+            "subsection_name", ""
+        )  # get the subsection name if it exists
+        subsubsection_name = metadata.get(
+            "subsubsection_name", ""
+        )  # get the subsubsection name if it exists
+        url = metadata.get("url", "")  # get the URL if it exists
 
         # Determine the most detailed section available
         detailed_section = subsubsection_name or subsection_name or section_name
@@ -398,7 +443,7 @@ def add_metadata_to_answer(answer_from_model, metadatas: list[dict], iu: bool = 
                 source_parts.append(f", rubrique **{detailed_section}**")
             if url:
                 source_parts.append(f"(Lien vers la source : {url})")
-        
+
         else:
             # Construct the source string with a clickable URL
             source_parts = [f"[Chapitre **{chapter_name}**"]
@@ -412,14 +457,16 @@ def add_metadata_to_answer(answer_from_model, metadatas: list[dict], iu: bool = 
         # Add the source to the set
         sources_set.add(source)
 
-    sources_list = list(sources_set) # cast to join into a string
+    sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
-    sources_string = f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
+    sources_string = (
+        f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
+    )
 
-    # Add the sources to the response 
+    # Add the sources to the response
     response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
 
-    return response_with_metadata 
+    return response_with_metadata
 
 
 def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
@@ -447,14 +494,13 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
 def interrogate_model() -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the query text from the command line arguments
-    user_query, model_name, include_metadata= get_args()
+    user_query, model_name, include_metadata = get_args()
 
     # CONTEXT RETRIEVAL
     # Load the vector database
     vector_db = load_database(CHROMA_PATH)[0]
     # Search for relevant documents in the database
     relevant_chunks = search_similarity_in_database(vector_db, user_query)
-
 
     # ANSWER GENERATION
     # Check if there are relevant documents
@@ -463,7 +509,7 @@ def interrogate_model() -> None:
         response = random.choice(MSGS_QUERY_NOT_RELATED)
         print(response)
         sys.exit(0)
-    else :
+    else:
         # Get the metadata of the top matching documents
         metadatas = get_metadata(relevant_chunks)
         # Generate the answer
@@ -472,7 +518,7 @@ def interrogate_model() -> None:
         logger.info("Calculating the number of tokens in the answer.")
         nb_tokens_answer = calculate_nb_tokens(answer)
         logger.success(f"Number of tokens in the answer: {nb_tokens_answer}\n")
-        
+
         # ANSWER FORMATTING
         # Add metadata to the answer
         if include_metadata:
