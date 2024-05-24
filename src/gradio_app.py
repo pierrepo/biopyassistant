@@ -2,7 +2,7 @@
 
 Usage:
 ======
-    python src/gradio_app_retriever.py
+    python src/gradio_app.py
 
 """
 
@@ -16,26 +16,30 @@ __version__ = "1.0.0"
 
 # LIBRAIRIES IMPORT
 import os
+import json
 import random
+from typing import Tuple
 
 import gradio as gr
 from loguru import logger
 
 
 # MODULES IMPORT
-from query_chatbot_by_retriever import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
-from create_quiz import create_quiz
-from verify_answer_quiz import generate_feedback
+from create_database import load_documents, get_file_names
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
+from create_quiz import create_quiz_json, get_chapter_content
+
 
 # CONSTANTS
 FLAVICON_RELATIVE_PATH = 'data/logo_round.ico'
+PROCESSED_DATA_PATH = "data/markdown_processed"
 QUERY_EXAMPLES= [
-    ["C'est quoi la différence entre une liste et un set ?"],
-    ["Comment on fait une boucle for en Python ?"], 
-    ["Qu'est-ce que la récursivité ?"],
+    ["Quelle est la différence entre une liste et un set ?"],
+    ["Comment faire une boucle en Python ?"], 
+    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
 ]
-QUIZ_TYPES = ["QCM", "Vrai ou Faux", "Questions ouvertes", "Exercice de code", "Trouver l'erreur dans le code", "Trouver la sortie du code", "Compléter le code"]
-CHAPTERS = ["1.Introduction", "2.Variables", "3.Affichage", "4.Listes", "5.Boucles", "6.Tests", "7.Modules", "8.Fonctions", "9.Chaine de caractères", "10.Dictionnaires", "11.Bonne pratiques", "12.Expressions régulières", "13.Jupyter", "14.Classes", "15.tkinter"]
+QUIZ_TYPES = ["QCM (Questionnaire à Choix Multiples)", "Vrai ou Faux", "Trouver l'erreur dans le code", "Trouver la sortie du code", "Compléter le code"]
+
 
 # FUNCTIONS
 def respond(message: str, chat_history: list, python_level: str) -> str:
@@ -60,7 +64,7 @@ def respond(message: str, chat_history: list, python_level: str) -> str:
     # Format the chat history for the model
     formatted_chat_history = format_chat_history(chat_history, len_history=10)
     # Contextualize the user question with the chat history
-    query_contextualized = contextualize_question(user_query=message, chat_history_formatted=formatted_chat_history, model_name=OPENAI_MODEL_NAME)
+    query_contextualized = contextualize_question(user_query=message, chat_history_formatted=formatted_chat_history)
     # Search for relevant documents in the database
     context = search_similarity_in_database(vector_db=vector_db, user_query=query_contextualized)
     # If no relevant document was found
@@ -74,7 +78,7 @@ def respond(message: str, chat_history: list, python_level: str) -> str:
         # Get the metadata of the relevant documents
         metadata = get_metadata(context)
         # Generate the answer
-        answer = generate_answer(query_contextualized=query_contextualized, relevant_chunks=context, model_name=OPENAI_MODEL_NAME, python_level=python_level)
+        answer = generate_answer(query_contextualized=query_contextualized, relevant_chunks=context, model_name=OPENAI_MODEL_NAME)
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, metadatas=metadata, iu=True)
 
@@ -98,17 +102,6 @@ def vote(data: gr.LikeData) -> None: # TODO: Save the votes in a file to do som
         logger.info(f"You downvoted this response: {data.value}\n")
 
 
-def display_python_level(data: gr.SelectData):
-    """Display in the logs the Python level selected by the user.
-    
-    Parameters
-    ----------
-    data : gr.LikeData
-        The data containing the Python level information.
-    """
-    logger.info(f"Python level selected: {data.value}\n")
-
-
 def get_user_input(data: gr.SelectData) -> str:
     """Get the user input.
     
@@ -128,45 +121,83 @@ def get_user_input(data: gr.SelectData) -> str:
     return data.value
 
 
-def generate_quiz(chapter: str, thematic: str, difficulty: str, quiz_type: str, nb_questions: int) -> str:
+def extract_quiz_elements(json_data: str) -> Tuple[str, dict, str, dict]:
+    """
+    Extracts elements from the provided JSON data.
+
+    Parameters
+    ----------
+    json_data : str
+        JSON data as a string.
+
+    Returns
+    -------
+    Tuple[str, dict, str, dict]
+        The question, the answers, the correct answer and the explanation.
+    """
+    logger.info("Extracting quiz elements.")
+    # Parse the JSON data
+    quiz_data = json.loads(json_data)
+    
+    # Extract elements
+    quiz_elements = {
+        "type": quiz_data.get("type"),
+        "question": quiz_data.get("question"),
+        "answers": quiz_data.get("answers"),
+        "correct_answer": quiz_data.get("correct_answer"),
+        "explanation": quiz_data.get("explanation")
+    }
+
+    # Get the elements
+    question = quiz_elements["question"]
+    answers = quiz_elements["answers"]
+    correct_answer = quiz_elements["correct_answer"]
+    explanation = quiz_elements["explanation"]
+
+    logger.info(f"Question: {question}")
+    logger.info(f"Answers: {answers}")
+    logger.info(f"Correct answer: {correct_answer}")
+    logger.info(f"Explanation: {explanation}\n")
+    logger.success("Quiz elements extracted successfully.\n")
+
+    return question, answers, correct_answer, explanation
+
+
+def generate_quiz(chapter: str, quiz_type: str, python_level: str) -> Tuple[str, dict, str, dict]:
     """Generate a quiz to ask the user.
     
     Parameters
     ----------
     chapter : str
         The chapter of the question.
-    thematic : str
-        The thematic of the question.
-    difficulty : str
-        The difficulty of the question.
     quiz_type : str
-        The type of the question.
-    nb_questions : int
-        The number of questions to generate.
-    answer_placeholder : gr.TextArea
-        The placeholder for the answer.
-    
+        The type of the quiz.
+    python_level : str
+        The Python level of the user.
+
     Returns
     -------
-    str
-        The generated quiz.
+    Tuple[str, dict, str, dict]
+        The question, the answers, the correct answer and the explanation.
+    
     """
     logger.info("Generating a quiz.")
 
     # Display the quiz parameters
     logger.info(f"Chapter: {chapter}")
-    logger.info(f"Thematic: {thematic}")
-    logger.info(f"Difficulty: {difficulty}")
     logger.info(f"Quiz type: {quiz_type}")
-    logger.info(f"Number of questions: {nb_questions}")
+    logger.info(f"Python level: {python_level}")
+
+    # Get the chapter content
+    chapter_content = get_chapter_content(documents=chapters, chapter_name=chapter)
     
     # Create the quiz
-    quiz = create_quiz(chapter=chapter, thematic=thematic, difficulty=difficulty, quiz_type=quiz_type, nb_questions=nb_questions)
+    quiz_json = create_quiz_json(chapter, quiz_type, python_level, chapter_content)
 
-    logger.info(f"Quiz generated: {quiz}")
-    logger.success("Quiz generated successfully.\n")
+    # Extract the quiz elements
+    question, answers, correct_answer, explanation = extract_quiz_elements(quiz_json)
 
-    return quiz
+    return question, answers, correct_answer, explanation
 
 
 def verify_answer(answer: str, quiz: str, quiz_type: str) -> str:
@@ -189,7 +220,7 @@ def verify_answer(answer: str, quiz: str, quiz_type: str) -> str:
     logger.info("Submitting the answer.")
     
     # Generate the feedback
-    feedback = generate_feedback(answer=answer, quiz=quiz, quiz_type=quiz_type)
+    feedback = "Feedback"
 
     logger.info(f"Feedback generated: {feedback}")
     logger.success("Feedback generated successfully.\n")
@@ -213,7 +244,7 @@ def create_interface():
             gr.HTML("""<p text-align="center" style="font-size: 1em;">Pour plus d'informations sur le projet, consulte notre <a href="https://github.com/pierrepo/biopyassistant" target="_blank">dépôt GitHub</a>.</p>""")
     
         # Add a section for asking a question to the chatbot about the course
-        with gr.Tab("Chatbot"):
+        with gr.Tab("Discuter avec le cours"):
             # Define the query textbox 
             msg = gr.Textbox(placeholder="Pose moi une question sur le cours !", render=False, show_label=False, min_width=200)
             # Define the button for python level
@@ -222,7 +253,7 @@ def create_interface():
             bot = gr.Chatbot(
                 value  = [["Hey, j'ai besoin d'aide en Python !", "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]], 
                 bubble_full_width=False,
-                height=300,
+                height=500,
                 likeable=True,
                 show_copy_button=True,
                 render=False,
@@ -235,67 +266,65 @@ def create_interface():
                 chatbot=bot,
                 textbox=msg,
                 examples=QUERY_EXAMPLES, 
-                cache_examples=False,           
-                additional_inputs=[python_level],
-                additional_inputs_accordion=gr.Accordion(label="Options avancées", open=False, render=False),
+                cache_examples=False,                  
                 submit_btn = None,
-                retry_btn = "🔄 Réessayer", 
-                undo_btn = "↩️ Annuler",
-                clear_btn = "🗑️ Supprimer"
+                retry_btn = "🔄 Reposer la question", 
+                undo_btn = "↩️ Annuler la dernière question",
+                clear_btn = "🗑️ Supprimer la conversation"
             )
 
             # Display the python level selected
-            python_level.select(display_python_level)
+            python_level.select(get_user_input)
 
             # Adding a like/dislike feature
             bot.like(vote)
 
     
         # Add a section for asking a qcm about a specific chapter
-        with gr.Tab("Se tester"):
+        with gr.Tab("Se tester sur un chapitre"):
+            gr.HTML("<h2>Teste tes connaissances sur un chapitre du cours en répondant à un QCM :</h2>")
+            gr.HTML("<p>Choisis un chapitre, ton niveau en Python et le type de questions pour générer un QCM.</p>")
             with gr.Row() as main_options :
-                # Add a title
-                gr.Markdown("## Options :")
-            
-                # Define the options
-                chapter = gr.Dropdown(choices=CHAPTERS,label="Choisis un chapitre :", multiselect=True)
-
-                # Define the thematic
-                thematic = gr.Textbox(label="Thématique (facultatif)", placeholder="Ex: Les boucles for", interactive=True)
-
+                # Define the chapter
+                chapter_names = get_file_names(chapters)
+                chapter = gr.Dropdown(choices=chapter_names,label="Chapitre :")
                 # Define the difficulty level
-                difficulty = gr.Dropdown(choices=["Facile", "Intérmediaire", "Difficile", "Expert"], label="Choisis la difficulté :")
-                
-                # Define the quiz type
-                quiz_type = gr.Dropdown(choices=["QCM", "Question ouverte", "Vrai ou Faux", "Exercice de code", "Trouver l'erreur dans le code", "Complète le code", "Trouver la sortie du code"], label="Choisis le type de question :")
+                difficulty = gr.Dropdown(choices=["Débutant", "Confirmé"], label="Ton niveau en Python :")
 
-                # Define the number of questions
-                nb_questions = gr.Slider(1, 10, step=1, label="Nombre de questions :", interactive=True)
+                # Define the quiz type
+                quiz_type = gr.Dropdown(choices=QUIZ_TYPES, label="Type de questions :")
 
                 # Add a button to generate the quiz
                 submit_options = gr.Button("Générer le Quiz", size="sm")
 
             # Display the options selected
             chapter.select(get_user_input)   
-            #thematic.submit(get_user_input)   
             difficulty.select(get_user_input)   
             quiz_type.select(get_user_input)
-            #nb_questions.input(get_user_input)
 
-            # Define the question textarea
-            quiz_placeholder = gr.TextArea(label="Quiz", lines=2, interactive=False)
+            # Define the quiz title
+            gr.Markdown("## Quiz :")
+            # Define the quiz placeholder
+            question = gr.Markdown()
+            # Define the answers placeholder
+            answers = gr.TextArea()
+            # Define the correct answer placeholder
+            correct_answer = gr.Markdown()
+            # Define the explanation placeholder
+            explanation = gr.TextArea()
+
             # Define the response textarea
-            answer_placeholder = gr.TextArea(label="Ta réponse", interactive=True)
+            #answer_placeholder = gr.TextArea(label="Indique ci-dessous la lettre correspondant à ta réponse :", interactive=True)
             # Define the submit button
-            submit = gr.Button("Valider")
+            #submit = gr.Button("Valider")
             # Define the feedback textarea
-            feedback = gr.TextArea(label="Vérification de la réponse", interactive=False)
+            #feedback = gr.TextArea(label="Vérification de la réponse", interactive=False)
             
             # Generate the quiz with the selected options
-            submit_options.click(generate_quiz, inputs=[chapter, thematic, difficulty, quiz_type, nb_questions], outputs=[quiz_placeholder])
+            submit_options.click(generate_quiz, inputs=[chapter, difficulty, quiz_type], outputs=[question, answers, correct_answer, explanation])
         
             # Verify the answer
-            submit.click(verify_answer, inputs=[answer_placeholder, quiz_placeholder, quiz_type], outputs=[feedback])
+            #submit.click(verify_answer, inputs=[answer_placeholder, quiz_placeholder, quiz_type], outputs=[feedback])
             
     return demo
 
@@ -304,6 +333,9 @@ def create_interface():
 if __name__ == "__main__":
     # Load the vector database
     vector_db = load_database(CHROMA_PATH)[0]
+
+    # Get the content of each chapter
+    chapters = load_documents(PROCESSED_DATA_PATH)
     
     # Create the the Gradio interface
     demo = create_interface()
@@ -313,6 +345,6 @@ if __name__ == "__main__":
     logger.info(f"Flavicon path: {FLAVICON_PATH}")
 
     # Launch the Gradio interface
-    demo.launch(favicon_path=FLAVICON_PATH,
+    demo.launch(favicon_path=FLAVICON_PATH, server_name="0.0.0.0",
                  inbrowser=True, share = True) # to automatically opens a new tab
     

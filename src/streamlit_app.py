@@ -2,7 +2,7 @@
 
 Usage:
 ======
-    streamlit run src/streamlit_app_retriever.py
+    streamlit run src/streamlit_app.py
 
 """
 
@@ -22,7 +22,7 @@ from loguru import logger
 
 
 # MODULES IMPORT
-from query_chatbot_by_retriever import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
 
 
 # FUNCTIONS
