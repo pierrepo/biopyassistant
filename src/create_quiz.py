@@ -3,29 +3,22 @@
 
 Usage:
 ======
-To generate a quiz:
-    python src/create_quiz.py --chapter [CHAPTER] --thematic [THEMATIC] --difficulty [DIFFICULTY] --quiz_type [QUIZ_TYPE] --nb_questions [NB_QUESTIONS]
-    
+    python src/create_quiz.py --chapter [CHAPTER] --quiz-type [QUIZ_TYPE] --python-level [PYTHON_LEVEL]
 
 Arguments:
 ==========
     --chapter : str
-        The chapter of the quiz.
-    --thematic : str
-        The thematic of the quiz.
-    --difficulty : str
-        The difficulty of the quiz.
-    --quiz_type : str
+        The chapter of the quiz.        
+    --quiz-type : str
         The type of the quiz.
-    --nb_questions : int
-        The number of questions in the quiz.
-   
+    --python-level : str
+        The Python level of the user.
 
 Example:
 ========
-    python src/create_quiz.py --chapter "Les listes" --thematic "liste en compréhension" --difficulty "Facile" --quiz_type "QCM" --nb_questions 4
+    python src/create_quiz.py --chapter 04_listes --quiz-type QCM --python-level Débutant
 
-This command will create a QCM quiz with 4 questions on the chapter "Les listes" and the thematic "liste en compréhension" with a difficulty "Facile".
+This command will create a QCM quiz on the chapter 04_listes for a beginner level student.
 """
 
 # METADATA
@@ -41,139 +34,124 @@ import argparse
 from typing import List, Tuple
 
 from loguru import logger
+from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 
 
 # MODULE IMPORTS
-from query_chatbot_by_retriever import calculate_nb_tokens, OPENAI_MODEL_NAME
+from query_chatbot import calculate_nb_tokens, OPENAI_MODEL_NAME
+from create_database import load_documents, get_file_names
 
 
 # CONSTANTS
+PROCESSED_DATA_PATH = "data/markdown_processed"
+
 GENERATE_QUIZ_PROMPT = """
 Tu es un expert en création de quiz sur Python destiné à des étudiants.
-Créer un quiz de type {quiz_type} avec {nb_questions} questions sur le chapitre suivant : {chapter} et plus spécifiquement sur cette thématique : {thematic} (si renseigné)
-avec un niveau de difficulté {level}.
-Tu dois créer {nb_questions} questions variées et pertinentes pour tester les connaissances des étudiants.
-Respecte le niveau de difficulté demandé et la thématique si renseignée.
-Le format du quiz pourrait être l'un des suivants, respecte le format des exemples données :
+Créer un quiz de type {quiz_type} avec 1 question sur le chapitre suivant : {chapter} pour un étudiant de niveau {level}.
+La question doit être au format markdown et doit porter sur le contenu du chapitre fourni et doit être accompagnée de réponses possibles et d'une explication détaillée pour chaque réponse.
 
-- QCM (Questionnaire à Choix Multiples)
-    *Exemple*
-    1. Quelle est la différence entre une liste et un set ?
-        a. Une liste est ordonnée, un set non
-        b. Une liste est mutable, un set non
-        c. Une liste est indexée, un set non
-        d. Une liste est hétérogène, un set non
-    
-- Vrai ou Faux
-    *Exemple*
-    1. Python est un langage compilé.
-    2. Python est un langage interprété.
+Le format de sortie doit seulement etre un JSON du quiz avec les clés suivantes :
+- type : le type du quiz (QCM, Vrai ou Faux, Trouver l'erreur dans le code, Trouver la sortie du code, Compléter le code)
+- question : la question posée
+- answers : les réponses possibles numérotées par ordre alphabétique
+- correct_answer : la réponse correcte avec la lettre correspondante
+- explanation : l'explication détaillée de la réponse correcte
 
-- Questions ouvertes
-    *Exemple*
-    1. Quelle est la différence entre une liste et un set ?
+Je veux dans explanation, un dictionnaire avec pour chaque réponse possible la lettre correspondante comme clé et comme valeur l'explication de cette réponse.
+Cette explication doit commencer par "La réponse ... est incorrecte/correcte car ..." suivi d'une explication détaillée.
+Cette explication doit dépendre de la réponse donnée :
+- Si la réponse est incorrecte, l'explication doit être détaillée et encourageante.
+- Si la réponse est correcte, l'explication doit être brève, informative.
 
-- Exercice de code
-    *Exemple*
-    1. Ecris une fonction qui prend en paramètre une liste et qui retourne la somme des éléments de cette liste.
-
-- Trouver l'erreur dans le code
-    *Exemple*
-    1. Quelle est l'erreur dans le code suivant ?
-    ```python
-    def somme(a, b):
-        return a + b
-    print(somme(2, 3))
-    ```
-    a. Il n'y a pas d'erreur
-    b. La fonction somme ne retourne pas le bon résultat
-
-- Trouver la sortie du code
-    *Exemple*
-    1. Quelle est la sortie du code suivant ?
-    ```python
-    def somme(a, b):
-        return a + b
-    print(somme(2, 3))
-    ```
-    a. 5
-    b. 6
-    c. 7
-    d. 8
-
-- Compléter le code
-    Les trous sont représentés par des "_" dans le code.
-    Plus le niveau de difficulté est élevé, plus le code est complexe et plus il y a de trous à compléter.
-    *Exemple*
-    1. Complète le code suivant pour qu'il affiche "Hello World"
-    ```python
-    print("Hello _")
-    ```
-    a. World
-    b. Python
-    c. World!
-    d. Python!
-
-Respecte le format du quiz demandé.
+Voici le contenu du chapitre sur lequel tu dois créer le quiz :
+{chapter_content}
 """
 
 
 # FUNCTIONS
-def get_args() -> Tuple[str, str, str, str, int]:
-    """Parse the command line arguments.
+def get_args() -> Tuple[str, str, str]:
+    """Get the command line arguments.
 
     Returns
-    =======
-    chapter : str
-        The chapter of the quiz.
-    thematic : str
-        The thematic of the quiz.
-    difficulty : str
-        The difficulty of the quiz.
-    quiz_type : str
-        The type of the quiz.
-    nb_questions : int
-        The number of questions in the quiz.
+    -------
+    Tuple[str, str, str]
+        The chapter, quiz_type and the python level of the user.
     """
     logger.info("Parsing command line arguments")
+    parser = argparse.ArgumentParser(description="Creates the QCM from a chapter of the python course.")
+    parser.add_argument("--chapter", type=str, required=True, help="The chapter of the quiz.")
+    parser.add_argument("--quiz-type", type=str, required=True, help="The type of the quiz.")
+    parser.add_argument("--python-level", type=str, required=True, help="The Python level of the user.")
+    args = parser.parse_args()
 
-    parser = argparse.ArgumentParser() # Create a parser object
-    # Add arguments to the parser
-    parser.add_argument("--chapter", type=str, required=True)
-    parser.add_argument("--thematic", type=str, default="")
-    parser.add_argument("--difficulty", type=str, required=True)
-    parser.add_argument("--quiz_type", type=str, required=True)
-    parser.add_argument("--nb_questions", type=int, required=True)
-    args = parser.parse_args() # Parse the command line arguments
+    logger.info(f"Chapter: {args.chapter}")
+    logger.info(f"Quiz type: {args.quiz_type}")
+    logger.info(f"Python level: {args.python_level}")
+    logger.success("Command line arguments parsed successfully.\n")
 
-    logger.info("Command line arguments parsed successfully.\n")
-
-    return args.chapter, args.thematic, args.difficulty, args.quiz_type, args.nb_questions
+    return args.chapter, args.quiz_type, args.python_level
 
 
-def create_quiz(chapter: str, thematic: str, difficulty: str, quiz_type: str, nb_questions:int) -> str:
-    """Generate an quiz.
+def get_chapter_content(documents: List[Document], chapter_name: str) -> str:
+    """Get the content of a chapter.
+
+    Parameters
+    ----------
+    documents : List[Document]
+        The list of documents.
+    chapter : str
+        The chapter of the quiz.
+
+    Returns
+    -------
+    chapter_content : str
+        The content of the chapter.
+    """
+    logger.info("Getting the content of the chapter")
+    chapter_content = ""
+    # Get the source path of the chapter
+    chapter_path = PROCESSED_DATA_PATH + "/" + chapter_name + ".md"
+    logger.info(f"Chapter path: {chapter_path}")
+    # Get the content of the chapter
+    for doc in documents:
+        if doc.metadata["source"] == chapter_path:
+            chapter_content = doc.page_content
+            logger.info(f"Chapter content: {chapter_content[:100]}...")
+            logger.info(f"Nb tokens in the chapter content: {calculate_nb_tokens(chapter_content)}")
+            logger.success("Chapter content retrieved successfully.\n")
+            break
+    
+    if chapter_content == "":
+        logger.error(f"The chapter {chapter_name} not found in the documents.")
+        exit()
+
+    # Remove the /n characters from the chapter content
+    chapter_content = chapter_content.replace("\n", " ")
+    
+    return chapter_content
+
+
+def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_content: str) -> str:
+    """Generate a quiz.
 
     Parameters
     ----------
     chapter : str
         The chapter of the quiz.
-    thematic : str
-        The thematic of the quiz.
-    difficulty : str
-        The difficulty of the quiz.
     quiz_type : str
         The type of the quiz.
-    nb_questions : int
-        The number of questions in the quiz.    
+    level_python : str
+        The Python level of the user.
+    chapter_content : str
+        The content of the chapter.
 
     Returns
     -------
-    quiz : str
-        The generated quiz.    
+    quiz_json : str
+        The generated quiz in JSON format.    
     """
     logger.info("Generating a quiz")
 
@@ -181,32 +159,59 @@ def create_quiz(chapter: str, thematic: str, difficulty: str, quiz_type: str, nb
     chat_model = ChatOpenAI(model=OPENAI_MODEL_NAME)
     # Define the prompt template
     answer_prompt = ChatPromptTemplate.from_template(GENERATE_QUIZ_PROMPT)
-    # Define the chained prompt
-    answer_chain = answer_prompt | chat_model | StrOutputParser()
+    
     # Input data for the prompt
-    input_data = { "quiz_type": quiz_type, "chapter": chapter, "nb_questions": nb_questions, 'level': difficulty, 'thematic': thematic}
+    input_data = {
+        "quiz_type": quiz_type,
+        "chapter": chapter,
+        "level": level_python,
+        "chapter_content": chapter_content
+    }
+    
+    # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     logger.info(f"Filled prompt: {filled_prompt}")
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
     logger.info(f"Number of tokens in the prompt: {nb_tokens_prompt}\n")
+    
+    # Define the chained prompt
+    answer_chain = answer_prompt | chat_model | StrOutputParser()
+    
     # Generate the answer
-    quiz = answer_chain.invoke(input_data)
-    logger.info(f"Answer: {quiz}")
-    logger.success("Answer generated successfully.\n")
+    quiz_json = answer_chain.invoke(input_data)
 
-    return quiz
+    # Remove the markdown characters
+    quiz_json = quiz_json.replace("```json\n", "").replace("```", "")
+
+    logger.info(f"Quiz in JSON format: {quiz_json}")
+    logger.success("Quiz generated successfully.\n")
+
+    return quiz_json
+
 
 
 
 # MAIN PROGRAM
 if __name__ == "__main__":
     # Get the command line arguments
-    chapter, thematic, difficulty, quiz_type, nb_questions = get_args()
-    print(f"The {quiz_type} quiz will have {nb_questions} questions on the chapter {chapter} and the thematic {thematic} with a difficulty {difficulty}.\n")
+    chapter, quiz_type, level_python = get_args()
+
+    # Load the documents
+    documents = load_documents(PROCESSED_DATA_PATH)
+
+    # Get the file names
+    file_names = get_file_names(documents)
+
+    # Verify if the chapter exists
+    if chapter not in file_names:
+        logger.error(f"The chapter {chapter} does not exist.")
+        exit()
+
+    # Get the chapter content
+    chapter_content = get_chapter_content(documents, chapter)
 
     # Generate a quiz by LLM
-    quiz = generate_quiz(chapter, thematic, difficulty, quiz_type, nb_questions)
+    create_quiz_json(chapter, quiz_type, level_python, chapter_content)
     
-    print(quiz)
 
 
