@@ -20,13 +20,14 @@ import json
 import random
 from typing import Tuple
 
+import re
 import gradio as gr
 from loguru import logger
 
 
 # MODULES IMPORT
 from create_database import load_documents, get_file_names
-from query_chatbot import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
+from query_chatbot import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, format_relevant_chunks, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
 from create_quiz import create_quiz_json, get_chapter_content
 
 
@@ -42,7 +43,7 @@ QUIZ_TYPES = ["QCM (Questionnaire à Choix Multiples)", "Vrai ou Faux", "Trouver
 
 
 # FUNCTIONS
-def respond(message: str, chat_history: list, python_level: str) -> str:
+def respond(message: str, chat_history: list) -> str:
     """Respond to the user question.
     
     Parameters
@@ -51,9 +52,7 @@ def respond(message: str, chat_history: list, python_level: str) -> str:
         The user question.
     chat_history : list
         The chat history.
-    python_level : str
-        The Python level of the user.
-    
+
     Returns
     -------
     str
@@ -64,9 +63,9 @@ def respond(message: str, chat_history: list, python_level: str) -> str:
     # Format the chat history for the model
     formatted_chat_history = format_chat_history(chat_history, len_history=10)
     # Contextualize the user question with the chat history
-    query_contextualized = contextualize_question(user_query=message, chat_history_formatted=formatted_chat_history)
+    chat_context = contextualize_question(chat_history_formatted=formatted_chat_history)
     # Search for relevant documents in the database
-    context = search_similarity_in_database(vector_db=vector_db, user_query=query_contextualized)
+    context = search_similarity_in_database(vector_db=vector_db, user_query=message)
     # If no relevant document was found
     if context == []:
         logger.info("No relevant documents found in the database.")
@@ -75,10 +74,12 @@ def respond(message: str, chat_history: list, python_level: str) -> str:
         response = random.choice(MSGS_QUERY_NOT_RELATED)
         return response
     else :
+        # Format the relevant chunks
+        context_formatted = format_relevant_chunks(context)
         # Get the metadata of the relevant documents
         metadata = get_metadata(context)
         # Generate the answer
-        answer = generate_answer(query_contextualized=query_contextualized, relevant_chunks=context, model_name=OPENAI_MODEL_NAME)
+        answer = generate_answer(query=message, chat_context=chat_context, relevant_chunks=context_formatted, model_name=OPENAI_MODEL_NAME)
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, metadatas=metadata, iu=True)
 
@@ -116,9 +117,43 @@ def get_user_input(data: gr.SelectData) -> str:
         The user input.
     """
     logger.info(f"{data.target.label} {data.value}\n")
-    logger.info(f"Type of the input: {type(data.value)}\n")
     
     return data.value
+
+
+def get_chapter_names(documents: list) -> list:
+    """Get the names of the chapters.
+    
+    Parameters
+    ----------
+    documents : list
+        The list of documents.
+    
+    Returns
+    -------
+    list
+        The names of the chapters.
+    """
+    logger.info("Getting the names of the chapters.")
+    chapter_names = []
+    
+    # Get the names of the chapters
+    file_names = get_file_names(documents)
+    for file_name in file_names:
+        # Define the pattern to match the chapter name
+        match = re.match(r'\d+_(.*)$', file_name)
+        if match:
+            # Get the chapter name and format it
+            chapter_name = match.group(1).replace('_', ' ').capitalize()
+            chapter_names.append(chapter_name)
+        else:
+            logger.error(f"Chapter name not found in the file name: {file_name}")
+            exit()
+
+    logger.info(f"Chapter names: {chapter_names}")
+    logger.success("Chapter names retrieved successfully.\n")
+
+    return chapter_names
 
 
 def extract_quiz_elements(json_data: str) -> Tuple[str, dict, str, dict]:
@@ -282,11 +317,11 @@ def create_interface():
     
         # Add a section for asking a qcm about a specific chapter
         with gr.Tab("Se tester sur un chapitre"):
-            gr.HTML("<h2>Teste tes connaissances sur un chapitre du cours en répondant à un QCM :</h2>")
+            gr.HTML("")
             gr.HTML("<p>Choisis un chapitre, ton niveau en Python et le type de questions pour générer un QCM.</p>")
             with gr.Row() as main_options :
                 # Define the chapter
-                chapter_names = get_file_names(chapters)
+                chapter_names = get_chapter_names(chapters)
                 chapter = gr.Dropdown(choices=chapter_names,label="Chapitre :")
                 # Define the difficulty level
                 difficulty = gr.Dropdown(choices=["Débutant", "Confirmé"], label="Ton niveau en Python :")
