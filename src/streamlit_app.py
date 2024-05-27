@@ -19,6 +19,7 @@ import random
 
 import streamlit as st
 from loguru import logger
+from langchain_community.vectorstores import Chroma
 
 
 # MODULES IMPORT
@@ -48,9 +49,6 @@ def create_sidebar():
         """Create the sidebar."""
         st.sidebar.title("Options avancées")
 
-        # Python proficiency level
-        python_level = st.sidebar.selectbox("Niveau de Maîtrise de Python :", ("Débutant", "Intermédiaire", "Avancé"))
-
         # Insert multiple spaces
         insert_multiple_spaces(3)
 
@@ -67,8 +65,6 @@ def create_sidebar():
                 {"role": "assistant", "content": "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"}
             ]
             st.session_state.total_cost = 0.0
-
-        return python_level
 
 
 def transform_messages(messages: list[dict]) -> list[tuple]:
@@ -101,15 +97,13 @@ def transform_messages(messages: list[dict]) -> list[tuple]:
     return messages_tuples
 
 
-def generate_response(user_query: str, vector_db, python_level: str) -> str:
+def generate_response(user_query: str, vector_db: Chroma) -> str:
     """Generate a response to the user question.
     
     Parameters
     ----------
     user_query : str
         The user question.
-    python_level : str
-        The Python level of the user.
 
     Returns
     -------
@@ -120,11 +114,10 @@ def generate_response(user_query: str, vector_db, python_level: str) -> str:
     chat_history = transform_messages(st.session_state.messages)
     # Format the chat history for the model
     formatted_chat_history = format_chat_history(chat_history, len_history=10)
-
     # Contextualize the user question with the chat history
-    query_contextualized = contextualize_question(user_query=user_query, chat_history_formatted=formatted_chat_history, model_name=OPENAI_MODEL_NAME)
+    chat_context = contextualize_question(chat_history_formatted=formatted_chat_history)
     # Search for relevant documents in the database
-    context = search_similarity_in_database(vector_db=vector_db, user_query=query_contextualized)
+    context = search_similarity_in_database(vector_db=vector_db, user_query=user_query)
     
     # If no relevant document was found
     if context == []:
@@ -137,7 +130,7 @@ def generate_response(user_query: str, vector_db, python_level: str) -> str:
         # Get the metadata of the relevant documents
         metadata = get_metadata(context)
         # Generate the answer
-        answer = generate_answer(query_contextualized=query_contextualized, relevant_chunks=context, model_name=OPENAI_MODEL_NAME, python_level=python_level)
+        answer = generate_answer(query=user_query, chat_context=chat_context, relevant_chunks=context, model_name=OPENAI_MODEL_NAME)
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, metadatas=metadata, iu=True)
 
@@ -147,7 +140,7 @@ def generate_response(user_query: str, vector_db, python_level: str) -> str:
         return final_answer
 
 
-def chat_with_bot(vector_db, python_level) -> None:
+def chat_with_bot(vector_db: Chroma) -> None:
     """Chat with the bot"""
     # Initialize the chat with a welcome message
     if "messages" not in st.session_state.keys(): # Initialize the chat message history
@@ -167,7 +160,7 @@ def chat_with_bot(vector_db, python_level) -> None:
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("En réflexion..."):
-                response = generate_response(user_query, vector_db, python_level)
+                response = generate_response(user_query, vector_db)
                 st.write(response)
 
                 # Add the response to the chat history
@@ -183,13 +176,13 @@ def main():
     create_header()
     
     # Create a sidebar and get the user inputs
-    python_level = create_sidebar()
+    create_sidebar()
 
     # Load the vector database
     vector_db = load_database(CHROMA_PATH)[0]
 
     # Chat with the bot
-    chat_with_bot(vector_db, python_level)
+    chat_with_bot(vector_db)
 
 
 # MAIN PROGRAM
