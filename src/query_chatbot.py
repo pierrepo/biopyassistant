@@ -66,18 +66,22 @@ EMBEDDING_MODEL = "text-embedding-3-large"
 PROMPT_TEMPLATE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
 Tu dois fournir des réponses à leurs questions basées sur les supports de cours.
-Utilise les morceaux de contexte suivants pour répondre à la question.
+Utilise les morceaux de contexte suivants pour répondre à la question. 
+La discussion précédente est également fournie pour t'aider à comprendre le contexte de la question, mais tu ne dois pas l'utiliser pour répondre à la question.
+
+Discussion précédente :
+{chat_history}
 
 Question : "{question}"
 
-Contexte : "{contexte}"
-
+Contexte : 
+"{contexte}"
 
 Répond à la question de manière claire et concise en français de manière adapté à un niveau {niveau_python} en programmation.
 La réponse doit être facile à comprendre pour les étudiants.
 Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
-Si tu as besoin de plus d'informations, tu peux le demander.
-Si tu as besoin de clarifier la question, tu peux le demander.
+Si tu as besoin de plus d'informations, tu dois le demander.
+Si tu as besoin de clarifier la question, tu dois le demander.
 """
 
 MSGS_QUERY_NOT_RELATED = [
@@ -108,7 +112,7 @@ def get_args() -> Tuple[str, str, bool]:
     Returns
     -------
     Tuple[str, str, bool]
-        A tuple containing the query text, model name and a flag to include metadata.
+        A tuple containing the query, the model name and a flag to include metadata.
     """
     logger.info("Parsing the command line arguments.")
     parser = argparse.ArgumentParser()  # Create a parser object
@@ -144,7 +148,7 @@ def get_args() -> Tuple[str, str, bool]:
         logger.error(f"The model {args.model} is not valid.")
         sys.exit(1)
 
-    logger.info(f"Query text: {args.query}")
+    logger.info(f"Query : {args.query}")
     logger.info(f"Model name: {args.model}")
     logger.info(f"Include metadata: {args.include_metadata}")
     logger.success("Command line arguments parsed successfully.\n")
@@ -222,6 +226,32 @@ def search_similarity_in_database(
     return relevant_chunks
 
 
+def format_relevant_chunks(relevant_chunks: list) -> str:
+    """Format the relevant documents for the OpenAI model.
+
+    Parameters
+    ----------
+    relevant_chunks : list
+        List of relevant documents from the database.
+
+    Returns
+    -------
+    formatted_chunks : str
+        The formatted relevant documents.
+    """
+    logger.info("Formatting the relevant documents.")
+    formatted_chunks = ""
+
+    for chunk in relevant_chunks:
+        formatted_chunks += f"Chunk ID: {chunk.metadata['id']}\n"
+        formatted_chunks += f"Content: {chunk.page_content}\n"
+        formatted_chunks += f"Source: {chunk.metadata}\n\n"
+    
+    logger.success("Relevant documents formatted successfully.\n")
+
+    return formatted_chunks
+        
+
 def format_chat_history(
     chat_history: list[Tuple[str, str]] = [], len_history: int = 10
 ) -> List[Union[HumanMessage, AIMessage]]:
@@ -269,43 +299,35 @@ def format_chat_history(
         return chat_history
 
 
-def contextualize_question(
-    user_query: str, chat_history_formatted: list[Union[HumanMessage, AIMessage]]
+def contextualize_question(chat_history_formatted: list[Union[HumanMessage, AIMessage]]
 ) -> str:
     """Add context to the user query using the chat history.
 
     Parameters
     ----------
-    user_query : str
-        The user query.
     chat_history_formatted : list[Union[HumanMessage, AIMessage]]
         The formatted chat history.
-    model_name : str
-        The name of the model used for the query.
-
+    
     Returns
     -------
-    query_contextualized : str
-        The query contextualized with the chat history.
+    chat_context : str
+        The contextualized user query.
     """
     logger.info("Contextualizing the user query.")
-    logger.info(f"User query: {user_query}")
-    context = ""
+    chat_context = ""
 
     # Iterate over the formatted chat history and append to the context
     for i, message in enumerate(chat_history_formatted):
         if isinstance(message, HumanMessage):
-            context += f"Question {i // 2 + 1}: {message.content}\n"
+            chat_context += f"Question {i // 2 + 1}: {message.content}\n"
         elif isinstance(message, AIMessage):
-            context += f"Réponse {i // 2 + 1}: {message.content}\n"
+            chat_context += f"Réponse {i // 2 + 1}: {message.content}\n"
 
-    # Add the last question (the user query)
-    context += f"Dernière question : {user_query}"
 
     logger.info("Contextualized query constructed successfully.")
-    logger.debug(f"Contextualized query: {context}")
+    logger.info(f"Contextualized query: {chat_context}")
 
-    return context
+    return chat_context
 
 
 def get_metadata(relevant_chunks: list) -> list[dict]:
@@ -349,20 +371,20 @@ def calculate_nb_tokens(text: str) -> int:
 
 
 def generate_answer(
-    query_contextualized: str, relevant_chunks: list, model_name: str
+    query: str, chat_context: str, relevant_chunks: list, model_name: str
 ) -> str:
     """Generate an answer to the user query.
 
     Parameters
     ----------
-    query_contextualized : str
-        The query from the user.
+    query : str
+        The user query.
+    chat_context : str
+        The contextualized chat history.
     relevant_chunks : list
-        List of relevant documents found in the database.
+        List of relevant documents from the database.
     model_name : str
-        The name of the model used for generating the answer.
-    python_level : int
-        The Python level of the user.
+        The name of the OpenAI model to use for generating the answer.
 
     Returns
     -------
@@ -381,7 +403,8 @@ def generate_answer(
     input_data = {
         "contexte": relevant_chunks,
         "niveau_python": PYTHON_LEVEL,
-        "question": query_contextualized,
+        "question": query,
+        "chat_history": chat_context,
     }
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
@@ -445,10 +468,12 @@ def add_metadata_to_answer(
                 source_parts.append(f"(Lien vers la source : {url})")
 
         else:
+            # Get the chapter url
+            chapter_url = url.split("#")[0]
             # Construct the source string with a clickable URL
-            source_parts = [f"[Chapitre **{chapter_name}**"]
+            source_parts = [f"Chapitre [**{chapter_name}**]({chapter_url})"]
             if detailed_section:
-                source_parts.append(f", rubrique **{detailed_section}**")
+                source_parts.append(f", rubrique [**{detailed_section}**")
             if url:
                 source_parts.append(f"]({url})")
 
@@ -510,10 +535,12 @@ def interrogate_model() -> None:
         print(response)
         sys.exit(0)
     else:
+        # Format the relevant documents for the model
+        relevant_chunks_formatted = format_relevant_chunks(relevant_chunks)
         # Get the metadata of the top matching documents
         metadatas = get_metadata(relevant_chunks)
         # Generate the answer
-        answer = generate_answer(user_query, relevant_chunks, model_name)
+        answer = generate_answer(query=user_query, chat_context=None, relevant_chunks=relevant_chunks_formatted, model_name=model_name)
         # Calculate the number of tokens in the answer
         logger.info("Calculating the number of tokens in the answer.")
         nb_tokens_answer = calculate_nb_tokens(answer)
