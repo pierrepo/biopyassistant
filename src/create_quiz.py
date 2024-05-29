@@ -33,6 +33,7 @@ __version__ = "1.0.0"
 import argparse
 from typing import List, Tuple
 
+import re
 from loguru import logger
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
@@ -134,6 +135,47 @@ def get_chapter_content(documents: List[Document], chapter_name: str) -> str:
     return chapter_content
 
 
+def extract_json_from_string(text: str) -> str:
+    """Extract the JSON content from a string.
+
+    Parameters
+    ----------
+    text : str
+        The text containing the JSON content.
+    
+    Returns
+    -------
+    json_content : str
+        The JSON content.
+    """
+    logger.info("Extracting the JSON content")
+    logger.info(f"Quiz : {text}")
+
+    # Define the delimiters
+    start_delimiter = "```json\n"
+    end_delimiter = "```"
+    
+    # Find the start and end delimiters
+    start_index = text.find(start_delimiter)
+    logger.info(f"Start index: {start_index}")
+    if start_index == -1:
+        logger.error("Start delimiter not found.")
+        return None
+    start_index += len(start_delimiter)
+    end_index = text.rfind(end_delimiter)
+    logger.info(f"End index: {end_index}")
+    if end_index == -1:
+        logger.error("End delimiter not found.")
+        return None
+    
+    # Extract the JSON content
+    json_content = text[start_index:end_index]
+
+    logger.success("JSON content extracted successfully.\n")
+
+    return json_content.strip()
+
+
 def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_content: str) -> str:
     """Generate a quiz.
 
@@ -178,10 +220,10 @@ def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_co
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     
     # Generate the answer
-    quiz_json = answer_chain.invoke(input_data)
+    quiz = answer_chain.invoke(input_data)
 
-    # Remove the markdown characters
-    quiz_json = quiz_json.replace("```json\n", "").replace("```", "")
+    # To be sure that the JSON is well formatted
+    quiz_json = extract_json_from_string(quiz)
 
     logger.info(f"Quiz in JSON format: {quiz_json}")
     logger.success("Quiz generated successfully.\n")
