@@ -121,7 +121,7 @@ def get_user_input(data: gr.SelectData) -> str:
     return data.value
 
 
-def get_chapter_names(documents: list) -> list:
+def get_chapters_files_name(documents: list) -> dict:
     """Get the names of the chapters.
     
     Parameters
@@ -131,11 +131,11 @@ def get_chapter_names(documents: list) -> list:
     
     Returns
     -------
-    list
-        The names of the chapters.
+    chapters : dict
+        The chapter names as keys and the chapter file names as values.
     """
     logger.info("Getting the names of the chapters.")
-    chapter_names = []
+    chapters = {}
     
     # Get the names of the chapters
     file_names = get_file_names(documents)
@@ -145,15 +145,16 @@ def get_chapter_names(documents: list) -> list:
         if match:
             # Get the chapter name and format it
             chapter_name = match.group(1).replace('_', ' ').capitalize()
-            chapter_names.append(chapter_name)
+            chapters[chapter_name] = file_name
         else:
             logger.error(f"Chapter name not found in the file name: {file_name}")
             exit()
-
-    logger.info(f"Chapter names: {chapter_names}")
+    
+    logger.info(f"File names: {chapters.values()}")
+    logger.info(f"Chapter names: {chapters.keys()}")
     logger.success("Chapter names retrieved successfully.\n")
 
-    return chapter_names
+    return chapters
 
 
 def extract_quiz_elements(json_data: str) -> Tuple[str, dict, str, dict]:
@@ -223,8 +224,12 @@ def generate_quiz(chapter: str, quiz_type: str, python_level: str) -> Tuple[str,
     logger.info(f"Quiz type: {quiz_type}")
     logger.info(f"Python level: {python_level}")
 
+    # Get the file names of the chapters
+    chapter_file_names = get_chapters_files_name(chapters)
+    chapter_file_name = chapter_file_names[chapter]
+    
     # Get the chapter content
-    chapter_content = get_chapter_content(documents=chapters, chapter_name=chapter)
+    chapter_content = get_chapter_content(documents=chapters, chapter_name=chapter_file_name)
     
     # Create the quiz
     quiz_json = create_quiz_json(chapter, quiz_type, python_level, chapter_content)
@@ -232,7 +237,20 @@ def generate_quiz(chapter: str, quiz_type: str, python_level: str) -> Tuple[str,
     # Extract the quiz elements
     question, answers, correct_answer, explanation = extract_quiz_elements(quiz_json)
 
-    return question, answers, correct_answer, explanation
+    # Format the question
+    question = f"{question}\n"
+    for key, answer in answers.items():
+        question += f"- Réponse **{key}** : {answer}\n"
+
+    # Format the answers
+    answers = list(answers.keys())
+    
+    if quiz_type == "Vrai ou Faux":
+        answers_buttons = gr.Radio(choices=["Vrai", "Faux"], label="Réponse :")
+    else:
+        answers_buttons = gr.Radio(choices=["a", "b", "c", "d"], label="Réponse :")
+
+    return question, answers_buttons
 
 
 def verify_answer(answer: str, quiz: str, quiz_type: str) -> str:
@@ -288,7 +306,7 @@ def create_interface():
             bot = gr.Chatbot(
                 value  = [["Hey, j'ai besoin d'aide en Python !", "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]], 
                 bubble_full_width=False,
-                height=500,
+                height=600,
                 likeable=True,
                 show_copy_button=True,
                 render=False,
@@ -316,19 +334,19 @@ def create_interface():
 
     
         # Add a section for asking a qcm about a specific chapter
-        with gr.Tab("Se tester sur un chapitre"):
+        with gr.Tab("Se tester"):
             gr.HTML("")
             gr.HTML("<p>Choisis un chapitre, ton niveau en Python et le type de questions pour générer un QCM.</p>")
             with gr.Row() as main_options :
+                # Get the chapter names
+                chapter_file_names = get_chapters_files_name(chapters)
+                chapter_names = list(chapter_file_names.keys())
                 # Define the chapter
-                chapter_names = get_chapter_names(chapters)
                 chapter = gr.Dropdown(choices=chapter_names,label="Chapitre :")
                 # Define the difficulty level
                 difficulty = gr.Dropdown(choices=["Débutant", "Confirmé"], label="Ton niveau en Python :")
-
                 # Define the quiz type
                 quiz_type = gr.Dropdown(choices=QUIZ_TYPES, label="Type de questions :")
-
                 # Add a button to generate the quiz
                 submit_options = gr.Button("Générer le Quiz", size="sm")
 
@@ -337,30 +355,19 @@ def create_interface():
             difficulty.select(get_user_input)   
             quiz_type.select(get_user_input)
 
-            # Define the quiz title
-            gr.Markdown("## Quiz :")
-            # Define the quiz placeholder
-            question = gr.Markdown()
-            # Define the answers placeholder
-            answers = gr.TextArea()
-            # Define the correct answer placeholder
-            correct_answer = gr.Markdown()
-            # Define the explanation placeholder
-            explanation = gr.TextArea()
+            # Define the quiz section
+            with gr.Blocks() as quiz_section:
+                gr.Markdown("## Quiz :")
+                # Define the quiz placeholder
+                question = gr.Markdown()
+                answers_buttons = gr.Radio(show_label=False)
+                # Generate the quiz with the selected options
+                submit_options.click(generate_quiz, inputs=[chapter, quiz_type, difficulty], outputs=[question, answers_buttons], show_progress="minimal")
+                
+            # Define the answer section
+            with gr.Row() as answer_section:
+                pass
 
-            # Define the response textarea
-            #answer_placeholder = gr.TextArea(label="Indique ci-dessous la lettre correspondant à ta réponse :", interactive=True)
-            # Define the submit button
-            #submit = gr.Button("Valider")
-            # Define the feedback textarea
-            #feedback = gr.TextArea(label="Vérification de la réponse", interactive=False)
-            
-            # Generate the quiz with the selected options
-            submit_options.click(generate_quiz, inputs=[chapter, difficulty, quiz_type], outputs=[question, answers, correct_answer, explanation])
-        
-            # Verify the answer
-            #submit.click(verify_answer, inputs=[answer_placeholder, quiz_placeholder, quiz_type], outputs=[feedback])
-            
     return demo
 
 
@@ -380,6 +387,8 @@ if __name__ == "__main__":
     logger.info(f"Flavicon path: {FLAVICON_PATH}")
 
     # Launch the Gradio interface
-    demo.launch(favicon_path=FLAVICON_PATH, server_name="0.0.0.0",
-                 inbrowser=True, share = True) # to automatically opens a new tab
+    demo.launch(favicon_path=FLAVICON_PATH, # to add a favicon
+                server_name="0.0.0.0", # to make the app accessible from other devices
+                inbrowser=True, # to automatically opens a new tab
+                share = True) # to share the link with others
     
