@@ -474,8 +474,8 @@ def add_metadata_to_answer(
             source_parts = [f"Chapitre [**{chapter_name}**]({chapter_url})"]
             if detailed_section:
                 source_parts.append(f", rubrique [**{detailed_section}**")
-            if url:
-                source_parts.append(f"]({url})")
+                if url:
+                    source_parts.append(f"]({url})")
 
         source = " ".join(source_parts)
 
