@@ -43,7 +43,7 @@ import re
 import sys
 import random
 import argparse
-from typing import Tuple, Union, List, Dict
+from typing import Tuple, Union, List
 
 import tiktoken
 from loguru import logger
@@ -53,11 +53,10 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.prompts import ChatPromptTemplate
 
 
 # CONSTANTS
-
 CHROMA_PATH = "chroma_db"
 OPENAI_MODEL_NAME = "gpt-4o"
 PYTHON_LEVEL = "intermédiaire"
