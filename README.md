@@ -1,6 +1,6 @@
 
 <h1 align="center">
-  <img style="vertical-align:middle" height="200"
+  <img style="vertical-align:middle" size="100"
   src="/data/img/banner.png">
 </h1>
 <p align="center">
