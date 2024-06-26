@@ -1,11 +1,30 @@
 
-<div style="display: flex; align-items: left;">
-  <img src="data/logo.webp" alt="Logo" width="40" height="40">
-</div>
+<h1 align="center">
+  <img style="vertical-align:middle" height="200"
+  src="/data/img/banner.png">
+</h1>
+<p align="center">
+  <i>AI-powered conversational agent designed to assist biology students in learning the Python programming language.</i>
+</p>
 
-# BioPyAssistant
+<p align="center">
+    <a href="https://github.com/pierrepo/biopyassistant/releases">
+        <img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Fgithub.com%2Fpierrepo%2Fbiopyassistant&up_message=click%20here%20!&color=%23539fc9">
+    </a>
+      <a href="https://www.python.org/">
+            <img alt="Build" src="https://img.shields.io/badge/Made%20with-Python-1f425f.svg?color=%23539fc9">
+    </a>
+    <a href="https://github.com/pierrepo/biopyassistant/blob/main/LICENSE">
+        <img alt="GitHub License" src="https://img.shields.io/github/license/pierrepo/biopyassistant?style=flat&color=%23539fc9&link=https%3A%2F%2Fgithub.com%2Fpierrepo%2Fbiopyassistant%2Fblob%2Fmain%2FLICENSE">
+    </a>
+</p>
 
-BioPyAssistant is an AI-powered conversational agent designed to assist biology students in learning the Python programming language.
+<h4 align="center">
+    <p>
+        <a href="#-installation">Installation</a> |
+        <a href="#-usage">Usage</a>
+    </p>
+</h4>
 
 
 ## Installation
