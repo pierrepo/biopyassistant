@@ -1,10 +1,11 @@
 
 <h1 align="center">
-  <img style="vertical-align:middle" size="100"
+  <img style="vertical-align:middle; width:50%; position:fixed;"
   src="/data/img/banner.png">
 </h1>
 <p align="center">
-  <i>AI-powered conversational agent designed to assist biology students in learning the Python programming language.</i>
+  <i>AI-powered conversational agent designed to assist biology students</i><br>
+  <i>in learning the Python programming language.</i>
 </p>
 
 <p align="center">
