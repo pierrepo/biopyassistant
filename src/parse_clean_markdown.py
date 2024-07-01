@@ -206,7 +206,8 @@ def process_md_files(source_dir: str, dest_dir: str) -> None:
 
         # Renumber headers
         if filename.startswith("annexe"):
-            content = renumber_headers(content, "A")
+            annex_character = str(filename.split("_")[1])
+            content = renumber_headers(content, annex_character)
         if re.match(r"\d{2}_", filename):
             chapter_number = int(filename.split("_")[0])
             content = renumber_headers(content, chapter_number)
