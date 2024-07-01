@@ -451,6 +451,7 @@ def add_metadata_to_answer(
     sources_set = set()  # Use a set to store unique sources
 
     for metadata in metadatas:
+        file_name = metadata["file_name"]  # get the file name
         chapter_name = metadata["chapter_name"]  # get the chapter name
         section_name = metadata.get(
             "section_name", ""
@@ -468,7 +469,10 @@ def add_metadata_to_answer(
 
         if not iu:
             # Construct the source string + URL
-            source_parts = [f"Chapitre **{chapter_name}**"]
+            if file_name.startswith("annexe"):
+                source_parts = [f"Annexe **{chapter_name}**"]
+            else:
+                source_parts = [f"Chapitre **{chapter_name}**"]
             if detailed_section:
                 source_parts.append(f", rubrique **{detailed_section}**")
             if url:
@@ -478,7 +482,10 @@ def add_metadata_to_answer(
             # Get the chapter url
             chapter_url = url.split("#")[0]
             # Construct the source string with a clickable URL
-            source_parts = [f"Chapitre [**{chapter_name}**]({chapter_url})"]
+            if file_name.startswith("annexe"):
+                source_parts = [f"Annexe [**{chapter_name}**]({chapter_url})"]
+            else:
+                source_parts = [f"Chapitre [**{chapter_name}**]({chapter_url})"]
             if detailed_section:
                 source_parts.append(f", rubrique [**{detailed_section}**")
                 if url:
@@ -519,7 +526,7 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
     print("\n\n")
     print("Question:")
     print(f"{user_query}\n")
-    print("Response:")
+    print("Reponse:")
     print(f"{final_response}")
     print("\n\n")
 
