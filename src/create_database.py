@@ -390,17 +390,15 @@ def add_file_names_to_metadata(
         chapter_name = chunk.metadata.get("chapter_name", "")
         # Get the chapter number or appendix letter
         chapter_number = re.match(r"^\d+\s", chapter_name)
-        appendix_letter = re.search(r"\b[A-Z]+\s", chapter_name)
+        appendix_letter = re.search(r"\b[A-Z]", chapter_name)
         # Corresponding chapter number or appendix letter with file name
         for file_name in file_names:
             if chapter_number and file_name.startswith(
                 f"{chapter_number.group(0).strip().zfill(2)}_"
             ):  # zfill(2) to pad with zeros
                 chunk.metadata["file_name"] = file_name
-                break
-            elif appendix_letter and file_name.endswith(
-                f"_{appendix_letter.group(0).strip()}"
-            ):
+                break 
+            elif appendix_letter.group(0) == file_name.split("_")[1]:
                 chunk.metadata["file_name"] = file_name
                 break
 
@@ -517,7 +515,7 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
 
     # Create a new DB from the documents and save it to disk
     model_embedding = OpenAIEmbeddings(model=EMBEDDING_MODEL)
-    db = Chroma.from_documents(
+    Chroma.from_documents(
         chunks,
         model_embedding,
         persist_directory=chroma_output_path,
