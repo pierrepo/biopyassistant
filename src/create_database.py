@@ -160,6 +160,9 @@ def load_documents(data_dir: str) -> list[Document]:
     )
     documents = loader.load()
 
+    # order the documents by source
+    documents = sorted(documents, key=lambda x: x.metadata.get("source", ""))
+
     logger.success("Markdown document loading complete.\n")
 
     return documents
@@ -430,6 +433,9 @@ def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
     # Convert to lowercase
     processed_text = processed_text.lower()
 
+    # Remove pattern {.unnumbered}
+    processed_text = re.sub(r"{.unnumbered}", "", processed_text)
+
     # Remove characters other than letters, digits, spaces, or hyphens
     processed_text = re.sub(r"[^\w\s-]", "", processed_text)
 
@@ -447,7 +453,7 @@ def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
 
     # Remove the subsubsection number
     if is_subsubsection:
-        processed_text = re.sub(r"^\d+-?", "", processed_text)
+        processed_text = re.sub(r"^[a-zA-Z]?\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
     processed_text = "#" + processed_text
@@ -555,7 +561,7 @@ def generate_data_store() -> None:
     chunks_with_file_names = add_file_names_to_metadata(chunks_with_tokens, file_names)
 
     # add URL to the chunks
-    chunks_with_url = add_url_to_metadata(chunks_with_file_names)
+    chunks_with_url = add_url_to_metadata(chunks_with_file_names)    
 
     # save the chunks to ChromaDB
     save_to_chroma(chunks_with_url, chroma_path)
