@@ -163,10 +163,20 @@ def get_chapters_files_name(documents: list) -> dict:
     file_names = get_file_names(documents)
     for file_name in file_names:
         # Define the pattern to match the chapter name
-        match = re.match(r"\d+_(.*)$", file_name)
-        if match:
+        match_chapter = re.match(r"\d+_(.*)$", file_name)
+        match_annex = re.match(r"annexe_(.*)$", file_name)
+
+        if match_annex:
+            # Get the annex name and format it
+            annex_name = match_annex.group(1).replace("_", " ").capitalize()
+            chapters[annex_name] = file_name
+            # because the file name is not the same as the chapter name
+            if match_annex.group(1) == "A_formats_fichiers.md":
+                chapters["Quelques formats de données en biologie"] = file_name
+
+        elif match_chapter:
             # Get the chapter name and format it
-            chapter_name = match.group(1).replace("_", " ").capitalize()
+            chapter_name = match_chapter.group(1).replace("_", " ").capitalize()
             chapters[chapter_name] = file_name
         else:
             logger.error(f"Chapter name not found in the file name: {file_name}")
