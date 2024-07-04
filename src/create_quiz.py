@@ -1,4 +1,4 @@
-"""Creates the QCM from a chapter of the python course.
+"""Creates Quiz from a chapter of the python course in JSON format using a LLM. 
 
 
 Usage:
@@ -51,13 +51,15 @@ PROCESSED_DATA_PATH = "data/markdown_processed"
 
 GENERATE_QUIZ_PROMPT = """
 Tu es un expert en création de quiz sur Python destiné à des étudiants.
-Créer un quiz de type {quiz_type} avec 1 question sur le chapitre suivant : {chapter} pour un étudiant de niveau {level}.
+Créer un quiz de type {quiz_type} avec 5 questions sur le chapitre suivant : {chapter} pour un étudiant de niveau {level}.
 La question doit être au format markdown et doit porter sur le contenu du chapitre fourni et doit être accompagnée de réponses possibles et d'une explication détaillée pour chaque réponse.
 
-Le format de sortie doit seulement etre un JSON du quiz avec les clés suivantes :
+Le format de sortie doit seulement etre un JSON comportant les 5 questions de quiz avec les clés suivantes :
 - type : le type du quiz (QCM, Vrai ou Faux, Trouver l'erreur dans le code, Trouver la sortie du code, Compléter le code)
+- chapter : le chapitre du quiz
+- python_level : le niveau Python de l'étudiant
 - question : la question posée
-- answers : les réponses possibles numérotées par ordre alphabétique
+- answers : les réponses possibles numérotées par ordre alphabétique (A, B, C, D)
 - correct_answer : la réponse correcte avec la lettre correspondante
 - explanation : l'explication détaillée de la réponse correcte
 
