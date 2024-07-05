@@ -128,7 +128,7 @@ def get_user_input(data: gr.SelectData) -> str:
     return data.value
 
 
-def create_tab_discuss_course():
+def create_tab_chatbot():
     """Create the interface to discuss with the course."""
     with gr.Blocks(
     theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
@@ -189,7 +189,7 @@ def create_tab_discuss_course():
 # MAIN PROGRAM
 if __name__ == "__main__":
     # Create the interface to discuss with the course
-    discuss_course_tab = create_tab_discuss_course()
+    discuss_course_tab = create_tab_chatbot()
 
     # Launch the Gradio interface
     discuss_course_tab.launch(

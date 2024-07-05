@@ -22,7 +22,7 @@ from loguru import logger
 
 
 # MODULES IMPORT
-from gradio_app_chat import create_tab_discuss_course
+from gradio_app_chat import create_tab_chatbot
 from gradio_app_quiz import create_tab_quiz
 
 
@@ -44,7 +44,7 @@ def create_interface():
 
         # Add a section for asking a question to the chatbot about the course
         with gr.Tab("Discuter avec le cours"):
-            create_tab_discuss_course()
+            create_tab_chatbot()
 
         # Add a section for asking a qcm about a specific chapter
         with gr.Tab("Se tester"):
