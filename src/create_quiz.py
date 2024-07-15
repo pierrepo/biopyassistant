@@ -8,17 +8,18 @@ Usage:
 Arguments:
 ==========
     --chapter : str
-        The chapter of the quiz.        
+        The name of the chapter of the quiz. It must be one of the chapters of the Python course contained in the data/markdown_processed folder.
+        Attention: The chapter name must be written in French and with the first letter of each word capitalized.
     --quiz-type : str
-        The type of the quiz.
+        The type of the quiz (QCM or Vrai/Faux).
     --python-level : str
-        The Python level of the user.
+        The Python level of the user (Débutant or Avancé).
 
 Example:
 ========
-    python src/create_quiz.py --chapter 04_listes --quiz-type QCM --python-level Débutant
+    python src/create_quiz.py --chapter Listes --quiz-type QCM --python-level Débutant
 
-This command will create a QCM quiz on the chapter 04_listes for a beginner level student.
+This command will create a quiz of 5 QCM on the chapter "Listes" for a beginner level user.
 """
 
 # METADATA
@@ -30,8 +31,12 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
+import json
 import argparse
-from typing import List, Tuple
+from typing import Tuple
+from datetime import datetime
+
 
 import re
 from loguru import logger
@@ -49,25 +54,59 @@ from create_database import load_documents, get_file_names
 # CONSTANTS
 PROCESSED_DATA_PATH = "data/markdown_processed"
 
+QUIZ_JSON_PATH = "data/quiz.json"
+
 GENERATE_QUIZ_PROMPT = """
 Tu es un expert en création de quiz sur Python destiné à des étudiants.
 Créer un quiz de type {quiz_type} avec 5 questions sur le chapitre suivant : {chapter} pour un étudiant de niveau {level}.
 La question doit être au format markdown et doit porter sur le contenu du chapitre fourni et doit être accompagnée de réponses possibles et d'une explication détaillée pour chaque réponse.
+N'hésites pas à varier les questions (ex: questions basés sur le cours, trouver l'erreur dans le code, trouver la sortie du code, compléter le code, etc.).
 
 Le format de sortie doit seulement etre un JSON comportant les 5 questions de quiz avec les clés suivantes :
-- type : le type du quiz (QCM, Vrai ou Faux, Trouver l'erreur dans le code, Trouver la sortie du code, Compléter le code)
-- chapter : le chapitre du quiz
-- python_level : le niveau Python de l'étudiant
-- question : la question posée
-- answers : les réponses possibles numérotées par ordre alphabétique (A, B, C, D)
-- correct_answer : la réponse correcte avec la lettre correspondante
-- explanation : l'explication détaillée de la réponse correcte
+- type (str): le type du quiz (QCM, Vrai ou Faux)
+- chapter (str): le chapitre du quiz
+- python_level (str): le niveau Python de l'étudiant
+- question (str): la question posée
+- answers (dict): les réponses possibles numérotées par ordre alphabétique (A, B, C, D)
+- correct_answer (str): la réponse correcte avec la lettre correspondante
+- explanation (str): l'explication détaillée pour chaque réponse possible
 
-Je veux dans explanation, un dictionnaire avec pour chaque réponse possible la lettre correspondante comme clé et comme valeur l'explication de cette réponse.
-Cette explication doit commencer par "La réponse ... est incorrecte/correcte car ..." suivi d'une explication détaillée.
-Cette explication doit dépendre de la réponse donnée :
-- Si la réponse est incorrecte, l'explication doit être détaillée et encourageante.
-- Si la réponse est correcte, l'explication doit être brève, informative.
+Je veux dans explanation, une explication détaillée pour chaque réponse possible de manière à ce que l'étudiant comprenne pourquoi chaque réponse est correcte ou incorrecte.
+Le ton doit être pédagogique et bienveillant.
+
+Voici un exemple de format de sortie attendue :
+{{
+    "questions": [
+        {{
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle est la sortie du code suivant : \\n```python\\nx = 5\\ny = 10\\nprint(x + y)\\n```",
+            "answers": {{
+                "A": "10",
+                "B": "15",
+                "C": "5",
+                "D": "50"
+            }},
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car x vaut 5 et y vaut 10, donc x + y vaut 15. Les autres réponses sont incorrectes car elles ne correspondent pas à la somme de x et y."
+        }},
+        {{
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle structure conditionnelle est utilisée pour exécuter un bloc de code si une condition est vraie ?",
+            "answers": {{
+                "A": "for",
+                "B": "while",
+                "C": "if",
+                "D": "def"
+            }},
+            "correct_answer": "C",
+            "explanation": "La réponse correcte est C car la structure conditionnelle if est utilisée pour exécuter un bloc de code si une condition est vraie. Les réponses A ("for") et B ("while") sont utilisées pour les boucles afin de répéter un bloc de code plusieurs fois et la réponse D ("def") est utilisée pour définir une fonction."
+        }}
+    ]
+}}
 
 Voici le contenu du chapitre sur lequel tu dois créer le quiz :
 {chapter_content}
@@ -75,7 +114,39 @@ Voici le contenu du chapitre sur lequel tu dois créer le quiz :
 
 
 # FUNCTIONS
-def get_args() -> Tuple[str, str, str]:
+def get_chapters_file_names(documents: list) -> dict:
+    """Get the names of the chapters.
+
+    Parameters
+    ----------
+    documents : list
+        The list of documents.
+
+    Returns
+    -------
+    chapters : dict
+        The chapter names as keys and the chapter file names as values.
+    """
+    logger.info("Getting the names of the chapters...")
+    chapters = {}
+
+    # Get the names of the chapters
+    file_names = get_file_names(documents)
+    
+    for file_name in file_names:
+        # Define the pattern to match the chapter name
+        match_chapter = re.match(r"\d+_(.*)$", file_name)
+        if match_chapter:
+            # Get the chapter name and format it
+            chapter_name = match_chapter.group(1).replace("_", " ").capitalize()
+            chapters[chapter_name] = file_name
+    
+    logger.success("Chapter names with their content files retrieved successfully.\n")
+
+    return chapters
+
+
+def get_args(chapter_names: list[str]) -> Tuple[str, str, str]:
     """Get the command line arguments.
 
     Returns
@@ -93,18 +164,29 @@ def get_args() -> Tuple[str, str, str]:
     logger.info(f"Chapter: {args.chapter}")
     logger.info(f"Quiz type: {args.quiz_type}")
     logger.info(f"Python level: {args.python_level}")
+
+    # Checks
+    if args.chapter not in chapter_names:
+        logger.error(f"The chapter {args.chapter} is not valid. Please choose one of the following chapters: {', '.join(chapter_names)}.")
+        exit()
+    if args.quiz_type not in ["QCM", "Vrai/Faux"]:
+        logger.error(f"The quiz type {args.quiz_type} is not valid. Please choose between 'QCM' and 'Vrai/Faux'.")
+        exit()
+    if args.python_level not in ["Débutant", "Avancé"]:
+        logger.error(f"The Python level {args.python_level} is not valid. Please choose between 'Débutant' and 'Avancé'.")
+        exit()
     logger.success("Command line arguments parsed successfully.\n")
 
     return args.chapter, args.quiz_type, args.python_level
 
 
-def get_chapter_content(documents: List[Document], chapter_name: str) -> str:
+def get_chapter_content(chapters: dict[str, str], chapter_name: str) -> str:
     """Get the content of a chapter.
 
     Parameters
     ----------
-    documents : List[Document]
-        The list of documents.
+    chapters : dict[str, str]
+        Dictionary containing the chapters names and their content.
     chapter : str
         The chapter of the quiz.
 
@@ -113,69 +195,22 @@ def get_chapter_content(documents: List[Document], chapter_name: str) -> str:
     chapter_content : str
         The content of the chapter.
     """
-    logger.info("Getting the content of the chapter")
-    chapter_content = ""
-    # Get the source path of the chapter
-    chapter_path = PROCESSED_DATA_PATH + "/" + chapter_name + ".md"
-    logger.info(f"Chapter path: {chapter_path}")
-    # Get the content of the chapter
-    for doc in documents:
-        if doc.metadata["source"] == chapter_path:
-            chapter_content = doc.page_content
-            logger.info(f"Chapter content: {chapter_content[:100]}...")
-            logger.info(f"Nb tokens in the chapter content: {calculate_nb_tokens(chapter_content)}")
-            logger.success("Chapter content retrieved successfully.\n")
-            break
-    
-    if chapter_content == "":
-        logger.error(f"The chapter {chapter_name} not found in the documents.")
-        exit()
+    logger.info(f"Getting the content of the chapter: {chapter_name}")
 
+    # Get the content of the chapter
+    chapter_file_name = chapters[chapter_name] + ".md"
+    chapter_file_path = os.path.join(PROCESSED_DATA_PATH, chapter_file_name)
+
+    with open(chapter_file_path, "r") as file:
+        chapter_content = file.read()
+    
     # Remove the /n characters from the chapter content
-    chapter_content = chapter_content.replace("\n", " ")
+    chapter_content = re.sub(r"\n", "", chapter_content)
+    logger.info(f"Chapter content: {chapter_content[:100]}...")
+
+    logger.success("Chapter content retrieved successfully.\n")
     
     return chapter_content
-
-
-def extract_json_from_string(text: str) -> str:
-    """Extract the JSON content from a string.
-
-    Parameters
-    ----------
-    text : str
-        The text containing the JSON content.
-    
-    Returns
-    -------
-    json_content : str
-        The JSON content.
-    """
-    logger.info("Extracting the JSON content")
-    logger.info(f"Quiz : {text}")
-
-    # Define the delimiters
-    start_delimiter = "```json\n"
-    end_delimiter = "```"
-    
-    # Find the start and end delimiters
-    start_index = text.find(start_delimiter)
-    logger.info(f"Start index: {start_index}")
-    if start_index == -1:
-        logger.error("Start delimiter not found.")
-        return None
-    start_index += len(start_delimiter)
-    end_index = text.rfind(end_delimiter)
-    logger.info(f"End index: {end_index}")
-    if end_index == -1:
-        logger.error("End delimiter not found.")
-        return None
-    
-    # Extract the JSON content
-    json_content = text[start_index:end_index]
-
-    logger.success("JSON content extracted successfully.\n")
-
-    return json_content.strip()
 
 
 def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_content: str) -> str:
@@ -223,39 +258,130 @@ def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_co
     
     # Generate the answer
     quiz = answer_chain.invoke(input_data)
+    logger.info(f"Quiz: {quiz}")
+    logger.success("Quiz generated successfully.\n")
 
-    # To be sure that the JSON is well formatted
+    return quiz
+
+
+def extract_json_from_string(quiz: str) -> str:
+    """Extract JSON part from a string that contains JSON."""
+    try:
+        start_index = quiz.index('{')
+        end_index = quiz.rindex('}') + 1
+        return quiz[start_index:end_index]
+    except ValueError:
+        logger.error("No valid JSON found in the input string.")
+        raise
+
+
+def validate_quiz_json(quiz: str) -> str:
+    """Validate the quiz JSON.
+
+    Parameters
+    ----------
+    quiz : str
+        The quiz generated by the LLM.
+
+    Returns
+    -------
+    quiz_json : str
+        The validated quiz in JSON format.
+    """
+    logger.info("Validating the quiz JSON...")
+
+    # Extract the JSON content from the quiz
     quiz_json = extract_json_from_string(quiz)
 
-    logger.info(f"Quiz in JSON format: {quiz_json}")
-    logger.success("Quiz generated successfully.\n")
+    # Validate the JSON content
+    try:
+        quiz_data = json.loads(quiz_json)
+    except json.JSONDecodeError as e:
+        logger.error(f"The JSON is not well-formed : {e}")
+        exit()
+
+    # Validate each question
+    for question in quiz_data["questions"]:
+        question_type = question.get("type")
+        answers = question.get("answers", {})
+        correct_answer = question.get("correct_answer")
+
+        # Validate the number of answers
+        if question_type == "QCM" and len(answers) != 4:
+            logger.error(f"Invalid number of answers for 'QCM' question: {question['question']}")
+        elif question_type == "Vrai ou Faux" and len(answers) != 2:
+            logger.error(f"Invalid number of answers for 'Vrai ou Faux' question: {question['question']}")
+
+        # Validate the correct answer is one of the possible answers
+        if correct_answer not in answers.keys():
+            logger.error(f"Invalid correct answer for question: {question['question']}")
+        
+    logger.success("Quiz JSON validated successfully.\n")
 
     return quiz_json
 
 
+def save_to_json(quiz_json: str, file_path: str) -> None:
+    """Save the quiz in a JSON file.
+
+    Parameters
+    ----------
+    quiz_json : str
+        The generated quiz in JSON format.
+    file_path : str
+        The path of the JSON file.
+    """
+    logger.info(f"Saving the quiz in a JSON file: {file_path}")
+
+    # Convert json into a dictionary
+    new_quiz_data = json.loads(quiz_json)
+    
+    # Add the last modified date to the new quiz data
+    last_modified = datetime.now().isoformat()
+    new_quiz_data['last_modified'] = last_modified
+
+    # Load existing quiz data if the file exists
+    if os.path.exists(file_path):
+        logger.info("The file already exists. Merging the new quiz data with the existing data.")
+        with open(file_path, "r", encoding="utf-8") as file:
+            existing_quiz_data = json.load(file)
+        # Merge the new quiz data with the existing data
+        existing_quiz_data["questions"] = existing_quiz_data.get("questions", []) + new_quiz_data.get("questions", [])
+        # Update the last modified date
+        existing_quiz_data['last_modified'] = last_modified
+        # Convert the merged data back to JSON
+        merged_quiz_json = json.dumps(existing_quiz_data, ensure_ascii=False, indent=4, sort_keys=False)
+    else:
+        logger.info("The file does not exist. Saving the new quiz data.")
+        # If the file does not exist, use the new quiz data
+        merged_quiz_json = json.dumps(new_quiz_data, ensure_ascii=False, indent=4, sort_keys=False)
+
+    # Save the merged quiz data to the file in UTF-8 encoding
+    with open(file_path, "w", encoding="utf-8") as file:
+        file.write(merged_quiz_json)
+    
+    logger.success("Quiz saved successfully.\n")
 
 
 # MAIN PROGRAM
 if __name__ == "__main__":
+    # Get chapters information
+    CHAPTERS = load_documents(PROCESSED_DATA_PATH)
+    CHAPTERS_DIC = get_chapters_file_names(CHAPTERS)
+    CHAPTER_NAMES = list(CHAPTERS_DIC.keys())
+
     # Get the command line arguments
-    chapter, quiz_type, level_python = get_args()
-
-    # Load the documents
-    documents = load_documents(PROCESSED_DATA_PATH)
-
-    # Get the file names
-    file_names = get_file_names(documents)
-
-    # Verify if the chapter exists
-    if chapter not in file_names:
-        logger.error(f"The chapter {chapter} does not exist.")
-        exit()
+    chapter, quiz_type, level_python = get_args(CHAPTER_NAMES)
 
     # Get the chapter content
-    chapter_content = get_chapter_content(documents, chapter)
+    chapter_content = get_chapter_content(CHAPTERS_DIC, chapter)
 
     # Generate a quiz by LLM
-    create_quiz_json(chapter, quiz_type, level_python, chapter_content)
+    quiz = create_quiz_json(chapter, quiz_type, level_python, chapter_content)
+
+    # Validate the quiz JSON
+    quiz_json = validate_quiz_json(quiz)
+
+    # Save the quiz in a JSON file
+    save_to_json(quiz_json, QUIZ_JSON_PATH)
     
-
-
