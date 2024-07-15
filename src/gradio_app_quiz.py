@@ -100,7 +100,7 @@ def make_quiz(chapter_choice: str, level_choice: str, quiz_type_choice: str):
     filtered_questions = []
     for question in quiz_json["questions"]:
         if (question["chapter"] == chapter_choice and
-            question["difficulty"] == level_choice and
+            question["python_level"] == level_choice and
             question["type"] == quiz_type_choice):
             filtered_questions.append(question)
 
