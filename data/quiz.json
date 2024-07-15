@@ -1,0 +1,455 @@
+{
+    "questions": [
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle est l'origine du nom du langage de programmation Python ?",
+            "answers": {
+                "A": "D'un hommage à un serpent.",
+                "B": "D'un hommage à une série télévisée.",
+                "C": "Du nom de son créateur.",
+                "D": "D'une abréviation."
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car le nom *Python* vient d'un hommage à la série télévisée *Monty Python's Flying Circus* dont Guido van Rossum, le créateur de Python, est fan. Les autres réponses sont incorrectes : A est une fausse information, C est incorrect car le créateur s'appelle Guido van Rossum, et D est également incorrect car *Python* n'est pas une abréviation."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quel est l'avantage principal d'un langage interprété comme Python ?",
+            "answers": {
+                "A": "Il est plus rapide que les langages compilés.",
+                "B": "Il permet d'exécuter le code directement sans compilation préalable.",
+                "C": "Il nécessite moins de mémoire pour fonctionner.",
+                "D": "Il ne peut pas être utilisé sur plusieurs plateformes."
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car un langage interprété comme Python permet d'exécuter le code directement sans compilation préalable, contrairement aux langages compilés comme le C ou le C++. La réponse A est incorrecte car les langages interprétés sont généralement plus lents que les langages compilés. La réponse C est incorrecte car le besoin en mémoire dépend du programme, et non du fait que le langage soit interprété ou compilé. La réponse D est incorrecte car Python est multiplateforme."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle commande permet de quitter l'interpréteur Python sous Windows ?",
+            "answers": {
+                "A": "exit()",
+                "B": "Ctrl + D",
+                "C": "Ctrl + Z puis Entrée",
+                "D": "quit()"
+            },
+            "correct_answer": "C",
+            "explanation": "La réponse correcte est C car sous Windows, on quitte l'interpréteur Python en pressant simultanément les touches Ctrl et Z puis Entrée. La réponse A (exit()) est correcte mais n'est pas spécifique à Windows, car elle fonctionne aussi sous Linux et Mac OS X. La réponse B (Ctrl + D) est incorrecte pour Windows mais correcte pour Linux et Mac OS X. La réponse D (quit()) est correcte mais, comme pour exit(), n'est pas spécifique à Windows."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quel éditeur de texte est recommandé pour les débutants sous Windows ?",
+            "answers": {
+                "A": "Visual Studio Code",
+                "B": "Sublime Text",
+                "C": "notepad++",
+                "D": "gedit"
+            },
+            "correct_answer": "C",
+            "explanation": "La réponse correcte est C car notepad++ est recommandé pour les débutants sous Windows. Visual Studio Code (A) et Sublime Text (B) sont également de très bons éditeurs de texte mais ne sont pas spécifiquement recommandés aux débutants dans ce cours. La réponse D (gedit) est incorrecte car gedit est recommandé pour les utilisateurs de Linux."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle est la commande pour lancer l'interpréteur Python depuis un shell ?",
+            "answers": {
+                "A": "run python",
+                "B": "execute python",
+                "C": "start python",
+                "D": "python"
+            },
+            "correct_answer": "D",
+            "explanation": "La réponse correcte est D car la commande pour lancer l'interpréteur Python depuis un shell est simplement 'python'. Les autres réponses (A, B, et C) sont incorrectes car elles ne sont pas les commandes reconnues pour lancer l'interpréteur Python."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "Vrai ou Faux",
+            "question": "Python est un langage de programmation créé en 1989 par Guido van Rossum.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. Python a bien été créé en 1989 par Guido van Rossum. Il s'est inspiré de la série télévisée Monty Python's Flying Circus pour nommer le langage. La réponse B est incorrecte car elle contredit cette information."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "Vrai ou Faux",
+            "question": "La version 2 de Python est toujours maintenue et est recommandée pour de nouveaux projets.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. La version 2 de Python est obsolète et n'est plus maintenue. La version 3 est le standard actuel et recommandée pour tous les nouveaux projets. La réponse A est incorrecte car elle contredit cette information."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "Vrai ou Faux",
+            "question": "Python est un langage compilé, ce qui signifie qu'il doit être transformé en code machine avant d'être exécuté.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Python est un langage interprété, ce qui signifie que le code est lu et exécuté directement par l'interpréteur Python sans nécessiter de compilation préalable. La réponse A est incorrecte car elle décrit le fonctionnement des langages compilés comme le C ou le C++."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "Vrai ou Faux",
+            "question": "Miniconda est un logiciel recommandé pour installer Python et gérer les modules supplémentaires.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. Miniconda est recommandé pour installer Python et gérer les modules supplémentaires nécessaires, comme NumPy, scipy, matplotlib, pandas, et Biopython. La réponse B est incorrecte car elle contredit cette recommandation."
+        },
+        {
+            "chapter": "Introduction",
+            "python_level": "Débutant",
+            "type": "Vrai ou Faux",
+            "question": "Les éditeurs de texte comme Microsoft Word ou LibreOffice Writer sont adaptés pour écrire du code Python.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Microsoft Word et LibreOffice Writer sont des traitements de texte et ne sont pas adaptés pour écrire du code Python. Il est recommandé d'utiliser des éditeurs de texte comme notepad++, BBEdit, CotEditor, gedit, Visual Studio Code, Sublime Text, emacs, vim, ou geany. La réponse A est incorrecte car elle suggère l'utilisation de traitements de texte, ce qui n'est pas approprié pour l'écriture de code."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "Vrai/Faux",
+            "question": "En Python, la déclaration et l'initialisation d'une variable se font en même temps.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A car en Python, lorsque vous déclarez une variable, vous l'initialisez également avec une valeur. Par exemple, l'instruction `x = 2` déclare et initialise la variable `x` avec la valeur 2. Répondre 'Faux' serait incorrect car Python ne permet pas de déclarer une variable sans l'initialiser."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "Vrai/Faux",
+            "question": "La ligne de code suivante : \n```python\nx = 5\ny = x\n``` signifie que la variable y est égale à 5.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A car `y = x` assigne la valeur de `x` à `y`. Puisque `x` vaut 5, `y` prendra également la valeur 5. Répondre 'Faux' serait incorrect car cela signifierait ne pas comprendre l'opération d'affectation."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "Vrai/Faux",
+            "question": "La variable `y` dans le code suivant est de type float : \n```python\ny = 3.14\n```",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A car `y = 3.14` assigne un nombre décimal à `y`, ce qui en fait une variable de type float. Répondre 'Faux' serait incorrect car cela signifie ne pas reconnaître le type float."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "Vrai/Faux",
+            "question": "En Python, il est possible d'utiliser un espace dans le nom d'une variable.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car les noms de variables en Python ne peuvent pas contenir d'espaces. Par exemple, `my variable` est incorrect, mais `my_variable` est correct. Répondre 'Vrai' serait incorrect car violerait les règles de nommage des variables en Python."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "Vrai/Faux",
+            "question": "La fonction `type()` peut être utilisée pour déterminer le type d'une variable.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A car la fonction `type()` retourne le type de la variable passée en argument. Par exemple, `type(3)` retournera `<class 'int'>`. Répondre 'Faux' serait incorrect car cela signifie ne pas connaître l'utilisation de la fonction `type()`."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Que se passe-t-il lorsque vous exécutez le code suivant ?\n```python\nx = 5\ny = x\nx = 10\nprint(y)\n```",
+            "answers": {
+                "A": "5",
+                "B": "10",
+                "C": "Une erreur",
+                "D": "0"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. Lorsque `y` est assigné à `x`, `y` prend la valeur actuelle de `x`, qui est 5. Même si `x` est ensuite mis à jour à 10, `y` conserve la valeur 5 car les variables sont indépendantes après l'affectation initiale. B est incorrect car `y` ne change pas lorsque `x` est mis à jour. C est incorrect car le code ne produit pas d'erreur. D est incorrect car `y` n'est jamais assigné à 0."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quel type de variable est créé avec l'instruction suivante ?\n```python\nx = 3.14\n```",
+            "answers": {
+                "A": "int",
+                "B": "float",
+                "C": "str",
+                "D": "bool"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Le nombre 3.14 est un nombre décimal, et en Python, les nombres décimaux sont de type float. A est incorrect car int représente des nombres entiers sans partie décimale. C est incorrect car str représente des chaînes de caractères. D est incorrect car bool représente des valeurs booléennes (True ou False)."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quel est le résultat de l'instruction suivante ?\n```python\nx = 2\ny = x + 3\nprint(x * y)\n```",
+            "answers": {
+                "A": "10",
+                "B": "25",
+                "C": "6",
+                "D": "5"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. La variable `x` est 2 et `y` est calculée comme `x + 3`, ce qui donne 5. Le produit `x * y` est donc `2 * 5`, ce qui donne 10. B est incorrect car il suppose une multiplication erronée. C est incorrect car il ne prend pas en compte la valeur correcte de `y`. D est incorrect car il ne représente aucune des opérations du code."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quel est le type de la variable `z` après l'exécution du code suivant ?\n```python\nz = 'True'\n```",
+            "answers": {
+                "A": "bool",
+                "B": "str",
+                "C": "int",
+                "D": "float"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Même si 'True' est une valeur booléenne en Python, les guillemets simples autour de True signifient que c'est une chaîne de caractères (str). A est incorrect car `True` sans guillemets serait un booléen, mais ici c'est une chaîne. C est incorrect car `z` n'est pas un entier. D est incorrect car `z` n'est pas un nombre décimal."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Débutant",
+            "type": "QCM",
+            "question": "Quelle opération est correcte pour convertir une chaîne de caractères '123' en un entier ?",
+            "answers": {
+                "A": "int('123')",
+                "B": "str(123)",
+                "C": "float('123')",
+                "D": "bool('123')"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. La fonction `int()` convertit une chaîne de caractères contenant un nombre entier en un entier. B est incorrect car `str(123)` convertit un entier en une chaîne de caractères. C est incorrect car `float('123')` convertit la chaîne en un nombre décimal, pas en un entier. D est incorrect car `bool('123')` convertit la chaîne en une valeur booléenne, ce qui serait True."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "QCM",
+            "question": "Quelle est la sortie du code suivant ?\n```python\nx = 5\ny = '10'\nprint(x + int(y))\n```",
+            "answers": {
+                "A": "510",
+                "B": "15",
+                "C": "TypeError",
+                "D": "5 + 10"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car la variable `y` est initialement une chaîne de caractères ('10'). En utilisant `int(y)`, nous convertissons cette chaîne de caractères en un entier (10), ce qui permet alors l'addition avec `x` qui est 5. Les autres réponses sont incorrectes : A est incorrect car il concatène des chaînes de caractères, C est incorrect car la conversion a été faite correctement, et D est incorrect car il ne réalise pas l'opération mais affiche les valeurs sous forme de chaîne."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "QCM",
+            "question": "Quel est le type de la variable `z` après l'exécution du code suivant ?\n```python\nx = 3\nz = x / 2\n```",
+            "answers": {
+                "A": "int",
+                "B": "float",
+                "C": "str",
+                "D": "bool"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B car l'opérateur de division `/` en Python renvoie toujours un `float`, même si les deux opérandes sont des entiers. Les autres réponses sont incorrectes : A est incorrect car le type n'est pas `int`, C est incorrect car ce n'est pas une chaîne de caractères, et D est incorrect car ce n'est pas un booléen."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "QCM",
+            "question": "Identifiez l'erreur dans le code suivant :\n```python\nx = 10\ny = 20\nz = x + y\nprint('La valeur de z est: ' + z)\n```",
+            "answers": {
+                "A": "SyntaxError",
+                "B": "TypeError",
+                "C": "NameError",
+                "D": "Aucune erreur"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Une `TypeError` se produit car nous essayons de concaténer une chaîne de caractères ('La valeur de z est: ') avec un entier (z). Pour corriger cela, z devrait être converti en chaîne de caractères en utilisant `str(z)`. Les autres réponses sont incorrectes : A est incorrect car il n'y a pas d'erreur de syntaxe, C est incorrect car toutes les variables sont définies, et D est incorrect car il y a effectivement une erreur de type."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "QCM",
+            "question": "Quelle est la sortie du code suivant ?\n```python\nx = 5\nx += 3\nx *= 2\nprint(x)\n```",
+            "answers": {
+                "A": "8",
+                "B": "10",
+                "C": "16",
+                "D": "13"
+            },
+            "correct_answer": "C",
+            "explanation": "La réponse correcte est C. Voici le déroulement du code : initialement, `x` vaut 5. Ensuite, `x += 3` augmente `x` de 3, donc `x` devient 8. Enfin, `x *= 2` multiplie `x` par 2, donc `x` devient 16. Les autres réponses sont incorrectes : A est incorrect après la première opération seulement, B est incorrect car il ne tient pas compte de la multiplication, et D est incorrect car il additionne sans multiplier."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "QCM",
+            "question": "Complétez le code pour qu'il affiche 'Python est génial!'.\n```python\nmot1 = 'Python'\nmot2 = 'est'\nmot3 = 'génial!'\nphrase = ___ + ' ' + ___ + ' ' + ___\nprint(phrase)\n```",
+            "answers": {
+                "A": "mot1, mot2, mot3",
+                "B": "'mot1', 'mot2', 'mot3'",
+                "C": "mot1 mot2 mot3",
+                "D": "mot1 + mot2 + mot3"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A car nous devons concaténer les variables `mot1`, `mot2`, et `mot3` avec des espaces entre elles pour former la phrase 'Python est génial!'. Les autres réponses sont incorrectes : B est incorrect car cela traiterait les noms de variables comme des chaînes de caractères, C est incorrect car les variables ne sont pas séparées par des virgules, et D est incorrect car il manque les espaces entre les mots."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "Vrai ou Faux",
+            "question": "En Python, la déclaration et l'initialisation d'une variable se font en une seule instruction.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. En Python, lorsqu'on déclare une variable, on l'initialise également en lui assignant une valeur. Par exemple, l'instruction `x = 2` déclare et initialise la variable `x` avec la valeur 2. Ce n'est pas le cas dans certains autres langages de programmation où la déclaration et l'initialisation sont des étapes distinctes."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "Vrai ou Faux",
+            "question": "En Python, une variable de type entier `int` et de type float `float` peuvent être utilisées ensemble dans une expression arithmétique et le résultat sera de type entier.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Lorsque vous mélangez des entiers et des floats dans une expression arithmétique en Python, le résultat sera de type float. Par exemple, `3 + 2.5` donnera `5.5`, qui est un float. Python convertit automatiquement le résultat en float pour préserver la précision."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "Vrai ou Faux",
+            "question": "Le nom d'une variable en Python peut commencer par un chiffre.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. En Python, les noms de variables ne peuvent pas commencer par un chiffre. Ils doivent commencer par une lettre (majuscule ou minuscule) ou un underscore (`_`). Par exemple, `1variable` n'est pas un nom de variable valide, tandis que `variable1` l'est."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "Vrai ou Faux",
+            "question": "En Python, le symbole `=` est utilisé pour tester l'égalité entre deux valeurs.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. En Python, le symbole `=` est utilisé pour l'affectation, c'est-à-dire pour assigner une valeur à une variable. Pour tester l'égalité entre deux valeurs, on utilise le symbole `==`. Par exemple, `x = 2` assigne la valeur 2 à la variable `x`, tandis que `x == 2` teste si `x` est égal à 2."
+        },
+        {
+            "chapter": "Variables",
+            "python_level": "Avancé",
+            "type": "Vrai ou Faux",
+            "question": "Le type d'une variable en Python peut être changé dynamiquement.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. En Python, le type d'une variable est dynamique, ce qui signifie qu'il peut changer au cours de l'exécution du programme. Par exemple, on peut assigner un entier à une variable `x` (comme dans `x = 2`), puis une chaîne de caractères (comme dans `x = 'hello'`). Python gère automatiquement le changement de type."
+        },
+        {
+            "type": "Vrai ou Faux",
+            "chapter": "Introduction",
+            "python_level": "Avancé",
+            "question": "Python a été créé en 1989 par Guido van Rossum.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. Python a en effet été créé en 1989 par Guido van Rossum. Le nom *Python* rend hommage à la série télévisée *Monty Python's Flying Circus* dont G. van Rossum est fan. La première version publique de ce langage a été publiée en 1991."
+        },
+        {
+            "type": "Vrai ou Faux",
+            "chapter": "Introduction",
+            "python_level": "Avancé",
+            "question": "Python 2 est encore largement utilisé et maintenu à jour.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Python 2 est obsolète et n'est plus maintenu. Il est recommandé d'utiliser Python 3, plus précisément la version 3.11 publiée en octobre 2022."
+        },
+        {
+            "type": "Vrai ou Faux",
+            "chapter": "Introduction",
+            "python_level": "Avancé",
+            "question": "Python est un langage compilé, similaire à C ou C++.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Python est un langage interprété, ce qui signifie qu'un script Python n'a pas besoin d'être compilé pour être exécuté, contrairement aux langages comme le C ou le C++. Cette caractéristique permet de tester rapidement des commandes et de débugger facilement les programmes."
+        },
+        {
+            "type": "Vrai ou Faux",
+            "chapter": "Introduction",
+            "python_level": "Avancé",
+            "question": "Il est possible d'installer Python sur un téléphone portable.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "A",
+            "explanation": "La réponse correcte est A. Python est multiplateforme et peut être installé sur de nombreux systèmes d'exploitation, y compris sur des téléphones portables. Cela inclut des systèmes comme Android et iOS."
+        },
+        {
+            "type": "Vrai ou Faux",
+            "chapter": "Introduction",
+            "python_level": "Avancé",
+            "question": "Pour écrire du code Python, il est recommandé d'utiliser un traitement de texte comme Microsoft Word.",
+            "answers": {
+                "A": "Vrai",
+                "B": "Faux"
+            },
+            "correct_answer": "B",
+            "explanation": "La réponse correcte est B. Les traitements de texte comme Microsoft Word ne doivent pas être utilisés pour écrire du code Python. Il est recommandé d'utiliser des éditeurs de texte comme *notepad++*, *BBEdit*, *CotEditor*, *gedit*, ou des IDE comme *Visual Studio Code*, *Sublime Text*, *emacs*, *vim*, *geany*, etc."
+        }
+    ],
+    "last_modified": "2024-07-15T13:56:58.050476"
+}
