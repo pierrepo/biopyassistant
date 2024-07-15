@@ -14,56 +14,27 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
 import json
-import re
-from typing import Tuple
+import random
 
 from loguru import logger
 import gradio as gr
 
 
 # MODULES IMPORT
-from create_database import load_documents, get_file_names
-from create_quiz import create_quiz_json, get_chapter_content
+from create_database import load_documents
+from create_quiz import get_chapters_file_names
 
 
 # CONSTANTS
 PROCESSED_DATA_PATH = "data/markdown_processed"
 QUIZ_TYPES = [
-    "QCM (Questionnaire à Choix Multiples)",
-    "Vrai ou Faux",
-    "Trouver l'erreur dans le code",
-    "Trouver la sortie du code",
-    "Compléter le code",
+    "QCM",
+    "Vrai/Faux"
 ]
 
-QUIZ_JSON = """
-{
-    "type": "QCM",
-    "question": "Question de QCM",
-    "answers": {
-        "A": "réponse A",
-        "B": "réponse B",
-        "C": "réponse C",
-        "D": "réponse D"
-    },
-    "correct_answer": "C",
-    "explanation": "Parce que C est la bonne réponse"
-}
-"""
-
-QUIZ_JSON_VRAI_FAUX = """
-{
-    "type": "Vrai-faux",
-    "question": "Question de Vrai ou Faux",
-    "answers": {
-        "A": "Vrai",
-        "B": "Faux"
-    },
-    "correct_answer": "Vrai",
-    "explanation": "Parce que A est la bonne réponse"
-}
-"""
+PATH_QUIZ_JSON = "data/quiz.json"
 
 CSS = """
 #correct-answer
@@ -74,83 +45,36 @@ CSS = """
 
 
 # FUNCTIONS
-def get_chapters_files_name(documents: list) -> dict:
-    """Get the names of the chapters.
+def load_quiz(path_quiz_json: str) -> dict:
+    """Load the json file that contains the quizzes.
 
     Parameters
     ----------
-    documents : list
-        The list of documents.
-
+    path_quiz_json : str
+        The path to the json file.
+    
     Returns
     -------
-    chapters : dict
-        The chapter names as keys and the chapter file names as values.
+    dict
+        The quizzes.
     """
-    logger.info("Getting the names of the chapters...")
-    chapters = {}
-
-    # Get the names of the chapters
-    file_names = get_file_names(documents)
+    logger.info("Loading the quiz json file...")
+    try:
+        full_path = os.path.join(os.getcwd(), path_quiz_json)
+        with open(full_path, 'r') as file:
+            quiz_json = json.load(file)
+        
+        logger.success("The json file has been loaded.\n")
+        return quiz_json
+    except FileNotFoundError:
+        logger.error("The json file does not exist.")
+        return None
+    except json.JSONDecodeError:
+        logger.error("Error decoding the json file.")
+        return None
     
-    for file_name in file_names:
-        # Define the pattern to match the chapter name
-        match_chapter = re.match(r"\d+_(.*)$", file_name)
-        if match_chapter:
-            # Get the chapter name and format it
-            chapter_name = match_chapter.group(1).replace("_", " ").capitalize()
-            chapters[chapter_name] = file_name
-    
-    chapter_names = list(chapters.keys())
-    logger.success("Chapter names retrieved successfully.\n")
 
-    return chapter_names
-
-
-def extract_quiz_elements(json_data: str) -> Tuple[str, dict, str, dict]:
-    """
-    Extracts elements from the provided JSON data.
-
-    Parameters
-    ----------
-    json_data : str
-        JSON data as a string.
-
-    Returns
-    -------
-    Tuple[str, dict, str, dict]
-        The question, the answers, the correct answer and the explanation.
-    """
-    logger.info("Extracting quiz elements.")
-    # Parse the JSON data
-    quiz_data = json.loads(json_data)
-
-    # Extract elements
-    quiz_elements = {
-        "type": quiz_data.get("type"),
-        "question": quiz_data.get("question"),
-        "answers": quiz_data.get("answers"),
-        "correct_answer": quiz_data.get("correct_answer"),
-        "explanation": quiz_data.get("explanation"),
-    }
-
-    # Get the elements
-    question = quiz_elements["question"]
-    answers = quiz_elements["answers"]
-    correct_answer = quiz_elements["correct_answer"]
-    explanation = quiz_elements["explanation"]
-
-    logger.info(f"Question: {question}")
-    logger.info(f"Answers: {answers}")
-    logger.info(f"Correct answer: {correct_answer}")
-    logger.info(f"Explanation: {explanation}\n")
-    logger.success("Quiz elements extracted successfully.\n")
-
-    return question, answers, correct_answer, explanation
-
-
-
-def make_quiz(chapter_choice, level_choice, quiz_type_choice):
+def make_quiz(chapter_choice: str, level_choice: str, quiz_type_choice: str):
     """Generate a quiz to ask the user.
 
     Parameters
@@ -162,16 +86,43 @@ def make_quiz(chapter_choice, level_choice, quiz_type_choice):
     quiz_type_choice : str
         The type of the quiz.
     """
-    logger.info("Generating a quiz...")
+    logger.info("Retrieving a quiz...")
 
     # Display the quiz parameters
     logger.info(f"Chapter: {chapter_choice}")
     logger.info(f"Level: {level_choice}")
     logger.info(f"Quiz type: {quiz_type_choice}")
 
+    # Load json that contains the quizzes
+    quiz_json = load_quiz(PATH_QUIZ_JSON)
+
+    # Filter questions based on user choices
+    filtered_questions = []
+    for question in quiz_json["questions"]:
+        if (question["chapter"] == chapter_choice and
+            question["difficulty"] == level_choice and
+            question["type"] == quiz_type_choice):
+            filtered_questions.append(question)
+
+    # Test if there is a quiz for the given parameters
+    if filtered_questions == []:
+        logger.error("No quiz found for the given parameters.")
+        return (
+            gr.Markdown("Désolé, aucun quiz n'a été trouvé pour les paramètres donnés."),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+        )
+
+    # Get the proper quiz
+    QUIZ = random.choice(filtered_questions)
+
     if quiz_type_choice == "Vrai ou Faux":
-        # Generate the quiz
-        QUIZ = json.loads(QUIZ_JSON_VRAI_FAUX)
         return (
             gr.Markdown("## " + QUIZ["question"], visible=True),
             None,
@@ -189,10 +140,8 @@ def make_quiz(chapter_choice, level_choice, quiz_type_choice):
             gr.Markdown("", visible=False)
         )
     else:
-        # Generate the quiz
-        QUIZ = json.loads(QUIZ_JSON)
         return (
-            gr.Markdown("## Question : " + QUIZ["question"], visible=True),
+            gr.Markdown(QUIZ["question"], visible=True),
             gr.Markdown("## Proposition A\n\n" + QUIZ["answers"]["A"], visible=True),
             gr.Markdown("## Proposition B\n\n" + QUIZ["answers"]["B"], visible=True),
             gr.Markdown("## Proposition C\n\n" + QUIZ["answers"]["C"], visible=True),
@@ -234,13 +183,14 @@ def create_tab_quiz():
 
         gr.Markdown("*Sélectionnez les paramètres du quiz*")
         # Get the chapter names
-        chapters = load_documents(PROCESSED_DATA_PATH)
-        chapter_names = get_chapters_files_name(chapters)
+        CHAPTERS = load_documents(PROCESSED_DATA_PATH)
+        CHAPTERS_DIC = get_chapters_file_names(CHAPTERS)
+        CHAPTER_NAMES = list(CHAPTERS_DIC.keys())
 
         with gr.Row():
             chapter_choice = gr.Dropdown(
-                choices=chapter_names,
-                value=chapter_names[0],
+                choices=CHAPTER_NAMES,
+                value=CHAPTER_NAMES[0],
                 label="Chapitre :")
             level_names = ["Débutant", "Confirmé"]
             level_choice = gr.Dropdown(
