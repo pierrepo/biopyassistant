@@ -54,6 +54,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage
 from langchain.prompts import ChatPromptTemplate
+from langchain_mistralai.chat_models import ChatMistralAI
+from langchain_groq import ChatGroq
 
 
 # CONSTANTS
@@ -61,6 +63,12 @@ CHROMA_PATH = "chroma_db"
 OPENAI_MODEL_NAME = "gpt-4o"
 PYTHON_LEVEL = "intermédiaire"
 EMBEDDING_MODEL = "text-embedding-3-large"
+
+MISTRAL_MODELS = ["open-mistral-7b", "open-mixtral-8x7b", "open-mixtral-8x22b", "mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"]
+
+GROQ_MODELS = ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it", "gemma2-9b-it", "whisper-large-v3"]
+
+OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
 
 PROMPT_TEMPLATE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
@@ -143,9 +151,9 @@ def get_args() -> Tuple[str, str, bool]:
         logger.error("Please provide a query")
         sys.exit(1)
     # model name validity
-    if not check_openai_model_validity(args.model):
+    """if not check_openai_model_validity(args.model):
         logger.error(f"The model {args.model} is not valid.")
-        sys.exit(1)
+        sys.exit(1)"""
 
     logger.info(f"Query : {args.query}")
     logger.info(f"Model name: {args.model}")
@@ -400,7 +408,12 @@ def generate_answer(
         logger.info("Generating an answer to the user query...")
 
     # Define the model
-    chat_model = ChatOpenAI(model=model_name)
+    if model_name in MISTRAL_MODELS:
+        chat_model = ChatMistralAI(model=model_name)
+    elif model_name in GROQ_MODELS:
+        chat_model = ChatGroq(model=model_name)
+    elif model_name in OPENAI_MODELS:
+        chat_model = ChatOpenAI(model=model_name)
     # Define the prompt template
     answer_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     # Define the chained prompt

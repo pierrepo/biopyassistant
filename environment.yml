@@ -19,6 +19,8 @@ dependencies:
   - tiktoken # For tokenization
   - langchain # For language processing
   - langchain-openai
+  - langchain-mistralai
+  - langchain-groq
   - langchain-core
   - langchain-community
   - langchain-text-splitters
