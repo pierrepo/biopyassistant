@@ -16,7 +16,7 @@ Arguments:
     Options:
     ========
     --model "model_name" : The name or identifier of the model to be used for generating responses.
-                           (Default model: OPENAI_MODEL_NAME)
+                           (Default model: DEFAULT_LLM_MODEL)
     
     --include-metadata : Optional flag to specify whether to include metadata in the response.
                          If provided, metadata will be included; otherwise, it will be excluded.
@@ -46,6 +46,7 @@ import argparse
 from typing import Tuple, Union, List
 
 import tiktoken
+from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
 from langchain_core.documents import Document
@@ -54,13 +55,18 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage
 from langchain.prompts import ChatPromptTemplate
+from langchain_mistralai.chat_models import ChatMistralAI
+from langchain_groq import ChatGroq
 
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
-OPENAI_MODEL_NAME = "gpt-4o"
+DEFAULT_LLM_MODEL = "gpt-4o"
 PYTHON_LEVEL = "intermédiaire"
 EMBEDDING_MODEL = "text-embedding-3-large"
+MISTRAL_MODELS = ["open-mistral-7b", "open-mixtral-8x7b", "open-mixtral-8x22b", "mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"]
+GROQ_MODELS = ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it", "gemma2-9b-it", "whisper-large-v3"]
+OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
 
 PROMPT_TEMPLATE = """
 Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
@@ -92,19 +98,6 @@ MSGS_QUERY_NOT_RELATED = [
 
 
 # FUNCTIONS
-def check_openai_model_validity(model_name):
-    # Get the list of available
-    models = OpenAI().models.list()
-    # Extract GPT models
-    models_gpt = [model.id for model in models if "gpt" in model.id]
-
-    # Check if the model name is valid
-    if model_name in models_gpt:
-        return True
-    else:
-        return False
-
-
 def get_args() -> Tuple[str, str, bool]:
     """Parse the command line arguments.
 
@@ -125,7 +118,7 @@ def get_args() -> Tuple[str, str, bool]:
     parser.add_argument(
         "--model",
         type=str,
-        default=OPENAI_MODEL_NAME,
+        default=DEFAULT_LLM_MODEL,
         help="The name or identifier of the model to be used for generating responses.",
     )
     parser.add_argument(
@@ -141,10 +134,6 @@ def get_args() -> Tuple[str, str, bool]:
     # query is required
     if args.query == "":
         logger.error("Please provide a query")
-        sys.exit(1)
-    # model name validity
-    if not check_openai_model_validity(args.model):
-        logger.error(f"The model {args.model} is not valid.")
         sys.exit(1)
 
     logger.info(f"Query : {args.query}")
@@ -400,7 +389,12 @@ def generate_answer(
         logger.info("Generating an answer to the user query...")
 
     # Define the model
-    chat_model = ChatOpenAI(model=model_name)
+    if model_name in MISTRAL_MODELS:
+        chat_model = ChatMistralAI(model=model_name)
+    elif model_name in GROQ_MODELS:
+        chat_model = ChatGroq(model=model_name)
+    elif model_name in OPENAI_MODELS:
+        chat_model = ChatOpenAI(model=model_name)
     # Define the prompt template
     answer_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     # Define the chained prompt
@@ -535,6 +529,8 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
 
 def interrogate_model() -> None:
     """Interrogate the AI model to search for answers in a vector database."""
+    # Load the environment variables
+    load_dotenv()
     # Load the query text from the command line arguments
     user_query, model_name, include_metadata = get_args()
 
