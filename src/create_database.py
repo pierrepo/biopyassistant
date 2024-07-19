@@ -495,7 +495,7 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
 
         # Add URL to metadata
         chunk.metadata["url"] = (
-            f"https://python.sdv.univ-paris-diderot.fr/{file_name}/{section_id}"
+            f"https://python.sdv.u-paris.fr/{file_name}/{section_id}"
         )
 
     logger.success("Added URL to metadata successfully.\n")

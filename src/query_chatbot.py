@@ -48,7 +48,6 @@ from typing import Tuple, Union, List
 import tiktoken
 from dotenv import load_dotenv
 from loguru import logger
-from openai import OpenAI
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import StrOutputParser
