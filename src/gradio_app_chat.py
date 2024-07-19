@@ -161,7 +161,7 @@ def create_tab_chatbot():
             likeable=True,
             show_copy_button=True,
             render=False,
-            avatar_images=(("data/img/user_avatar.png"), "data/img/logo_round.webp"),
+            avatar_images=(("data/img/user_avatar.png"), "data/img/chatbot_avatar.png"),
         )
         # Define the chatbot interface
         gr.ChatInterface(
