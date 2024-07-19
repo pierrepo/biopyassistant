@@ -110,7 +110,7 @@ def respond(message: str, chat_history1: list, chat_history2: list) -> Tuple[str
             else:
                 chat_history2.append((message, final_answer))
 
-    return "", chat_history1, chat_history2
+    return "", chat_history1, chat_history2, chosen_models[0], chosen_models[1]
 
 
 def clear_chat() -> Tuple[str, list, list]:
@@ -135,7 +135,7 @@ def clear_chat() -> Tuple[str, list, list]:
 
     return fist_conv, fist_conv
 
-def get_vote(button_label: str):
+def get_vote(button_label: str, model_a: str, model_b: str):
     """Get the vote of the user.
 
     Parameters
@@ -147,15 +147,17 @@ def get_vote(button_label: str):
     model_b : str
         The name of the second model.
     """
-    model_a = "Model A"
-    model_b = "Model B"
-    if button_label == "👈  A est meilleur":
+    logger.info("Getting the vote of the user...")
+
+    if model_a == "" or model_b == "":
+        logger.warning("Ask a question before voting.")
+    elif button_label == "👈  A est meilleur":
         logger.info(f"Model {model_a} vs {model_b}: {model_a}")
     elif button_label == "🤝  Les 2 se valent":
         logger.info(f"Model {model_a} vs {model_b}: Tie")
-    elif button_label == "👉 B est meilleur  ":
+    elif button_label == "👉  B est meilleur":
         logger.info(f"Model {model_a} vs {model_b}: {model_b}")
-    elif button_label == "👎 Les 2 sont mauvais":
+    elif button_label == "👎  Les 2 sont mauvais":
         logger.info(f"Model {model_a} vs {model_b}: Both")
     else:
         logger.error("Invalid button label.")
@@ -188,6 +190,10 @@ def create_tab_battle():
                         avatar_images=(("data/img/user_avatar.png"), "data/img/chatbot_avatar.png"),
                     )
 
+            # Define model components
+            model_a = gr.Textbox(visible=False)
+            model_b = gr.Textbox(visible=False)
+
         # Define the vote buttons
         with gr.Row():
             leftvote_btn = gr.Button(value="👈  A est meilleur")
@@ -206,16 +212,15 @@ def create_tab_battle():
             # Define the clear button
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
-        msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1]])
+        msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
-        leftvote_btn.click(get_vote, inputs=[leftvote_btn])
-        tie_btn.click(get_vote, inputs=[tie_btn])
-        bothbad_btn.click(get_vote, inputs=[bothbad_btn])
-        rightvote_btn.click(get_vote, inputs=[rightvote_btn])
+        leftvote_btn.click(get_vote, inputs=[leftvote_btn, model_a, model_b])
+        tie_btn.click(get_vote, inputs=[tie_btn, model_a, model_b])
+        bothbad_btn.click(get_vote, inputs=[bothbad_btn, model_a, model_b])
+        rightvote_btn.click(get_vote, inputs=[rightvote_btn, model_a, model_b])
         clear_btn.click(clear_chat, outputs=[CHATBOTS[0], CHATBOTS[1]])
         
     return demo
-
 
 
 # MAIN PROGRAM
