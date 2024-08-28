@@ -1,6 +1,7 @@
 """Module for processing Markdown files.
 
-This module provides functions for processing Markdown files. It includes functionality to renumber headers and clean Python comments in Markdown content.
+This module provides functions for processing Markdown files. 
+It includes functionality to renumber headers and clean Python comments in Markdown content.
 
 Usage:
 ======
@@ -16,7 +17,8 @@ Example:
 ========
     python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
 
-This command will process Markdown files located in the 'data/markdown_raw' directory and save the processed files to the 'data/markdown_processed' directory.
+This command will process Markdown files located in the 'data/markdown_raw' directory
+and save the processed files to the 'data/markdown_processed' directory.
 """
 
 # METADATA
