@@ -49,7 +49,8 @@ conda activate biopyassistantenv
 ### Copy the raw Markdown files of the Python [course](https://github.com/bioinfo-prog/cours-python):
 
 ```bash
-git clone https://github.com/bioinfo-prog/cours-python.git
+git clone --depth 1 https://github.com/bioinfo-prog/cours-python.git
+rm -f data/markdown_raw/*.md
 cp cours-python/cours/*.md data/markdown_raw/
 rm -rf cours-python
 ```
