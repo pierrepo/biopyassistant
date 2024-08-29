@@ -58,6 +58,7 @@ rm -rf cours-python
 ### Process raw Markdown files
 
 ```bash
+rm -f data/markdown_processed/*.md
 python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
 ```
 
