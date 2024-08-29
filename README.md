@@ -96,7 +96,7 @@ python src/query_chatbot.py --query "Your question here" [--model "model_name"] 
 
 ### Options
 
-- 🤖 Model Selection: Choose between `gpt-4o`, `gpt-4-turbo`, `gpt-4` and `gpt-3.5-turbo`. Default: `gpt-3.5-turbo`.
+- 🤖 Model Selection. For instance: `gpt-4o`, `gpt-4-turbo`
 - 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
 
 Example:
@@ -134,7 +134,7 @@ streamlit run src/streamlit_app.py
 This will run the Streamlit app in your web browser.
 
 
-### Gradio App:
+### Gradio App
 
 
 ```bash
@@ -143,3 +143,8 @@ python src/gradio_app.py
 
 This will run the Gradio app in your web browser.
 
+A *battle* mode is also avalaible where the answer from 2 different models are compared.
+
+```bash
+python src/gradio_app_battle.py
+```
