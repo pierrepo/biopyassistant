@@ -16,6 +16,7 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
 import random
 from typing import Tuple
 
@@ -239,7 +240,7 @@ if __name__ == "__main__":
     if os.getenv("MISTRAL_API_KEY"):
         LLM_MODELS += MISTRAL_MODELS
     print(f"Available LLM models are: {LLM_MODELS}")
-    
+
     # Filter the warnings
     logger.add("file.log", level="INFO")
     
