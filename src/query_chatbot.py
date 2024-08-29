@@ -78,10 +78,6 @@ CSS = """
     bottom: 0;
     transform: scale(0.9);
 }
-.accordion {
-    color: red;
-    width: 100%;
-}
 """
 
 PROMPT_TEMPLATE = """
