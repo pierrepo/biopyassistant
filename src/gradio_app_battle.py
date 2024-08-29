@@ -36,12 +36,14 @@ from query_chatbot import (
     format_relevant_chunks,
     MSGS_QUERY_NOT_RELATED,
     CHROMA_PATH,
+    OPENAI_MODELS,
+    GROQ_MODELS,
+    MISTRAL_MODELS
 )
 
 
 # CONSTANTS
 VECTOR_DB = load_database(CHROMA_PATH)[0]
-LLM_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo", "llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it", "gemma2-9b-it", "open-mistral-7b", "open-mixtral-8x7b", "open-mixtral-8x22b", "mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"]
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
 
@@ -225,9 +227,19 @@ def create_tab_battle():
 
 # MAIN PROGRAM
 if __name__ == "__main__":
-    # Load the environment variables
+    # Load environment variables with LLM API keys
     load_dotenv()
 
+    # Load LLM models
+    LLM_MODELS = []
+    if os.getenv("OPENAI_API_KEY"):
+        LLM_MODELS += OPENAI_MODELS
+    if os.getenv("GROQ_API_KEY"):
+        LLM_MODELS += GROQ_MODELS
+    if os.getenv("MISTRAL_API_KEY"):
+        LLM_MODELS += MISTRAL_MODELS
+    print(f"Available LLM models are: {LLM_MODELS}")
+    
     # Filter the warnings
     logger.add("file.log", level="INFO")
     

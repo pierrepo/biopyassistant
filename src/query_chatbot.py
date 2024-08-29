@@ -39,6 +39,7 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
 import re
 import sys
 import random
@@ -60,39 +61,40 @@ from langchain_groq import ChatGroq
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
-DEFAULT_LLM_MODEL = "gpt-4o"
 PYTHON_LEVEL = "intermédiaire"
 EMBEDDING_MODEL = "text-embedding-3-large"
-MISTRAL_MODELS = ["open-mistral-7b", "open-mixtral-8x7b", "open-mixtral-8x22b", "mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"]
-GROQ_MODELS = ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it", "gemma2-9b-it", "whisper-large-v3"]
 OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
+GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
+MISTRAL_MODELS = ["mistral-large-latest", "open-mixtral-8x7b", "open-mixtral-8x22b"]
+DEFAULT_LLM_MODEL = OPENAI_MODELS[0]
+
 
 PROMPT_TEMPLATE = """
-Tu es un assistant pour les tâches de question-réponse des étudiants dans un cours de programmation Python.
-Tu dois fournir des réponses à leurs questions basées sur les supports de cours.
-Utilise les morceaux de contexte suivants pour répondre à la question. 
+Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
+Tu dois fournir des réponses à leurs questions basées sur les extraits de cours fournis dans le contexte.
+Utilise uniquement le contexte suivant pour répondre à la question. 
 La discussion précédente est également fournie pour t'aider à comprendre le contexte de la question, mais tu ne dois pas l'utiliser pour répondre à la question.
 
 Discussion précédente :
 {chat_history}
 
-Question : "{question}"
+Question :
+"{question}"
 
 Contexte : 
 "{contexte}"
 
 Répond à la question de manière claire et concise en français de manière adapté à un niveau {niveau_python} en programmation.
-La réponse doit être facile à comprendre pour les étudiants.
-Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
-Si tu as besoin de plus d'informations, tu dois le demander.
-Si tu as besoin de clarifier la question, tu dois le demander.
+La réponse doit être facile à comprendre pour des étudiants.
+Si tu ne connais pas la réponse, dis que tu ne sais pas.
+Si tu as besoin de plus d'informations, demande-le.
+Si tu as besoin de clarifier la question, demande-le aussi.
 """
 
 MSGS_QUERY_NOT_RELATED = [
     "Je suis désolé, je ne peux pas répondre à cette question. Mon domaine d'expertise est la programmation Python. N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider.",
-    "Désolé, je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions.",
+    "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. Je ne suis pas en mesure de répondre à des questions.",
     "Je suis désolé, je ne suis pas sûr de comprendre votre question. Pouvez-vous reformuler votre question en utilisant des termes plus simples ?",
-    "Je suis un assistant pour les tâches de question-réponse dans un cours de programmation Python. Je ne suis pas en mesure de répondre à des questions en dehors de ce domaine. Pouvez-vous poser une question liée à la programmation Python ?",
 ]
 
 
@@ -532,6 +534,19 @@ def interrogate_model() -> None:
     load_dotenv()
     # Load the query text from the command line arguments
     user_query, model_name, include_metadata = get_args()
+
+    # Check required model is available:
+    LLM_MODELS = []
+    if os.getenv("OPENAI_API_KEY"):
+        LLM_MODELS += OPENAI_MODELS
+    if os.getenv("GROQ_API_KEY"):
+        LLM_MODELS += GROQ_MODELS
+    if os.getenv("MISTRAL_API_KEY"):
+        LLM_MODELS += MISTRAL_MODELS
+    if model_name not in LLM_MODELS:
+        logger.error(f"Model {model_name} is not available.")
+        sys.exit(1)
+
 
     # CONTEXT RETRIEVAL
     # Load the vector database
