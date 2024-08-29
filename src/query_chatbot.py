@@ -68,6 +68,21 @@ GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
 MISTRAL_MODELS = ["mistral-large-latest", "open-mixtral-8x7b", "open-mixtral-8x22b"]
 DEFAULT_LLM_MODEL = OPENAI_MODELS[0]
 
+CSS = """
+#correct-answer
+    {background-color: #46772E}
+#wrong-answer
+    {background-color: #F28C00}
+#footer {
+    position: absolute;
+    bottom: 0;
+    transform: scale(0.9);
+}
+.accordion {
+    color: red;
+    width: 100%;
+}
+"""
 
 PROMPT_TEMPLATE = """
 Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
