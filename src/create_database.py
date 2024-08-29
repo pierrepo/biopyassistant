@@ -44,6 +44,7 @@ import shutil
 import argparse
 import unicodedata
 
+from dotenv import load_dotenv
 import tiktoken
 from loguru import logger
 from langchain_openai import OpenAIEmbeddings
@@ -535,6 +536,9 @@ def generate_data_store() -> None:
     """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
     # Get command-line arguments.
     data_path, chroma_path, chunk_size, chunk_overlap = get_args()
+
+    # Load the environment variables for LLM model tokens.
+    load_dotenv()
 
     # load documents from the specified directory
     documents = load_documents(data_path)
