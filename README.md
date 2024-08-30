@@ -1,78 +1,73 @@
 
 <h1 align="center">
-  <img style="vertical-align:middle; width:65%; position:fixed;"
+  <img style="vertical-align:middle; width:70%; position:fixed;"
   src="/data/img/banner.png">
 </h1>
-<p align="center">
-  <i>AI-powered conversational agent designed to assist biology students</i><br>
-  <i>in learning the Python programming language.</i>
+
+<p align="center" style="width: 500px;">
+  <i>AI-powered conversational agent designed to help biology students learn the Python programming language.
+  </i>
 </p>
 
 <p align="center">
-    <a href="https://github.com/pierrepo/biopyassistant/releases">
-        <img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Fgithub.com%2Fpierrepo%2Fbiopyassistant&up_message=click%20here%20!&color=%23539fc9">
-    </a>
-      <a href="https://www.python.org/">
-            <img alt="Build" src="https://img.shields.io/badge/Made%20with-Python-1f425f.svg?color=%23539fc9">
-    </a>
-    <a href="https://github.com/pierrepo/biopyassistant/blob/main/LICENSE">
-        <img alt="GitHub License" src="https://img.shields.io/github/license/pierrepo/biopyassistant?style=flat&color=%23539fc9&link=https%3A%2F%2Fgithub.com%2Fpierrepo%2Fbiopyassistant%2Fblob%2Fmain%2FLICENSE">
-    </a>
+    <img alt="Made with Python" src="https://img.shields.io/badge/Made%20with-Python-1f425f.svg?color=%23539fc9">
+    <img alt="BSD-3 Clause License" src="https://img.shields.io/github/license/pierrepo/biopyassistant?style=flat&color=%23539fc9&link=https%3A%2F%2Fgithub.com%2Fpierrepo%2Fbiopyassistant%2Fblob%2Fmain%2FLICENSE">
 </p>
 
-<h4 align="center">
-    <p>
-        <a href="#-installation">Installation</a> |
-        <a href="#-usage">Usage</a>
-    </p>
-</h4>
+## Introduction
+
+This conversationnal agent (chatbot) is designed to help biology students learn the Python programming language. It is based on the OpenAI models and provides answers to questions related to Python programming.
+
+The chatbot uses the Retrieval-Augmented Generation (RAG) methodology to build its responses from this [Python course](https://python.sdv.u-paris.fr/) (Markdown files available [here](https://github.com/bioinfo-prog/cours-python)).
 
 
-## Installation
+## Setup
 
-To install BioPyAssistant and its dependencies, run the following commands:
+To install BioPyAssistant and its dependencies, you need to perform the following steps:
 
-Clone the repository:
+### Clone the repository
 
 ```bash
 git clone https://github.com/pierrepo/biopyassistant.git
 cd biopyassistant
 ```
 
-Install Conda:
+### Install [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-To install Conda, follow the instructions provided in the official [Conda documentation](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
-
-Create a Conda environment:
+### Create a Conda environment
 
 ```bash
 conda env create -f environment.yml
 ```
 
-
-## Usage
-
-### Step 1: Activate the Conda Environment
-
-Activate the Conda environment by running:
+### Activate the Conda environment
 
 ```bash
 conda activate biopyassistantenv
 ```
 
-### Step 2: Process the course content
-
-Process the course content by running:
+### Copy the raw Markdown files of the Python [course](https://github.com/bioinfo-prog/cours-python):
 
 ```bash
+git clone --depth 1 https://github.com/bioinfo-prog/cours-python.git
+rm -f data/markdown_raw/*.md
+cp cours-python/cours/*.md data/markdown_raw/
+rm -rf cours-python
+```
+
+### Process raw Markdown files
+
+```bash
+rm -f data/markdown_processed/*.md
 python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
 ```
 
-This command will process Markdown files located in the `data/markdown_raw` directory and save the processed files to the `data/markdown_processed` directory.
+In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/markdown_processed`
 
-### Step 3: Set up OpenAI API key
 
-Create a `.env` file with a valid OpenAI API key:
+### Add OpenAI API key
+
+Create an `.env` file with a valid OpenAI API key:
 
 ```text
 OPENAI_API_KEY=<your-openai-api-key>
@@ -80,44 +75,28 @@ OPENAI_API_KEY=<your-openai-api-key>
 
 > Remark: This `.env` file is ignored by git.
 
-### Step 4: Create the Vector Database
 
-Create the Vector database by running:
+### Create the vector database
 
-```bash
-python src/create_database.py --data-path [data-path] --chroma-path [chroma-path] --chunk-size [chunk-size] --chunk-overlap [chunk-overlap] 
-```
-Where :
-- `[data-path]` (mandatory): Directory containing processed Markdown files.
-- `[chroma-path]` (mandatory): Output path to save the vectorial ChromaDB database.
-- `[chunk-size]` (optional): Size of text chunks to create. Default: 1000.
-- `[chunk-overlap]` (optional): Overlap between text chunks. Default: 200.
-
-Example:
-  
 ```bash
 python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
 ```
-This command will create a vectorial Chroma database from the processed Markdown files located in the `data/markdown_processed` directory. The text will be split into chunks of 1000 characters with an overlap of 200 characters. And finally the vectorial Chroma database will be saved to the `chroma_db` directory.
 
-> Remark: The vector database will be saved on the disk.
+This command will create a Chroma vector database from the processed Markdown files. All files will be split into chunks of 1000 characters with an overlap of 200 characters. 
 
-
-### Step 5: Query the chatbot.
-
-You can query the chatbot using either the command line or the graphical interface:
+> Remark: The vector database is saved on disk.
 
 
-#### **Command Line**
+## Usage (command line interface)
+
 
 ```bash
 python src/query_chatbot.py --query "Your question here" [--model "model_name"]  [--include-metadata]
 ```
 
-#### Customization options:
+### Options
 
-- 🤖 Model Selection: Choose between `gpt-4o`, `gpt-4-turbo`, `gpt-4` and `gpt-3.5-turbo` to suit your needs and preferences. Default: `gpt-3.5-turbo`.
-
+- 🤖 Model Selection. For instance: `gpt-4o`, `gpt-4-turbo`
 - 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
 
 Example:
@@ -143,25 +122,29 @@ For more information, you can refer to the following sources:
 ```
 
 
-#### **Graphical Interface** :
+## Usage (web interface)
 
-##### Streamlit App:
+### Streamlit app
 
-Run the following command:
 
 ```bash
 streamlit run src/streamlit_app.py
 ```
 
-This will launch the Streamlit app in your browser, where you can start interacting with the RAG model.
+This will run the Streamlit app in your web browser.
 
-##### Gradio App:
 
-Run the following command:
+### Gradio App
+
 
 ```bash
 python src/gradio_app.py
 ```
 
-This will launch the Gradio app in your browser, where you can start interacting with the RAG model.
+This will run the Gradio app in your web browser.
 
+A *battle* mode is also avalaible where the answer from 2 different models are compared.
+
+```bash
+python src/gradio_app_battle.py
+```

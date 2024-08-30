@@ -23,9 +23,9 @@ Example:
 ========
     python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
 
-This command will create a vectorial Chroma database from the processed Markdown files located in the `data/markdown_processed` directory.
+This command will create a Chroma vector database from the processed Markdown files located in the `data/markdown_processed` directory.
 The text will be split into chunks of 1000 characters with an overlap of 200 characters.
-And finally the vectorial Chroma database will be saved to the `chroma_db` directory.
+And finally the vector database will be saved to the `chroma_db` directory.
 """
 
 # METADATA
@@ -44,6 +44,7 @@ import shutil
 import argparse
 import unicodedata
 
+from dotenv import load_dotenv
 import tiktoken
 from loguru import logger
 from langchain_openai import OpenAIEmbeddings
@@ -153,14 +154,14 @@ def load_documents(data_dir: str) -> list[Document]:
     documents : list of Document
         List of Markdown documents.
     """
-    # Load Markdown documents from the specified directory
+    # Load Markdown documents from the specified directory.
     logger.info("Loading Markdown documents...")
     loader = DirectoryLoader(
         data_dir, glob="*.md", show_progress=True, loader_cls=TextLoader
     )
     documents = loader.load()
 
-    # order the documents by source
+    # Order the documents by source.
     documents = sorted(documents, key=lambda x: x.metadata.get("source", ""))
 
     logger.success("Markdown document loading complete.\n")
@@ -533,8 +534,11 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
 
 def generate_data_store() -> None:
     """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
-    # get command-line arguments
+    # Get command-line arguments.
     data_path, chroma_path, chunk_size, chunk_overlap = get_args()
+
+    # Load the environment variables for LLM model tokens.
+    load_dotenv()
 
     # load documents from the specified directory
     documents = load_documents(data_path)

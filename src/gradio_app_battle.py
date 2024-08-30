@@ -16,6 +16,7 @@ __version__ = "1.0.0"
 
 
 # LIBRARY IMPORTS
+import os
 import random
 from typing import Tuple
 
@@ -36,12 +37,15 @@ from query_chatbot import (
     format_relevant_chunks,
     MSGS_QUERY_NOT_RELATED,
     CHROMA_PATH,
+    OPENAI_MODELS,
+    GROQ_MODELS,
+    MISTRAL_MODELS,
+    CSS
 )
 
 
 # CONSTANTS
 VECTOR_DB = load_database(CHROMA_PATH)[0]
-LLM_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo", "llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma-7b-it", "gemma2-9b-it", "open-mistral-7b", "open-mixtral-8x7b", "open-mixtral-8x22b", "mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"]
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
 
@@ -130,10 +134,9 @@ def clear_chat() -> Tuple[str, list, list]:
         the updated chat history for the second model.        
     """
     logger.info("Clearing the chat history...")
-
     fist_conv = [["Hey, j'ai besoin d'aide en Python !","Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]]
-
     return fist_conv, fist_conv
+
 
 def get_vote(button_label: str, model_a: str, model_b: str):
     """Get the vote of the user.
@@ -167,7 +170,8 @@ def create_tab_battle():
     """Create the interface to discuss with the course in a battle mode."""
     with gr.Blocks(
     theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
-    title="BioPyAssistant"
+    title="BioPyAssistant",
+    css=CSS, fill_height=True
     ) as demo:
         # Define Chatbots
         with gr.Row():
@@ -196,10 +200,10 @@ def create_tab_battle():
 
         # Define the vote buttons
         with gr.Row():
-            leftvote_btn = gr.Button(value="👈  A est meilleur")
-            tie_btn = gr.Button(value="🤝  Les 2 se valent")
-            bothbad_btn = gr.Button(value="👎  Les 2 sont mauvais")
-            rightvote_btn = gr.Button(value="👉  B est meilleur")
+            leftvote_btn = gr.Button(value="⬅️ La réponse A est meilleure")
+            tie_btn = gr.Button(value="🟰 Les deux réponses se valent")
+            bothbad_btn = gr.Button(value="👎  Les deux réponses sont mauvaises")
+            rightvote_btn = gr.Button(value="➡️ La réponse B est meilleure")
 
         # Define the query textbox
         with gr.Row():            
@@ -212,6 +216,20 @@ def create_tab_battle():
             # Define the clear button
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
+        # Add footer
+        with gr.Row(elem_id="footer", equal_height=False):
+            with gr.Column(scale=1):
+                gr.HTML("<img src='https://u-paris.fr/wp-content/uploads/2022/03/Universite_Paris-Cite-logo.jpeg' width='200px'>")
+            with gr.Column(scale=3):
+                gr.Markdown("""
+                [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
+                Cette application web n'utilise pas de cookie.
+                Les résultats des votes sont collectés anonymement à des fins de recherche.
+                
+                BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
+                Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
+                """)
+
         msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
         leftvote_btn.click(get_vote, inputs=[leftvote_btn, model_a, model_b])
@@ -225,8 +243,18 @@ def create_tab_battle():
 
 # MAIN PROGRAM
 if __name__ == "__main__":
-    # Load the environment variables
+    # Load environment variables with LLM API keys
     load_dotenv()
+
+    # Load LLM models
+    LLM_MODELS = []
+    if os.getenv("OPENAI_API_KEY"):
+        LLM_MODELS += OPENAI_MODELS
+    if os.getenv("GROQ_API_KEY"):
+        LLM_MODELS += GROQ_MODELS
+    if os.getenv("MISTRAL_API_KEY"):
+        LLM_MODELS += MISTRAL_MODELS
+    print(f"Available LLM models are: {LLM_MODELS}")
 
     # Filter the warnings
     logger.add("file.log", level="INFO")

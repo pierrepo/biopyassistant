@@ -3,7 +3,8 @@
 
 # vector database
 chroma_*
-chroma
+
+tmp/
 .DS_Store.env
 
 # course content
