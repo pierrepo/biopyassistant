@@ -29,14 +29,25 @@ from gradio_app_battle import create_tab_battle
 
 # CONSTANTS
 FLAVICON_RELATIVE_PATH = "data/img/logo_round.ico"
-
+CSS = """
+#correct-answer
+    {background-color: #46772E}
+#wrong-answer
+    {background-color: #F28C00}
+#footer {
+    position: absolute;
+    bottom: 0;
+    transform: scale(0.9);
+}
+"""
 
 # FUNCTIONS
 def create_interface():
     """Create the Gradio interface."""
     with gr.Blocks(
         theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
-        title="BioPyAssistant"
+        title="BioPyAssistant",
+        css=CSS, fill_height=True
     ) as demo:
         # Add a title
         gr.HTML(
@@ -54,7 +65,20 @@ def create_interface():
         # Add a section for asking a qcm about a specific chapter
         with gr.Tab("Se tester"):
             create_tab_quiz()
-
+        
+        # Add footer.
+        with gr.Row(elem_id="footer", equal_height=False):
+            with gr.Column(scale=1):
+                gr.HTML("<img src='https://u-paris.fr/wp-content/uploads/2022/03/Universite_Paris-Cite-logo.jpeg' width='200px'>")
+            with gr.Column(scale=3):
+                gr.Markdown("""
+                [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
+                Cette application web n'utilise pas de cookie.
+                Les résultats des votes sont collectés anonymement à des fins de recherche.
+                
+                BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
+                Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
+                """)
     return demo
 
 

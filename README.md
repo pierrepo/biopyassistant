@@ -141,10 +141,5 @@ This will run the Streamlit app in your web browser.
 python src/gradio_app.py
 ```
 
-This will run the Gradio app in your web browser.
+This will run the Gradio app in your web browser. A battle mode is available to compare the responses of different models.
 
-A *battle* mode is also avalaible where the answer from 2 different models are compared.
-
-```bash
-python src/gradio_app_battle.py
-```

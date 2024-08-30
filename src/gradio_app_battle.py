@@ -40,7 +40,6 @@ from query_chatbot import (
     OPENAI_MODELS,
     GROQ_MODELS,
     MISTRAL_MODELS,
-    CSS
 )
 
 
@@ -170,13 +169,12 @@ def create_tab_battle():
     """Create the interface to discuss with the course in a battle mode."""
     with gr.Blocks(
     theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
-    title="BioPyAssistant",
-    css=CSS, fill_height=True
+    title="BioPyAssistant"
     ) as demo:
         # Define Chatbots
         with gr.Row():
             for i in range(NUM_MODELS):
-                label = "Model A" if i == 0 else "Model B"
+                label = "Modèle A" if i == 0 else "Modèle B"
                 with gr.Column():
                     CHATBOTS[i] = gr.Chatbot(
                         label=label,
@@ -216,20 +214,6 @@ def create_tab_battle():
             # Define the clear button
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
-        # Add footer
-        with gr.Row(elem_id="footer", equal_height=False):
-            with gr.Column(scale=1):
-                gr.HTML("<img src='https://u-paris.fr/wp-content/uploads/2022/03/Universite_Paris-Cite-logo.jpeg' width='200px'>")
-            with gr.Column(scale=3):
-                gr.Markdown("""
-                [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
-                Cette application web n'utilise pas de cookie.
-                Les résultats des votes sont collectés anonymement à des fins de recherche.
-                
-                BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
-                Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
-                """)
-
         msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
         leftvote_btn.click(get_vote, inputs=[leftvote_btn, model_a, model_b])
