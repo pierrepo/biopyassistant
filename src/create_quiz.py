@@ -249,7 +249,7 @@ def create_quiz_json(chapter: str, quiz_type: str, level_python: str, chapter_co
     
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
-    logger.info(f"Filled prompt: {filled_prompt}")
+    logger.info(f"Filled prompt: {filled_prompt[:100]}...")
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
     logger.info(f"Number of tokens in the prompt: {nb_tokens_prompt}\n")
     
