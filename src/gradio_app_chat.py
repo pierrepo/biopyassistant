@@ -152,7 +152,7 @@ def create_tab_chatbot():
         bot = gr.Chatbot(
             value=[
                 [
-                    "Hey, j'ai besoin d'aide en Python !",
+                    None,
                     "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?",
                 ]
             ],

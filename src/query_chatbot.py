@@ -274,7 +274,10 @@ def format_chat_history(
     if len(chat_history) > 0:
         for human, ai in chat_history[-len_history:]:
             # Append the human and AI messages to the formatted history
-            formatted_history.append(HumanMessage(content=human))
+            if human != None:
+                formatted_history.append(HumanMessage(content=human))
+            else:
+                formatted_history.append(HumanMessage(content=""))
             logger.info(f"Human message: {human}")
 
             # Remove metadata from AI message
