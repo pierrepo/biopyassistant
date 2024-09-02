@@ -1,4 +1,9 @@
-"""Gradio app to discuss with the course and test your knowledge with a quiz.
+"""Gradio application of BioPyAssistant.
+
+It allows users to interact with the course in different ways, such as:
+- Asking questions to the chatbot.
+- Asking questions to the chatbot in a battle mode.
+- Answering quizzes about the course.
 
 Usage:
 ======

@@ -1,6 +1,8 @@
-"""Gradio application to discuss with the course in a battle mode.
+"""This script creates a Gradio tab that allows users to discuss with the course in a battle mode.
 
-The user will ask a question and it will be answered by 2 random different models. The user will have to choose wich answer is the best. 
+Features:
+- Users will ask a question and it will be answered by 2 random different models.
+- Users will have to choose wich answer is the best. 
 
 Usage:
 ======

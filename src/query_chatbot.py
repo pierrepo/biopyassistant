@@ -2,7 +2,7 @@
 
 This program allows users to search for answers in a textual database based on a given query text. 
 It utilizes a similarity search algorithm to find relevant documents in the database and generates 
-responses to the query using an OpenAI model.
+responses to the query using an LLM and the retrieved documents as context.
 
 Usage:
 ======

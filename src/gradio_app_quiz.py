@@ -1,4 +1,11 @@
-""" Gradio application to generate a quiz.
+""" This script creates a Gradio tab that allows users to take a quiz by selecting various options.
+
+Features:
+- Users can choose a chapter from which to take the quiz.
+- Users can select the type of questions: Multiple Choice Questions (MCQ) or True/False.
+- Users can specify the difficulty level of the questions.
+
+The questions for the quiz are retrieved from a JSON file named 'quiz.json' located in the 'data' folder.
 
 Usage:
 ======

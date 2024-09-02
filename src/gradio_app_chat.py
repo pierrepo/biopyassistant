@@ -1,4 +1,9 @@
-"""Gradio application to discuss with the course.
+"""This script creates a Gradio tab that allows users to discuss with the course. 
+
+Features:
+- Users can ask questions to the chatbot.
+- Users can erase the chat history and start a new conversation.
+- Users can erase and rephrase the last question.
 
 Usage:
 ======
