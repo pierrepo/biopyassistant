@@ -153,13 +153,13 @@ def get_vote(button_label: str, model_a: str, model_b: str):
 
     if model_a == "" or model_b == "":
         logger.warning("Ask a question before voting.")
-    elif button_label == "👈  A est meilleur":
+    elif button_label == "➡️ La réponse A est meilleure":
         logger.info(f"Model {model_a} vs {model_b}: {model_a}")
-    elif button_label == "🤝  Les 2 se valent":
+    elif button_label == "🟰 Les deux réponses se valent":
         logger.info(f"Model {model_a} vs {model_b}: Tie")
-    elif button_label == "👉  B est meilleur":
+    elif button_label == "➡️ La réponse B est meilleure":
         logger.info(f"Model {model_a} vs {model_b}: {model_b}")
-    elif button_label == "👎  Les 2 sont mauvais":
+    elif button_label == "👎  Les deux réponses sont mauvaises":
         logger.info(f"Model {model_a} vs {model_b}: Both")
     else:
         logger.error("Invalid button label.")
@@ -215,7 +215,7 @@ def create_tab_battle():
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
         # Define the question example
-        
+
         
         msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
