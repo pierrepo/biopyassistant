@@ -133,7 +133,7 @@ def clear_chat() -> Tuple[str, list, list]:
         the updated chat history for the second model.        
     """
     logger.info("Clearing the chat history...")
-    fist_conv = [["Hey, j'ai besoin d'aide en Python !","Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]]
+    fist_conv = [[None,"Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]]
     return fist_conv, fist_conv
 
 
@@ -181,7 +181,7 @@ def create_tab_battle():
                         elem_id="chatbot",
                         value=[
                             [
-                                "Hey, j'ai besoin d'aide en Python !",
+                                None,
                                 "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?",
                             ]
                         ],
@@ -213,6 +213,9 @@ def create_tab_battle():
             )
             # Define the clear button
             clear_btn = gr.ClearButton(value="Effacer l'historique")
+        
+        # Define the question example
+        
         
         msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
