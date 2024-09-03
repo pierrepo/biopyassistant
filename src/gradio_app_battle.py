@@ -47,6 +47,11 @@ from query_chatbot import (
 VECTOR_DB = load_database(CHROMA_PATH)[0]
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
+QUERY_EXAMPLES = [
+    ["Quelle est la différence entre une liste et un set ?"],
+    ["Comment faire une boucle en Python ?"],
+    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
+]
 
 
 # FUNCTIONS
@@ -153,7 +158,7 @@ def get_vote(button_label: str, model_a: str, model_b: str):
 
     if model_a == "" or model_b == "":
         logger.warning("Ask a question before voting.")
-    elif button_label == "➡️ La réponse A est meilleure":
+    elif button_label == "⬅️ La réponse A est meilleure":
         logger.info(f"Model {model_a} vs {model_b}: {model_a}")
     elif button_label == "🟰 Les deux réponses se valent":
         logger.info(f"Model {model_a} vs {model_b}: Tie")
@@ -215,7 +220,8 @@ def create_tab_battle():
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
         # Define the question example
-
+        with gr.Row():
+            gr.Examples(examples=QUERY_EXAMPLES, inputs=msg, label="Exemples de questions")
         
         msg.submit(respond, inputs=[msg, CHATBOTS[0], CHATBOTS[1]], outputs=[msg, CHATBOTS[0], CHATBOTS[1], model_a, model_b])
     
