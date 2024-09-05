@@ -35,6 +35,7 @@ from query_chatbot import (
     generate_answer,
     add_metadata_to_answer,
     format_relevant_chunks,
+    QUERY_EXAMPLES,
     MSGS_QUERY_NOT_RELATED,
     OPENAI_MODEL_NAME,
     CHROMA_PATH,
@@ -42,11 +43,6 @@ from query_chatbot import (
 
 
 # CONSTANTS
-QUERY_EXAMPLES = [
-    ["Quelle est la différence entre une liste et un set ?"],
-    ["Comment faire une boucle en Python ?"],
-    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
-]
 VECTOR_DB = load_database(CHROMA_PATH)[0]
 
 

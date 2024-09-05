@@ -64,7 +64,7 @@ def create_interface():
             create_tab_chatbot()
 
         # Add a section for asking a question to the chatbot about the course but in a battle mode
-        with gr.Tab("Discuter avec le cours (Battle)"):
+        with gr.Tab("Discuter avec le cours (battle)"):
             create_tab_battle()
 
         # Add a section for asking a qcm about a specific chapter

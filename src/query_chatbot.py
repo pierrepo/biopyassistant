@@ -91,6 +91,12 @@ Si tu as besoin de plus d'informations, demande-le.
 Si tu as besoin de clarifier la question, demande-le aussi.
 """
 
+QUERY_EXAMPLES = [
+    ["Quelle est la différence entre une liste et un set ?"],
+    ["Comment faire une boucle en Python ?"],
+    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
+]
+
 MSGS_QUERY_NOT_RELATED = [
     "Je suis désolé, je ne peux pas répondre à cette question. Mon domaine d'expertise est la programmation Python. N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider.",
     "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. Je ne suis pas en mesure de répondre à des questions.",

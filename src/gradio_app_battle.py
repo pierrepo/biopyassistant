@@ -37,6 +37,7 @@ from query_chatbot import (
     generate_answer,
     add_metadata_to_answer,
     format_relevant_chunks,
+    QUERY_EXAMPLES,
     MSGS_QUERY_NOT_RELATED,
     CHROMA_PATH,
     get_available_llm_models,
@@ -48,11 +49,7 @@ VECTOR_DB = load_database(CHROMA_PATH)[0]
 LLM_MODELS = get_available_llm_models()
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
-QUERY_EXAMPLES = [
-    ["Quelle est la différence entre une liste et un set ?"],
-    ["Comment faire une boucle en Python ?"],
-    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
-]
+
 
 
 # FUNCTIONS
