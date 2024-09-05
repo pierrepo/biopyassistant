@@ -144,6 +144,23 @@ def get_args() -> Tuple[str, str, bool]:
 
     return args.query, args.model, args.include_metadata
 
+def get_available_llm_models() -> List[str]:
+    """List LLM models based on API keys found in the environment variables.
+    
+    Returns
+    -------
+    List[str]
+        List of available LLM models.
+    """
+    llm_models = []
+    if os.getenv("OPENAI_API_KEY"):
+        llm_models += OPENAI_MODELS
+    if os.getenv("GROQ_API_KEY"):
+        llm_models += GROQ_MODELS
+    if os.getenv("MISTRAL_API_KEY"):
+        llm_models += MISTRAL_MODELS
+    return llm_models
+
 
 def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     """Prepare the vector database.
@@ -539,13 +556,7 @@ def interrogate_model() -> None:
     user_query, model_name, include_metadata = get_args()
 
     # Check required model is available:
-    LLM_MODELS = []
-    if os.getenv("OPENAI_API_KEY"):
-        LLM_MODELS += OPENAI_MODELS
-    if os.getenv("GROQ_API_KEY"):
-        LLM_MODELS += GROQ_MODELS
-    if os.getenv("MISTRAL_API_KEY"):
-        LLM_MODELS += MISTRAL_MODELS
+    LLM_MODELS = get_available_llm_models
     if model_name not in LLM_MODELS:
         logger.error(f"Model {model_name} is not available.")
         sys.exit(1)

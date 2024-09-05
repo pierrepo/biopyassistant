@@ -39,14 +39,13 @@ from query_chatbot import (
     format_relevant_chunks,
     MSGS_QUERY_NOT_RELATED,
     CHROMA_PATH,
-    OPENAI_MODELS,
-    GROQ_MODELS,
-    MISTRAL_MODELS,
+    get_available_llm_models,
 )
 
 
 # CONSTANTS
 VECTOR_DB = load_database(CHROMA_PATH)[0]
+LLM_MODELS = get_available_llm_models()
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
 QUERY_EXAMPLES = [
