@@ -44,6 +44,12 @@ CSS = """
     bottom: 0;
     transform: scale(0.9);
 }
+/* Do not display footer for small screens */
+@media only screen and (max-width: 800px) { 
+  #footer { 
+    display: none; 
+  } 
+}
 """
 
 # FUNCTIONS

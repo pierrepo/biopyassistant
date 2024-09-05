@@ -46,6 +46,7 @@ from query_chatbot import (
 
 # CONSTANTS
 VECTOR_DB = load_database(CHROMA_PATH)[0]
+# Load LLM models
 LLM_MODELS = get_available_llm_models()
 NUM_MODELS = 2
 CHATBOTS = [None] * NUM_MODELS
@@ -53,7 +54,7 @@ CHATBOTS = [None] * NUM_MODELS
 
 
 # FUNCTIONS
-def respond(message: str, chat_history1: list, chat_history2: list) -> Tuple[str, list, list]:
+def respond(message: str, chat_history1: list, chat_history2: list) -> Tuple[str, list, list, str, str]:
     """Respond to the user question.
 
     Parameters
@@ -185,7 +186,7 @@ def create_tab_battle():
                         value=[
                             [
                                 None,
-                                "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?",
+                                "Bonjour, je suis BioPyAssistant, un assistant pour répondre à tes questions sur le cours de Python. Comment puis-je t'aider ?",
                             ]
                         ],
                         bubble_full_width=False,
@@ -201,10 +202,10 @@ def create_tab_battle():
 
         # Define the vote buttons
         with gr.Row():
-            leftvote_btn = gr.Button(value="⬅️ La réponse A est meilleure")
-            tie_btn = gr.Button(value="🟰 Les deux réponses se valent")
-            bothbad_btn = gr.Button(value="👎  Les deux réponses sont mauvaises")
-            rightvote_btn = gr.Button(value="➡️ La réponse B est meilleure")
+            leftvote_btn = gr.Button(value="⬅️ La réponse A est meilleure", size="sm")
+            tie_btn = gr.Button(value="🟰 Les deux réponses se valent", size="sm")
+            bothbad_btn = gr.Button(value="👎  Les deux réponses sont mauvaises", size="sm")
+            rightvote_btn = gr.Button(value="➡️ La réponse B est meilleure", size="sm")
 
         # Define the query textbox
         with gr.Row():            
@@ -217,7 +218,7 @@ def create_tab_battle():
             # Define the clear button
             clear_btn = gr.ClearButton(value="Effacer l'historique")
         
-        # Define the question example
+        # Define question examples
         with gr.Row():
             gr.Examples(examples=QUERY_EXAMPLES, inputs=msg, label="Exemples de questions")
         
@@ -236,16 +237,6 @@ def create_tab_battle():
 if __name__ == "__main__":
     # Load environment variables with LLM API keys
     load_dotenv()
-
-    # Load LLM models
-    LLM_MODELS = []
-    if os.getenv("OPENAI_API_KEY"):
-        LLM_MODELS += OPENAI_MODELS
-    if os.getenv("GROQ_API_KEY"):
-        LLM_MODELS += GROQ_MODELS
-    if os.getenv("MISTRAL_API_KEY"):
-        LLM_MODELS += MISTRAL_MODELS
-    print(f"Available LLM models are: {LLM_MODELS}")
 
     # Filter the warnings
     logger.add("file.log", level="INFO")

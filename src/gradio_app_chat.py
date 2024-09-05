@@ -137,24 +137,17 @@ def create_tab_chatbot():
     ) as discuss_course_tab:
         # Define the query textbox
         msg = gr.Textbox(
-            placeholder="Pose moi une question sur le cours !",
+            placeholder="Pose-moi une question sur le cours !",
             render=False,
             show_label=False,
             min_width=200,
-        )
-        # Define the button for python level
-        python_level = gr.Radio(
-            ["débutant", "intermédiaire", "avancé"],
-            label="Choisis ton niveau en Python:",
-            value="intermédiaire",
-            render=False,
         )
         # Define the chatbot
         bot = gr.Chatbot(
             value=[
                 [
                     None,
-                    "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?",
+                    "Bonjour, je suis BioPyAssistant, un assistant pour répondre à tes questions sur le cours de Python. Comment puis-je t'aider ?",
                 ]
             ],
             bubble_full_width=False,
@@ -176,9 +169,6 @@ def create_tab_chatbot():
             undo_btn="↩️ Annuler la dernière question",
             clear_btn="🗑️ Supprimer la conversation",
         )
-
-        # Display the python level selected
-        python_level.select(get_user_input)
 
         # Adding a like/dislike feature
         bot.like(vote)

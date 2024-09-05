@@ -61,7 +61,6 @@ from langchain_groq import ChatGroq
 
 # CONSTANTS
 CHROMA_PATH = "chroma_db"
-PYTHON_LEVEL = "intermédiaire"
 EMBEDDING_MODEL = "text-embedding-3-large"
 OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
 GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
@@ -73,7 +72,8 @@ PROMPT_TEMPLATE = """
 Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
 Tu dois fournir des réponses à leurs questions basées sur les extraits de cours fournis dans le contexte.
 Utilise uniquement le contexte suivant pour répondre à la question. 
-La discussion précédente est également fournie pour t'aider à comprendre le contexte de la question, mais tu ne dois pas l'utiliser pour répondre à la question.
+La discussion précédente est également fournie pour t'aider à comprendre le contexte de la question,
+mais tu ne dois pas l'utiliser pour répondre à la question.
 
 Discussion précédente :
 {chat_history}
@@ -84,8 +84,8 @@ Question :
 Contexte : 
 "{contexte}"
 
-Répond à la question de manière claire et concise en français de manière adapté à un niveau {niveau_python} en programmation.
-La réponse doit être facile à comprendre pour des étudiants.
+Répond à la question posée de façon claire et concise en français.
+La réponse doit être compréhensible pour des étudiants débutants en programmation Python.
 Si tu ne connais pas la réponse, dis que tu ne sais pas.
 Si tu as besoin de plus d'informations, demande-le.
 Si tu as besoin de clarifier la question, demande-le aussi.
@@ -98,9 +98,13 @@ QUERY_EXAMPLES = [
 ]
 
 MSGS_QUERY_NOT_RELATED = [
-    "Je suis désolé, je ne peux pas répondre à cette question. Mon domaine d'expertise est la programmation Python. N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider.",
-    "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. Je ne suis pas en mesure de répondre à des questions.",
-    "Je suis désolé, je ne suis pas sûr de comprendre votre question. Pouvez-vous reformuler votre question en utilisant des termes plus simples ?",
+    ("Je suis désolé, je ne peux pas répondre à cette question. "
+     "Mon domaine d'expertise est la programmation Python. "
+     "N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider."),
+    ("Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
+     "Je ne suis pas en mesure de répondre à cette question."),
+    ("Je suis désolé, je ne suis pas sûr de comprendre votre question. "
+     "Pouvez-vous la reformuler en utilisant des termes plus simples ?"),
 ]
 
 
@@ -429,7 +433,6 @@ def generate_answer(
     # Input data for the prompt
     input_data = {
         "contexte": relevant_chunks,
-        "niveau_python": PYTHON_LEVEL,
         "question": query,
         "chat_history": chat_context,
     }
