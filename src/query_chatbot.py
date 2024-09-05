@@ -92,9 +92,9 @@ Si tu as besoin de clarifier la question, demande-le aussi.
 """
 
 QUERY_EXAMPLES = [
-    ["Quelle est la différence entre une liste et un set ?"],
-    ["Comment faire une boucle en Python ?"],
-    ["Comment afficher un float avec 2 chiffres avec la virgule ?"],
+    "Quelle est la différence entre une liste et un set ?",
+    "Comment faire une boucle en Python ?",
+    "Comment afficher un float avec 2 chiffres avec la virgule ?"
 ]
 
 MSGS_QUERY_NOT_RELATED = [
