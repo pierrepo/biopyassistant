@@ -41,7 +41,6 @@ from query_chatbot import (
     CHROMA_PATH,
 )
 
-
 # CONSTANTS
 VECTOR_DB = load_database(CHROMA_PATH)[0]
 

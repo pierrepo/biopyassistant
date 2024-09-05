@@ -44,60 +44,64 @@ CSS = """
     bottom: 0;
     transform: scale(0.9);
 }
-/* Do not display footer for small screens */
-@media only screen and (max-width: 800px) { 
-  #footer { 
-    display: none; 
+
+/* Footer becomes relative for small screens */
+@media only screen and (max-width: 800px) {
+  #footer {
+    /* display: none; */
+    position: relative;
+  } 
+}
+
+@media only screen and (max-height: 1000px) {
+  #footer {
+    /* display: none; */
+    position: relative;
   } 
 }
 """
 
-# FUNCTIONS
-def create_interface():
-    """Create the Gradio interface."""
-    with gr.Blocks(
-        theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
-        title="BioPyAssistant",
-        css=CSS, fill_height=True
-    ) as demo:
-        # Add a title
-        gr.HTML(
-            """<h1 style="font-size: 3em;"><center> 🐍 BioPyAssistant 🐍 </center></h1>"""
-        )
 
-        # Add a section for asking a question to the chatbot about the course
-        with gr.Tab("Discuter avec le cours"):
-            create_tab_chatbot()
+# Create the Gradio interface
+with gr.Blocks(
+    theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
+    title="BioPyAssistant",
+    css=CSS, fill_height=True
+) as demo:
+    # Add a title
+    gr.HTML(
+        """<h1 style="font-size: 3em;"><center> 🐍 BioPyAssistant 🐍 </center></h1>"""
+    )
 
-        # Add a section for asking a question to the chatbot about the course but in a battle mode
-        with gr.Tab("Discuter avec le cours (battle)"):
-            create_tab_battle()
+    # Add a section for asking a question to the chatbot about the course
+    with gr.Tab("Discuter avec le cours"):
+        create_tab_chatbot()
 
-        # Add a section for asking a qcm about a specific chapter
-        with gr.Tab("Se tester"):
-            create_tab_quiz()
-        
-        # Add footer.
-        with gr.Row(elem_id="footer", equal_height=False):
-            with gr.Column(scale=1):
-                gr.HTML("<img src='https://u-paris.fr/wp-content/uploads/2022/03/Universite_Paris-Cite-logo.jpeg' width='200px'>")
-            with gr.Column(scale=3):
-                gr.Markdown("""
-                [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
-                Cette application web n'utilise pas de cookie.
-                Les résultats des votes sont collectés anonymement à des fins de recherche.
-                
-                BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
-                Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
-                """)
-    return demo
+    # Add a section for asking a question to the chatbot about the course but in a battle mode
+    with gr.Tab("Discuter avec le cours (battle)"):
+        create_tab_battle()
+
+    # Add a section for asking a qcm about a specific chapter
+    with gr.Tab("Se tester"):
+        create_tab_quiz()
+    
+    # Add footer.
+    with gr.Row(elem_id="footer", equal_height=False):
+        with gr.Column(scale=1):
+            gr.HTML("<img src='https://u-paris.fr/wp-content/uploads/2022/03/Universite_Paris-Cite-logo.jpeg' width='200px'>")
+        with gr.Column(scale=3):
+            gr.Markdown("""
+            [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
+            Cette application web n'utilise pas de cookie.
+            Les résultats des votes sont collectés anonymement à des fins de recherche.
+            
+            BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
+            Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
+            """)
 
 
 # MAIN PROGRAM
 if __name__ == "__main__": 
-    # Create the the Gradio interface
-    demo = create_interface()
-
     # Get the favicon path
     FLAVICON_PATH = os.path.abspath(FLAVICON_RELATIVE_PATH)
     logger.info(f"Flavicon path: {FLAVICON_PATH}")

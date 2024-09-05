@@ -202,7 +202,7 @@ def create_tab_battle():
 
         # Define the vote buttons
         with gr.Row():
-            leftvote_btn = gr.Button(value="⬅️ La réponse A est meilleure", size="sm")
+            leftvote_btn = gr.Button(value="⬅️ La réponse A est meilleure", size="sm", elem_classes="btn-upcite")
             tie_btn = gr.Button(value="🟰 Les deux réponses se valent", size="sm")
             bothbad_btn = gr.Button(value="👎  Les deux réponses sont mauvaises", size="sm")
             rightvote_btn = gr.Button(value="➡️ La réponse B est meilleure", size="sm")
