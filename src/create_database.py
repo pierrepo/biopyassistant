@@ -537,7 +537,7 @@ def generate_data_store() -> None:
     # Get command-line arguments.
     data_path, chroma_path, chunk_size, chunk_overlap = get_args()
 
-    # Load the environment variables for LLM model tokens.
+    # Load the environment variables with LLM api keys.
     load_dotenv()
 
     # load documents from the specified directory

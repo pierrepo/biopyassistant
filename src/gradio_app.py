@@ -22,9 +22,13 @@ __version__ = "1.0.0"
 # LIBRAIRIES IMPORT
 import os
 
+from dotenv import load_dotenv
 import gradio as gr
 from loguru import logger
 
+# Load the environment variables with LLM api keys.
+logger.info(f"Loading API keys...")
+load_dotenv()
 
 # MODULES IMPORT
 from gradio_app_chat import create_tab_chatbot
@@ -60,7 +64,6 @@ CSS = """
   } 
 }
 """
-
 
 # Create the Gradio interface
 with gr.Blocks(
@@ -101,7 +104,7 @@ with gr.Blocks(
 
 
 # MAIN PROGRAM
-if __name__ == "__main__": 
+if __name__ == "__main__":
     # Get the favicon path
     FLAVICON_PATH = os.path.abspath(FLAVICON_RELATIVE_PATH)
     logger.info(f"Flavicon path: {FLAVICON_PATH}")
@@ -110,5 +113,5 @@ if __name__ == "__main__":
     demo.launch(
         favicon_path=FLAVICON_PATH,  # to add a favicon
         server_name="0.0.0.0",  # to make the app accessible from other devices
-        inbrowser=True,  # to automatically opens a new tab
+        server_port=8080
     )
