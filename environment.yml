@@ -4,7 +4,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - pip
   - python-dotenv # For environment variables
   # Linters and formaters
   - pycodestyle
@@ -19,6 +18,7 @@ dependencies:
   - tiktoken # For tokenization
   - langchain # For language processing
   - langchain-openai
+  - langchain-chroma
   - langchain-mistralai
   - langchain-groq
   - langchain-core
@@ -28,7 +28,7 @@ dependencies:
   - loguru
   # IU : Web app
   - streamlit
-  - gradio
+  - gradio>=4.43
   # Evaluation
   - ragas
 
