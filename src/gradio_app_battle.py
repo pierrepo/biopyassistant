@@ -231,7 +231,7 @@ def create_tab_battle():
         tie_btn.click(get_vote, inputs=[tie_btn, model_a, model_b])
         bothbad_btn.click(get_vote, inputs=[bothbad_btn, model_a, model_b])
         rightvote_btn.click(get_vote, inputs=[rightvote_btn, model_a, model_b])
-        clear_btn.click(clear_chat, outputs=[CHATBOTS[0], CHATBOTS[1]])
+        # clear_btn.click(clear_chat, outputs=[CHATBOTS[0], CHATBOTS[1]])
         
     return demo
 
