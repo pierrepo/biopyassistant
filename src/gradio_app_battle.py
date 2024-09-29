@@ -219,7 +219,7 @@ def create_tab_battle():
                 min_width=1200,
             )
             # Define the clear button
-            clear_btn = gr.ClearButton(value="Effacer l'historique")
+            # clear_btn = gr.ClearButton(value="Effacer l'historique")
         
         # Define question examples
         with gr.Row():
