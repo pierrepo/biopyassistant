@@ -85,8 +85,8 @@ with gr.Blocks(
         create_tab_battle()
 
     # Add a section for asking a qcm about a specific chapter
-    with gr.Tab("Se tester"):
-        create_tab_quiz()
+    # with gr.Tab("Se tester"):
+    #     create_tab_quiz()
     
     # Add footer.
     with gr.Row(elem_id="footer", equal_height=False):
