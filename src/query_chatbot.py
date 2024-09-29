@@ -70,9 +70,9 @@ OPENAI_MODEL_NAME = OPENAI_MODELS[0]
 
 PROMPT_TEMPLATE = """
 Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
-Tu dois fournir des réponses à leurs questions basées sur les extraits de cours fournis dans le contexte.
+Tu dois fournir des réponses à leurs questions basées sur les extraits de cours donnés dans le contexte.
 Utilise uniquement le contexte suivant pour répondre à la question. 
-La discussion précédente est également fournie pour t'aider à comprendre le contexte de la question,
+La discussion précédente peut t'aider à comprendre le contexte de la question,
 mais tu ne dois pas l'utiliser pour répondre à la question.
 
 Discussion précédente :
@@ -100,11 +100,11 @@ QUERY_EXAMPLES = [
 MSGS_QUERY_NOT_RELATED = [
     ("Je suis désolé, je ne peux pas répondre à cette question. "
      "Mon domaine d'expertise est la programmation Python. "
-     "N'hésitez pas à me poser des questions liées à ce sujet, je serai ravi de vous aider."),
+     "N'hésite pas à me poser des questions liées à ce sujet, je serai ravi de t'aider."),
     ("Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
      "Je ne suis pas en mesure de répondre à cette question."),
-    ("Je suis désolé, je ne suis pas sûr de comprendre votre question. "
-     "Pouvez-vous la reformuler en utilisant des termes plus simples ?"),
+    ("Je ne suis pas sûr de comprendre ta question. "
+     "Peux-tu la reformuler en utilisant des termes plus simples ?"),
 ]
 
 

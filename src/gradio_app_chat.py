@@ -146,7 +146,7 @@ def create_tab_chatbot():
             value=[
                 [
                     None,
-                    "Bonjour, je suis BioPyAssistant, un assistant pour répondre à tes questions sur le cours de Python. Comment puis-je t'aider ?",
+                    "Bonjour, je suis BioPyAssistant, un assistant qui répond tes questions sur le cours de Python. Comment puis-je t'aider ?",
                 ]
             ],
             bubble_full_width=False,
@@ -154,7 +154,7 @@ def create_tab_chatbot():
             likeable=True,
             show_copy_button=True,
             render=False,
-            avatar_images=(("data/img/user_avatar.png"), "data/img/chatbot_avatar.png"),
+            avatar_images=("data/img/user_avatar.png", "data/img/chatbot_avatar.png"),
         )
         # Define the chatbot interface
         gr.ChatInterface(
@@ -164,9 +164,10 @@ def create_tab_chatbot():
             examples=QUERY_EXAMPLES,
             cache_examples=False,
             submit_btn=None,
-            retry_btn="🔄 Reposer la question",
-            undo_btn="↩️ Annuler la dernière question",
-            clear_btn="🗑️ Supprimer la conversation",
+            retry_btn=None,
+            undo_btn=None,
+            clear_btn=None,
+            fill_width=True,
         )
 
         # Adding a like/dislike feature

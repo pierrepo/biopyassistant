@@ -73,7 +73,7 @@ with gr.Blocks(
 ) as demo:
     # Add a title
     gr.HTML(
-        """<h1 style="font-size: 3em;"><center> 🐍 BioPyAssistant 🐍 </center></h1>"""
+        """<h2><center>🐍 BioPyAssistant 🐍</center></h2>"""
     )
 
     # Add a section for asking a question to the chatbot about the course

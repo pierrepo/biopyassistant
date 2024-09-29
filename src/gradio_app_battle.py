@@ -137,7 +137,7 @@ def clear_chat() -> Tuple[str, list, list]:
         the updated chat history for the second model.        
     """
     logger.info("Clearing the chat history...")
-    fist_conv = [[None,"Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"]]
+    fist_conv = [[None, "Bonjour, je suis BioPyAssistant, un assistant qui répond à tes questions sur le cours de Python. Comment puis-je t'aider ?"]]
     return fist_conv, fist_conv
 
 
@@ -175,6 +175,9 @@ def create_tab_battle():
     theme=gr.themes.Default(primary_hue="emerald", secondary_hue="emerald"),
     title="BioPyAssistant"
     ) as demo:
+        gr.Markdown("""
+            Pose une question, compare les deux réponses et vote pour la meilleure !
+            """)
         # Define Chatbots
         with gr.Row():
             for i in range(NUM_MODELS):
@@ -186,7 +189,7 @@ def create_tab_battle():
                         value=[
                             [
                                 None,
-                                "Bonjour, je suis BioPyAssistant, un assistant pour répondre à tes questions sur le cours de Python. Comment puis-je t'aider ?",
+                                "Bonjour, je suis BioPyAssistant, un assistant qui répond à tes questions sur le cours de Python. Comment puis-je t'aider ?",
                             ]
                         ],
                         bubble_full_width=False,
@@ -210,7 +213,7 @@ def create_tab_battle():
         # Define the query textbox
         with gr.Row():            
             msg = gr.Textbox(
-                placeholder="Pose moi une question sur le cours !",
+                placeholder="Pose-moi une question sur le cours.",
                 render=True,
                 show_label=False,
                 min_width=1200,
