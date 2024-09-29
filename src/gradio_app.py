@@ -21,10 +21,15 @@ __version__ = "1.0.0"
 
 # LIBRAIRIES IMPORT
 import os
+import sys
 
 from dotenv import load_dotenv
 import gradio as gr
 from loguru import logger
+
+# Configure the logger
+logger.add("biopyassistant.log", rotation="monthly", level="INFO", format="LOG | {time:YYYY-MM-DD HH:mm:ss} | {level} | {message}")
+logger.add(sys.stdout, level="INFO")
 
 # Load the environment variables with LLM api keys.
 logger.info(f"Loading API keys...")
