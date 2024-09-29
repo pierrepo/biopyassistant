@@ -146,7 +146,7 @@ def create_tab_chatbot():
             value=[
                 [
                     None,
-                    "Bonjour, je suis BioPyAssistant, un assistant qui répond tes questions sur le cours de Python. Comment puis-je t'aider ?",
+                    "Bonjour, comment puis-je t'aider ?",
                 ]
             ],
             bubble_full_width=False,

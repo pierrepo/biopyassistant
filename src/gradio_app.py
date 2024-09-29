@@ -80,7 +80,9 @@ with gr.Blocks(
     gr.HTML(
         """<h2><center>🐍 BioPyAssistant 🐍</center></h2>"""
     )
-
+    gr.Markdown("""
+        BioPyAssistant est un assistant pédagogique qui répond à tes questions sur le [cours de Python](https://python.sdv.u-paris.fr/). N'hésite-pas à le solliciter.
+        """)
     # Add a section for asking a question to the chatbot about the course
     with gr.Tab("Discuter avec le cours"):
         create_tab_chatbot()
