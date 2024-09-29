@@ -98,7 +98,7 @@ with gr.Blocks(
             Cette application web n'utilise pas de cookie.
             Les résultats des votes sont collectés anonymement à des fins de recherche.
             
-            BioPyAssistant a été développé par Essmay Touami et Pierre Poulain dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
+            BioPyAssistant a été développé par [Essmay Touami](https://www.linkedin.com/in/essmay-touami/) et [Pierre Poulain](https://www.linkedin.com/in/pierrepo/) dans le cadre du projet pédagogique [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
             Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant) sous licence BSD 3-clause.
             """)
 
