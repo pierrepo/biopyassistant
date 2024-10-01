@@ -523,7 +523,7 @@ def add_metadata_to_answer(
     sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
     sources_string = (
-        f"Pour plus d'informations, consultez les sources suivantes :\n- {sources_text}"
+        f"Pour plus d'informations, je t'invite à consulter les ressources suivantes :\n- {sources_text}"
     )
 
     # Add the sources to the response
