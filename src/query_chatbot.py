@@ -93,7 +93,7 @@ Si tu as besoin de clarifier la question, demande-le aussi.
 
 QUERY_EXAMPLES = [
     "Quelle est la différence entre une liste et un set ?",
-    "Comment faire une boucle en Python ?",
+    "Comment écrire une boucle ?",
     "Comment afficher un float avec 2 chiffres avec la virgule ?"
 ]
 
