@@ -137,7 +137,7 @@ def clear_chat() -> Tuple[str, list, list]:
         the updated chat history for the second model.        
     """
     logger.info("Clearing the chat history...")
-    fist_conv = [[None, "Bonjour, je suis BioPyAssistant, un assistant qui répond à tes questions sur le cours de Python. Comment puis-je t'aider ?"]]
+    fist_conv = [[None, "Bonjour, comment puis-je t'aider ?"]]
     return fist_conv, fist_conv
 
 
@@ -154,7 +154,6 @@ def get_vote(button_label: str, model_a: str, model_b: str):
         The name of the second model.
     """
     logger.info("Getting the vote of the user...")
-
     if model_a == "" or model_b == "":
         logger.warning("Ask a question before voting.")
     elif button_label == "⬅️ La réponse A est meilleure":
@@ -176,7 +175,9 @@ def create_tab_battle():
     title="BioPyAssistant"
     ) as demo:
         gr.Markdown("""
-            Pose une question, compare les deux réponses et vote pour la meilleure !
+            Pose une question, 
+            compare les réponses fournies par deux modèles de langages tirés au hasard  
+            et vote pour la meilleure réponse.
             """)
         # Define Chatbots
         with gr.Row():
