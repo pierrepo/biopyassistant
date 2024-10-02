@@ -82,7 +82,7 @@ with gr.Blocks(
     )
     gr.Markdown("""
         BioPyAssistant est un assistant pédagogique 
-        pour le [cours de programmation Python](https://python.sdv.u-paris.fr/) pour les biologistes.
+        pour le [cours de programmation Python](https://python.sdv.u-paris.fr/) pour les biologistes de Patrick Fuchs et Pierre Poulain.
          
         N'hésite-pas à le solliciter en lui posant tes questions.
         """)
