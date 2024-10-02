@@ -176,7 +176,7 @@ def create_tab_battle():
     ) as demo:
         gr.Markdown("""
             Pose une question, 
-            compare les réponses fournies par deux modèles de langages tirés au hasard  
+            compare les réponses fournies par deux modèles de langages tirés au hasard 
             et vote pour la meilleure réponse.
             """)
         # Define Chatbots
