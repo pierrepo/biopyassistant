@@ -168,15 +168,13 @@ def get_vote(button_label: str, model_a: str, model_b: str):
         logger.error("Invalid button label.")
 
 
-def show_notification(vote: str) -> None:
-    """Show a notification to the user.
-
-    Parameters
-    ----------
-    vote : str
-        The vote of the user.   
-    """
-    gr.Info(f"Merci d'avoir donné votre avis et contribué à l'amélioration de cet outil ! Vous avez voté : {vote}")
+def show_notification() -> None:
+    """Show a notification to the user."""
+    gr.Info(
+        message=("Merci d'avoir donné ton avis "
+                 "et contribué à l'amélioration de BioPyAssistant !"),
+        duration=6
+    )
 
 
 def create_tab_battle():
@@ -245,10 +243,11 @@ def create_tab_battle():
         rightvote_btn.click(get_vote, inputs=[rightvote_btn, model_a, model_b])
         # clear_btn.click(clear_chat, outputs=[CHATBOTS[0], CHATBOTS[1]])
 
-        leftvote_btn.click(fn=lambda: show_notification("A"), inputs=None, outputs=None)
-        tie_btn.click(fn=lambda: show_notification("Égalité"), inputs=None, outputs=None)
-        bothbad_btn.click(fn=lambda: show_notification("Mauvais"), inputs=None, outputs=None)
-        rightvote_btn.click(fn=lambda: show_notification("B"), inputs=None, outputs=None)
+        # Show a notification the user as voted.
+        leftvote_btn.click(show_notification, inputs=None, outputs=None)
+        tie_btn.click(show_notification, inputs=None, outputs=None)
+        bothbad_btn.click(show_notification, inputs=None, outputs=None)
+        rightvote_btn.click(show_notification, inputs=None, outputs=None)
         
     return demo
 
