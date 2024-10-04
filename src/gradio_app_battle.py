@@ -168,6 +168,17 @@ def get_vote(button_label: str, model_a: str, model_b: str):
         logger.error("Invalid button label.")
 
 
+def show_notification(vote: str) -> None:
+    """Show a notification to the user.
+
+    Parameters
+    ----------
+    vote : str
+        The vote of the user.   
+    """
+    gr.Info(f"Merci d'avoir donné votre avis et contribué à l'amélioration de cet outil ! Vous avez voté : {vote}")
+
+
 def create_tab_battle():
     """Create the interface to discuss with the course in a battle mode."""
     with gr.Blocks(
@@ -233,6 +244,11 @@ def create_tab_battle():
         bothbad_btn.click(get_vote, inputs=[bothbad_btn, model_a, model_b])
         rightvote_btn.click(get_vote, inputs=[rightvote_btn, model_a, model_b])
         # clear_btn.click(clear_chat, outputs=[CHATBOTS[0], CHATBOTS[1]])
+
+        leftvote_btn.click(fn=lambda: show_notification("A"), inputs=None, outputs=None)
+        tie_btn.click(fn=lambda: show_notification("Égalité"), inputs=None, outputs=None)
+        bothbad_btn.click(fn=lambda: show_notification("Mauvais"), inputs=None, outputs=None)
+        rightvote_btn.click(fn=lambda: show_notification("B"), inputs=None, outputs=None)
         
     return demo
 
