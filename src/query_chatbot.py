@@ -39,13 +39,11 @@ from typing import List, Tuple, Union
 import click
 import tiktoken
 from dotenv import load_dotenv
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import AIMessage, HumanMessage
+from langchain.messages import AIMessage, HumanMessage
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_groq import ChatGroq
-from langchain_mistralai.chat_models import ChatMistralAI
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
 
@@ -374,11 +372,7 @@ def generate_answer(
         logger.info("Generating an answer to the user query...")
 
     # Define the model
-    if model_name in MISTRAL_MODELS:
-        chat_model = ChatMistralAI(model=model_name)
-    elif model_name in GROQ_MODELS:
-        chat_model = ChatGroq(model=model_name)
-    elif model_name in OPENAI_MODELS:
+    if model_name in OPENAI_MODELS:
         chat_model = ChatOpenAI(model=model_name)
     # Define the prompt template
     answer_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
@@ -537,10 +531,10 @@ def interrogate_model(user_query: str, model_name: str, include_metadata: bool) 
     load_dotenv()
 
     # Check required model is available:
-    LLM_MODELS = get_available_llm_models
-    if model_name not in LLM_MODELS:
-        logger.error(f"Model {model_name} is not available.")
-        sys.exit(1)
+    # LLM_MODELS = get_available_llm_models
+    # if model_name not in LLM_MODELS:
+    #     logger.error(f"Model {model_name} is not available.")
+    #     sys.exit(1)
 
     # CONTEXT RETRIEVAL
     # Load the vector database
