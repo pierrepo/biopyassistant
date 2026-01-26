@@ -1,14 +1,14 @@
 """CLI application for searching answers in a vectorial database.
 
-This program allows users to search for answers in a textual database based on a given query text. 
-It utilizes a similarity search algorithm to find relevant documents in the database and generates 
+This program allows users to search for answers in a textual database based on a given query text.
+It utilizes a similarity search algorithm to find relevant documents in the database and generates
 responses to the query using an LLM and the retrieved documents as context.
 
 Usage:
 ======
     python src/query_chatbot.py --query "Your question here"  [--model "model_name"]
-                                                              [--include-metadata]                                
-                                                           
+                                                              [--include-metadata]
+
 Arguments:
 ==========
     "Your question here" : The query text for which you want to search for answers.
@@ -17,7 +17,7 @@ Arguments:
     ========
     --model "model_name" : The name or identifier of the model to be used for generating responses.
                            (Default model: DEFAULT_LLM_MODEL)
-    
+
     --include-metadata : Optional flag to specify whether to include metadata in the response.
                          If provided, metadata will be included; otherwise, it will be excluded.
                          (Default: metadata is excluded)
@@ -30,36 +30,25 @@ This command will search for answers to the query "Qu'est-ce que Python ?" in th
 And it will include metadata in the response.
 """
 
-# METADATA
-__authors__ = ("Pierre Poulain", "Essmay Touami")
-__contact__ = "pierre.poulain@u-paris.fr"
-__copyright__ = "BSD-3 clause"
-__date__ = "2024"
-__version__ = "1.0.0"
-
-
-# LIBRARY IMPORTS
 import os
+import random
 import re
 import sys
-import random
-import argparse
-from typing import Tuple, Union, List
+from typing import List, Tuple, Union
 
+import click
 import tiktoken
 from dotenv import load_dotenv
-from loguru import logger
-from langchain_core.documents import Document
-from langchain_chroma import Chroma
-from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.schema import AIMessage, HumanMessage
 from langchain.prompts import ChatPromptTemplate
-from langchain_mistralai.chat_models import ChatMistralAI
+from langchain.schema import AIMessage, HumanMessage
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
+from langchain_mistralai.chat_models import ChatMistralAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from loguru import logger
 
-
-# CONSTANTS
 CHROMA_PATH = "chroma_db"
 EMBEDDING_MODEL = "text-embedding-3-large"
 OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
@@ -94,69 +83,29 @@ Si tu as besoin de clarifier la question, demande-le aussi.
 QUERY_EXAMPLES = [
     "Quelle est la différence entre une liste et un set ?",
     "Comment écrire une boucle ?",
-    "Comment afficher un float avec 2 chiffres avec la virgule ?"
+    "Comment afficher un float avec 2 chiffres avec la virgule ?",
 ]
 
 MSGS_QUERY_NOT_RELATED = [
-    ("Je suis désolé, je ne peux pas répondre à cette question. "
-     "Mon domaine d'expertise est la programmation Python. "
-     "N'hésite pas à me poser des questions liées à ce sujet, je serai ravi de t'aider."),
-    ("Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
-     "Je ne suis pas en mesure de répondre à cette question."),
-    ("Je ne suis pas sûr de comprendre ta question. "
-     "Peux-tu la reformuler en utilisant des termes plus simples ?"),
+    (
+        "Je suis désolé, je ne peux pas répondre à cette question. "
+        "Mon domaine d'expertise est la programmation Python. "
+        "N'hésite pas à me poser des questions liées à ce sujet, je serai ravi de t'aider."
+    ),
+    (
+        "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
+        "Je ne suis pas en mesure de répondre à cette question."
+    ),
+    (
+        "Je ne suis pas sûr de comprendre ta question. "
+        "Peux-tu la reformuler en utilisant des termes plus simples ?"
+    ),
 ]
 
 
-# FUNCTIONS
-def get_args() -> Tuple[str, str, bool]:
-    """Parse the command line arguments.
-
-    Returns
-    -------
-    Tuple[str, str, bool]
-        A tuple containing the query, the model name and a flag to include metadata.
-    """
-    logger.info("Parsing the command line arguments.")
-    parser = argparse.ArgumentParser()  # Create a parser object
-    # Add arguments to the parser
-    parser.add_argument(
-        "--query",
-        type=str,
-        default="",
-        help="The query text for which you want to search for answers.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default=DEFAULT_LLM_MODEL,
-        help="The name or identifier of the model to be used for generating responses.",
-    )
-    parser.add_argument(
-        "--include-metadata",
-        action="store_true",
-        default=False,
-        help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.",
-    )
-    # Parse the command line arguments
-    args = parser.parse_args()
-
-    # Checks
-    # query is required
-    if args.query == "":
-        logger.error("Please provide a query")
-        sys.exit(1)
-
-    logger.info(f"Query : {args.query}")
-    logger.info(f"Model name: {args.model}")
-    logger.info(f"Include metadata: {args.include_metadata}")
-    logger.success("Command line arguments parsed successfully.\n")
-
-    return args.query, args.model, args.include_metadata
-
 def get_available_llm_models() -> List[str]:
     """List LLM models based on API keys found in the environment variables.
-    
+
     Returns
     -------
     List[str]
@@ -226,7 +175,7 @@ def search_similarity_in_database(
     """
     if logger_flag:
         logger.info("Searching for relevant documents in the database...")
-    
+
     # Define the retriever
     retriever = vector_db.as_retriever(
         search_type="similarity_score_threshold",
@@ -268,11 +217,11 @@ def format_relevant_chunks(relevant_chunks: list) -> str:
         formatted_chunks += f"Chunk ID: {chunk.metadata['id']}\n"
         formatted_chunks += f"Content: {chunk.page_content}\n"
         formatted_chunks += f"Source: {chunk.metadata}\n\n"
-    
+
     logger.success("Relevant documents formatted successfully.\n")
 
     return formatted_chunks
-        
+
 
 def format_chat_history(
     chat_history: list[Tuple[str, str]] = [], len_history: int = 10
@@ -323,7 +272,8 @@ def format_chat_history(
         return chat_history
 
 
-def contextualize_question(chat_history_formatted: list[Union[HumanMessage, AIMessage]]
+def contextualize_question(
+    chat_history_formatted: list[Union[HumanMessage, AIMessage]],
 ) -> str:
     """Add context to the user query using the chat history.
 
@@ -331,7 +281,7 @@ def contextualize_question(chat_history_formatted: list[Union[HumanMessage, AIMe
     ----------
     chat_history_formatted : list[Union[HumanMessage, AIMessage]]
         The formatted chat history.
-    
+
     Returns
     -------
     chat_context : str
@@ -394,7 +344,11 @@ def calculate_nb_tokens(text: str) -> int:
 
 
 def generate_answer(
-    query: str, chat_context: str, relevant_chunks: list, model_name: str, logger_flag: bool = True
+    query: str,
+    chat_context: str,
+    relevant_chunks: list,
+    model_name: str,
+    logger_flag: bool = True,
 ) -> str:
     """Generate an answer to the user query.
 
@@ -522,9 +476,7 @@ def add_metadata_to_answer(
 
     sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
-    sources_string = (
-        f"Pour plus d'informations, je t'invite à consulter les rubriques suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n- {sources_text}"
-    )
+    sources_string = f"Pour plus d'informations, je t'invite à consulter les rubriques suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n- {sources_text}"
 
     # Add the sources to the response
     response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
@@ -557,19 +509,38 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
     logger.success("Results displayed successfully.")
 
 
-def interrogate_model() -> None:
+@click.command()
+@click.option(
+    "--query",
+    "user_query",
+    type=str,
+    required=True,
+    help="The query text for which you want to search for answers.",
+)
+@click.option(
+    "--model",
+    "model_name",
+    type=str,
+    default=DEFAULT_LLM_MODEL,
+    show_default=True,
+    help="The name or identifier of the model to be used for generating responses.",
+)
+@click.option(
+    "--include-metadata",
+    is_flag=True,
+    default=False,
+    help="Include metadata in the response if this flag is provided.",
+)
+def interrogate_model(user_query: str, model_name: str, include_metadata: bool) -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the environment variables
     load_dotenv()
-    # Load the query text from the command line arguments
-    user_query, model_name, include_metadata = get_args()
 
     # Check required model is available:
     LLM_MODELS = get_available_llm_models
     if model_name not in LLM_MODELS:
         logger.error(f"Model {model_name} is not available.")
         sys.exit(1)
-
 
     # CONTEXT RETRIEVAL
     # Load the vector database
@@ -590,7 +561,12 @@ def interrogate_model() -> None:
         # Get the metadata of the top matching documents
         metadatas = get_metadata(relevant_chunks)
         # Generate the answer
-        answer = generate_answer(query=user_query, chat_context=None, relevant_chunks=relevant_chunks_formatted, model_name=model_name)
+        answer = generate_answer(
+            query=user_query,
+            chat_context=None,
+            relevant_chunks=relevant_chunks_formatted,
+            model_name=model_name,
+        )
         # Calculate the number of tokens in the answer
         logger.info("Calculating the number of tokens in the answer.")
         nb_tokens_answer = calculate_nb_tokens(answer)
