@@ -493,36 +493,32 @@ def generate_data_store(
 
     # Load the environment variables with LLM api keys
     load_dotenv()
-
+    all_chunks = []
     # load documents from the specified directory
-    documents = load_documents(data_path)
+    for doc in load_documents(data_path):
+        # split text of the current document into chunks
+        chunks = split_text(doc.page_content, chunk_size, chunk_overlap)
 
-    # extract file names from the documents
-    file_names = get_file_names(documents)
+        # remove small chunks
+        chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
 
-    # concatenate the content of the documents
-    content = concatenate_content(documents)
+        # add index to the metadata
+        chunks_with_index = add_index_to_metadata(chunks_cleaned)
 
-    # split text into chunks
-    chunks = split_text(content, chunk_size, chunk_overlap)
+        # add number of tokens to the metadata
+        chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
 
-    # remove small chunks
-    chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
+        # add file name to the chunk metadata
+        chunks_with_file_name = add_file_names_to_metadata(
+            chunks_with_tokens, [doc.metadata.get("source", "")]
+        )
+        # add URL to the chunk metadata if available
+        chunks_with_url = add_url_to_metadata(chunks_with_file_name)
 
-    # add index to the metadata
-    chunks_with_index = add_index_to_metadata(chunks_cleaned)
+        all_chunks.extend(chunks_with_url)
 
-    # add number of tokens to the metadata
-    chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
-
-    # add file names to the chunks
-    chunks_with_file_names = add_file_names_to_metadata(chunks_with_tokens, file_names)
-
-    # add URL to the chunks
-    chunks_with_url = add_url_to_metadata(chunks_with_file_names)
-
-    # save the chunks to ChromaDB
-    save_to_chroma(chunks_with_url, chroma_path)
+    # save chunks for this document to ChromaDB
+    save_to_chroma(all_chunks, chroma_path)
 
 
 # MAIN PROGRAM
