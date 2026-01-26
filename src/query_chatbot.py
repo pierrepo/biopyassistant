@@ -7,6 +7,7 @@ responses to the query using an LLM and the retrieved documents as context.
 Usage:
 ======
     python src/query_chatbot.py --query "Your question here"  [--model "model_name"]
+                                                              [--prompt_path "prompt_path"]
                                                               [--include-metadata]
 
 Arguments:
@@ -15,8 +16,11 @@ Arguments:
 
     Options:
     ========
-    --model "model_name" : The name or identifier of the model to be used for generating responses.
+    --model (str) : The name or identifier of the model to be used for generating responses.
                            (Default model: DEFAULT_LLM_MODEL)
+
+    --prompt_path (Path)  : File path to the text file containing the prompt template.
+                            (Default: "prompts/few_shot.txt")
 
     --include-metadata : Optional flag to specify whether to include metadata in the response.
                          If provided, metadata will be included; otherwise, it will be excluded.
@@ -24,9 +28,9 @@ Arguments:
 
 Example:
 ========
-    python src/query_chatbot.py --query "D'où vient le nom Python ?" --model "gpt-4o" --include-metadata
+    python src/query_chatbot.py --query "D'où vient le nom Python ?" --model "gpt-4o" --prompt_path "prompts/zero_shot.txt" --include-metadata
 
-This command will search for answers to the query "Qu'est-ce que Python ?" in the vectorial Chroma database using the "gpt-4o" model.
+This command will search for answers to the query "Qu'est-ce que Python ?" in the vectorial Chroma database using the "gpt-4o" model and the zero_shot prompt.
 And it will include metadata in the response.
 """
 
@@ -34,6 +38,7 @@ import os
 import random
 import re
 import sys
+from pathlib import Path
 from typing import List, Tuple, Union
 
 import click
@@ -54,29 +59,6 @@ GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
 MISTRAL_MODELS = ["mistral-large-latest", "open-mixtral-8x7b", "open-mixtral-8x22b"]
 DEFAULT_LLM_MODEL = OPENAI_MODELS[0]
 OPENAI_MODEL_NAME = OPENAI_MODELS[0]
-
-PROMPT_TEMPLATE = """
-Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
-Tu dois fournir une réponse à la question posée en te basant strictement sur les extraits de cours donnés dans le contexte.
-Utilise uniquement le contexte suivant pour répondre à la question. 
-La discussion précédente peut t'aider à comprendre le contexte de la question,
-mais tu ne dois pas l'utiliser pour répondre à la question.
-
-Discussion précédente :
-{chat_history}
-
-Question :
-"{question}"
-
-Contexte : 
-"{contexte}"
-
-Répond en français à la question posée de façon claire et concise.
-La réponse doit être compréhensible pour des étudiants débutants en programmation Python.
-Si tu ne connais pas la réponse, dis que tu ne sais pas.
-Si tu as besoin de plus d'informations, demande-le.
-Si tu as besoin de clarifier la question, demande-le aussi.
-"""
 
 QUERY_EXAMPLES = [
     "Quelle est la différence entre une liste et un set ?",
@@ -346,6 +328,7 @@ def generate_answer(
     chat_context: str,
     relevant_chunks: list,
     model_name: str,
+    prompt_path: Path,
     logger_flag: bool = True,
 ) -> str:
     """Generate an answer to the user query.
@@ -374,8 +357,11 @@ def generate_answer(
     # Define the model
     if model_name in OPENAI_MODELS:
         chat_model = ChatOpenAI(model=model_name)
+    # Retrieve the prompt template
+    with open(prompt_path, encoding="utf-8") as f:
+        prompt_template_content = f.read()
     # Define the prompt template
-    answer_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+    answer_prompt = ChatPromptTemplate.from_template(prompt_template_content)
     # Define the chained prompt
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
@@ -520,12 +506,21 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
     help="The name or identifier of the model to be used for generating responses.",
 )
 @click.option(
+    "--prompt_path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    default="prompt/zero_shot.txt",
+    show_default=True,
+    help="File path to the text file containing the prompt template.",
+)
+@click.option(
     "--include-metadata",
     is_flag=True,
     default=False,
     help="Include metadata in the response if this flag is provided.",
 )
-def interrogate_model(user_query: str, model_name: str, include_metadata: bool) -> None:
+def interrogate_model(
+    user_query: str, model_name: str, prompt_path: Path, include_metadata: bool
+) -> None:
     """Interrogate the AI model to search for answers in a vector database."""
     # Load the environment variables
     load_dotenv()
@@ -560,6 +555,7 @@ def interrogate_model(user_query: str, model_name: str, include_metadata: bool) 
             chat_context=None,
             relevant_chunks=relevant_chunks_formatted,
             model_name=model_name,
+            prompt_path=prompt_path,
         )
         # Calculate the number of tokens in the answer
         logger.info("Calculating the number of tokens in the answer.")
