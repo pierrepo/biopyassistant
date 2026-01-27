@@ -1,11 +1,14 @@
 """Creates the vectorial Chroma database from Markdown files in the specified directory.
 
-This script loads Markdown files from the specified directory, concatenates their content,
-and splits the content into chunks based on headers and word limits. The resulting chunks are saved to a ChromaDB database.
+This script loads Markdown files from the specified directory, concatenates their
+content, and splits the content into chunks based on headers and word limits.
+The resulting chunks are saved to a ChromaDB database.
 
 Usage:
 ======
-    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path] --chunk-size [chunk-size] --chunk-overlap [chunk-overlap] --model-name [model-name] --provider-name [provider-name]
+    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path]
+                               --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
+                               --model-name [model-name] --provider-name [provider-name]
 
 Arguments:
 ==========
@@ -22,17 +25,23 @@ Arguments:
         Possible choices : https://openrouter.ai/models?fmt=cards&supported_parameters=structured_outputs&output_modalities=embeddings
         Default is "text-embedding-3-large".
     --provider-name : str (optional)
-        Name of the embedding provider to use. Possible choices are "openrouter" and "openai".
+        Name of the embedding provider to use.
+        Possible choices are "openrouter" and "openai".
         Default is "openai".
 
 
 Example:
 ========
-    python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db --model-name text-embedding-3-large --provider-name openai
+    python src/create_database.py --data-path data/markdown_processed \
+                                    --chroma-path chroma_db \
+                                    --model-name text-embedding-3-large \
+                                    --provider-name openai
 
-This command will create a Chroma vector database from the processed Markdown files located in the `data/markdown_processed` directory.
-The text will be split into chunks of 1000 characters with an overlap of 200 characters and will be embedded with the model `text-embedding-3-large`.
-And finally the vector database will be saved to the `chroma_db` directory.
+This command will create a Chroma vector database from the processed Markdown files
+located in the `data/markdown_processed` directory. The text will be split into chunks
+of 1000 characters with an overlap of 200 characters and will be embedded with the model
+`text-embedding-3-large`. And finally the vector database will be saved to the
+`chroma_db` directory.
 """
 
 import os
@@ -60,7 +69,7 @@ from logger import create_logger
 
 
 def load_documents(data_dir: str) -> list[Document]:
-    """Load Markdown documents, concatenate their content, and extract the name of the Markdown files.
+    """Load Markdown files, concatenate their content, and extract filenames.
 
     Parameters
     ----------
@@ -156,7 +165,8 @@ def remove_small_chunks(
         chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char
     ]
     logger.info(
-        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks (less than {min_nb_char} characters)."
+        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks \
+            (less than {min_nb_char} characters)."
     )
     return chunks_cleaned
 
@@ -207,7 +217,8 @@ def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
         chunk.metadata["nb_tokens"] = nb_tokens
 
     logger.info(
-        f"Total number of characters: {sum(len(chunk.page_content) for chunk in chunks):,}"
+        f"Total number of characters: \
+            {sum(len(chunk.page_content) for chunk in chunks):,}"
     )
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")
@@ -251,7 +262,7 @@ def add_file_names_to_metadata(
     return chunks
 
 
-def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
+def preprocess_for_url(text: str, *, is_subsubsection: bool = False) -> str:
     """Preprocess text for creating URL.
 
     Parameters
@@ -323,10 +334,12 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
         # Extract section_id from the metadata
         if chunk.metadata.get("subsubsection_name", ""):  # subsubsection
             section_id = preprocess_for_url(
-                chunk.metadata.get("subsubsection_name", ""), True
+                chunk.metadata.get("subsubsection_name", ""), is_subsection=True
             )
         elif chunk.metadata.get("subsection_name", ""):  # subsection
-            section_id = preprocess_for_url(chunk.metadata.get("subsection_name", ""))
+            section_id = preprocess_for_url(
+                chunk.metadata.get("subsection_name", ""), is_subsection=True
+            )
         elif chunk.metadata.get("section_name", ""):  # section
             section_id = preprocess_for_url(chunk.metadata.get("section_name", ""))
         else:  # chapter
@@ -424,7 +437,7 @@ def save_to_chroma(
     "--model-name",
     default="text-embedding-3-large",
     type=str,
-    help="Name of the embedding model, chosen from OpenRouter’s available models.",
+    help="Name of the embedding model, chosen from OpenRouter`s available models.",
 )
 @click.option(
     "-p",
@@ -441,7 +454,7 @@ def generate_data_store(
     model_name: str,
     provider_name: str,
 ) -> None:
-    """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
+    """Build a ChromaDB store from chunked text with metadata."""
     # Set-up the logger
     log_path = f"logs/create_database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     logger = create_logger(log_path)
@@ -450,7 +463,8 @@ def generate_data_store(
     # Validate the CLI arguments
     if chunk_overlap >= chunk_size:
         logger.error(
-            f"The chunk overlap ({chunk_overlap}) must be less than the chunk size ({chunk_size})."
+            f"The chunk overlap ({chunk_overlap}) must be less than \
+                the chunk size ({chunk_size})."
         )
         sys.exit(1)
 
@@ -490,7 +504,8 @@ def generate_data_store(
     logger.info(f"Total number of files processed: {len(documents)}")
     logger.info(f"Total number of chunks: {len(all_chunks)}")
     logger.info(
-        f"Total number of characters: {sum(len(chunk.page_content) for chunk in all_chunks):,}"
+        f"Total number of characters: {
+            sum(len(chunk.page_content) for chunk in all_chunks):,}"
     )
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")

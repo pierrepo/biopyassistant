@@ -1,14 +1,15 @@
 """CLI application for searching answers in a vectorial database.
 
-This program allows users to search for answers in a textual database based on a given query text.
-It utilizes a similarity search algorithm to find relevant documents in the database and generates
-responses to the query using an LLM and the retrieved documents as context.
+This program allows users to search for answers in a textual database based on a given
+query text. It utilizes a similarity search algorithm to find relevant documents in the
+database and generates responses to the query using an LLM and the retrieved documents
+as context.
 
 Usage:
 ======
     python src/query_chatbot.py --query "Your question here"  [--model "model_name"]
-                                                              [--prompt_path "prompt_path"]
-                                                              [--include-metadata]
+                                                        [--prompt_path "prompt_path"]
+                                                        [--include-metadata]
 
 Arguments:
 ==========
@@ -16,30 +17,34 @@ Arguments:
 
     Options:
     ========
-    --model (str) : The name or identifier of the model to be used for generating responses.
-                           (Default model: DEFAULT_LLM_MODEL)
+    --model (str):
+            The name of the model to be used for generating responses.
+            Default: "gpt-4o"
 
-    --prompt_path (Path)  : File path to the text file containing the prompt template.
-                            (Default: "prompts/few_shot.txt")
+    --prompt_path (Path):
+            File path to the text file containing the prompt template.
+            Default: "prompts/zero_shot.txt"
 
-    --include-metadata : Optional flag to specify whether to include metadata in the response.
-                         If provided, metadata will be included; otherwise, it will be excluded.
-                         (Default: metadata is excluded)
+    --include-metadata (bool):
+            Optional flag to specify whether to include metadata in the response.
+            If provided, metadata will be included; otherwise, it will be excluded.
+            Default: metadata is excluded
 
 Example:
 ========
-    python src/query_chatbot.py --query "D'où vient le nom Python ?" --model "gpt-4o" --prompt_path "prompts/zero_shot.txt" --include-metadata
+    python src/query_chatbot.py --query "D'où vient le nom Python ?" --model "gpt-4o" \
+        --prompt_path "prompts/zero_shot.txt" --include-metadata
 
-This command will search for answers to the query "Qu'est-ce que Python ?" in the vectorial Chroma database using the "gpt-4o" model and the zero_shot prompt.
+This command will search for answers to the query "Qu'est-ce que Python ?"
+in the vectorial Chroma database using the "gpt-4o" model and the zero_shot prompt.
 And it will include metadata in the response.
 """
 
 import datetime
-import random
 import re
+import secrets
 import sys
 from pathlib import Path
-from typing import List, Tuple, Union
 
 import click
 import tiktoken
@@ -58,7 +63,8 @@ MSGS_QUERY_NOT_RELATED = [
     (
         "Je suis désolé, je ne peux pas répondre à cette question. "
         "Mon domaine d'expertise est la programmation Python. "
-        "N'hésite pas à me poser des questions liées à ce sujet, je serai ravi de t'aider."
+        "N'hésite pas à me poser des questions liées à ce sujet,"
+        "je serai ravi de t'aider."
     ),
     (
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
@@ -67,7 +73,7 @@ MSGS_QUERY_NOT_RELATED = [
 ]
 
 
-def load_database(vector_db_path: str, embedding_model: str) -> Tuple[Chroma, int]:
+def load_database(vector_db_path: str, embedding_model: str) -> tuple[Chroma, int]:
     """Prepare the vector database.
 
     Returns
@@ -97,8 +103,9 @@ def search_similarity_in_database(
     user_query: str,
     nb_chunks: int = 3,
     score_threshold: float = 0.35,
+    *,
     logger_flag: bool = True,
-) -> List[Document]:
+) -> list[Document]:
     """Search for relevant documents in the database based on the query text.
 
     Parameters
@@ -170,8 +177,8 @@ def format_relevant_chunks(relevant_chunks: list) -> str:
 
 
 def format_chat_history(
-    chat_history: list[Tuple[str, str]] = [], len_history: int = 10
-) -> List[Union[HumanMessage, AIMessage]]:
+    chat_history: list[tuple[str, str]], len_history: int = 10
+) -> list[HumanMessage | AIMessage]:
     """Format the chat history for the promt template.
 
     Parameters
@@ -196,7 +203,7 @@ def format_chat_history(
     if len(chat_history) > 0:
         for human, ai in chat_history[-len_history:]:
             # Append the human and AI messages to the formatted history
-            if human != None:
+            if human is None:
                 formatted_history.append(HumanMessage(content=human))
             else:
                 formatted_history.append(HumanMessage(content=""))
@@ -208,7 +215,8 @@ def format_chat_history(
             logger.info(f"AI message (cleaned): {cleaned_ai}")
 
         logger.success(
-            f"Chat history formatted successfully with {len(formatted_history)} entries.\n"
+            f"Chat history formatted successfully with {len(formatted_history)} \
+                entries.\n"
         )
         return formatted_history
 
@@ -219,7 +227,7 @@ def format_chat_history(
 
 
 def contextualize_question(
-    chat_history_formatted: list[Union[HumanMessage, AIMessage]],
+    chat_history_formatted: list[HumanMessage | AIMessage],
 ) -> str:
     """Add context to the user query using the chat history.
 
@@ -295,6 +303,7 @@ def generate_answer(
     relevant_chunks: list,
     model_name: str,
     prompt_path: Path,
+    *,
     logger_flag: bool = True,
 ) -> str:
     """Generate an answer to the user query.
@@ -321,11 +330,10 @@ def generate_answer(
         logger.info("Generating an answer to the user query...")
 
     # Define the model
-    if model_name in OPENAI_MODELS:
+    if model_name.startwith("gpt"):
         chat_model = ChatOpenAI(model=model_name)
     # Retrieve the prompt template
-    with open(prompt_path, encoding="utf-8") as f:
-        prompt_template_content = f.read()
+    prompt_template_content = Path(prompt_path).read_text(encoding="utf-8")
     # Define the prompt template
     answer_prompt = ChatPromptTemplate.from_template(prompt_template_content)
     # Define the chained prompt
@@ -351,13 +359,13 @@ def generate_answer(
 
 
 def add_metadata_to_answer(
-    answer_from_model, metadatas: list[dict], iu: bool = False
+    answer_from_model, metadatas: list[dict], *, iu: bool = False
 ) -> str:
     """Add metadata to the response.
 
     Parameters
     ----------
-    answer : str
+    answer_from_model : str
         The response text predicted by the AI model.
     metadatas : list
         List of metadata dictionaries for the top matching documents.
@@ -422,7 +430,9 @@ def add_metadata_to_answer(
 
     sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
-    sources_string = f"Pour plus d'informations, je t'invite à consulter les rubriques suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n- {sources_text}"
+    sources_string = f"Pour plus d'informations, je t'invite à consulter les rubriques \
+                    suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n \
+                    - {sources_text}"
 
     # Add the sources to the response
     response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
@@ -433,7 +443,7 @@ def add_metadata_to_answer(
     return response_with_metadata
 
 
-def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
+def display_answer(user_query: str, final_response: str | dict) -> None:
     """Display the results.
 
     Parameters
@@ -513,6 +523,7 @@ def interrogate_model(
     database_path: str,
     embedding_model: str,
     prompt_path: Path,
+    *,
     include_metadata: bool,
 ) -> None:
     """Interrogate the AI model to search for answers in a vector database."""
@@ -533,7 +544,7 @@ def interrogate_model(
     # Check if there are relevant documents
     if relevant_chunks == []:
         # random response betweet responses in MSGS_QUERY_NOT_RELATED
-        response = random.choice(MSGS_QUERY_NOT_RELATED)
+        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
         print(response)
         sys.exit(0)
     else:

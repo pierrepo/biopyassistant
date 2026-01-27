@@ -28,10 +28,10 @@ Input:
 
 Output:
     ```python
-    #Votre premier commentaire en  Python.
+    # Votre premier commentaire en  Python.
     print("Hello world!")
 
-    #D'autres commandes plus utiles pourraient suivre.
+    # D'autres commandes plus utiles pourraient suivre.
     ```
 
 Usage:
@@ -46,7 +46,8 @@ Where:
 
 Example:
 ========
-    python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
+    python src/parse_clean_markdown.py --in data/markdown_raw \
+                                        --out data/markdown_processed
 
 This command processes Markdown files located in the 'data/markdown_raw'
 directory and saves the cleaned and renumbered files to the
@@ -55,7 +56,6 @@ directory and saves the cleaned and renumbered files to the
 
 import re
 from pathlib import Path
-from typing import Union
 
 import click
 from loguru import logger
@@ -70,7 +70,7 @@ def clean_python_comments(content: str) -> str:
     ```
     will be converted to:
     ```python
-    #This is a comment.
+    # This is a comment.
     ```
 
     Parameters
@@ -81,7 +81,8 @@ def clean_python_comments(content: str) -> str:
     Returns
     -------
     str
-        Markdown content with spaces removed between '#' and comments in Python code blocks.
+        Markdown content with spaces removed between '#'
+        and comments in Python code blocks.
     """
     is_python_block = False
     cleaned_content = []
@@ -118,7 +119,7 @@ def clean_python_comments(content: str) -> str:
     return "\n".join(cleaned_content)
 
 
-def renumber_headers(content: str, header_prefix: Union[int, str]) -> str:
+def renumber_headers(content: str, header_prefix: int | str) -> str:
     """Renumber headers in Markdown content.
 
     Parameters
