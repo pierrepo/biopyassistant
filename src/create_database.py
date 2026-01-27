@@ -5,7 +5,7 @@ and splits the content into chunks based on headers and word limits. The resulti
 
 Usage:
 ======
-    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path] --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
+    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path] --chunk-size [chunk-size] --chunk-overlap [chunk-overlap] --model-name [model-name] --provider-name [provider-name]
 
 Arguments:
 ==========
@@ -17,21 +17,30 @@ Arguments:
         The size of the text chunks to be created. Default is 1000.
     --chunk-overlap : int (optional)
         The overlap between text chunks. Default is 200.
+    --model-name : str (optional)
+        Name of the embedding model to use.
+        Possible choices : https://openrouter.ai/models?fmt=cards&supported_parameters=structured_outputs&output_modalities=embeddings
+        Default is "text-embedding-3-large".
+    --provider-name : str (optional)
+        Name of the embedding provider to use. Possible choices are "openrouter" and "openai".
+        Default is "openai".
 
 
 Example:
 ========
-    python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
+    python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db --model-name text-embedding-3-large --provider-name openai
 
 This command will create a Chroma vector database from the processed Markdown files located in the `data/markdown_processed` directory.
-The text will be split into chunks of 1000 characters with an overlap of 200 characters.
+The text will be split into chunks of 1000 characters with an overlap of 200 characters and will be embedded with the model `text-embedding-3-large`.
 And finally the vector database will be saved to the `chroma_db` directory.
 """
 
+import os
 import re
 import shutil
 import sys
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -47,10 +56,7 @@ from langchain_text_splitters import (
 )
 from loguru import logger
 
-# CONSTANTS
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
-EMBEDDING_MODEL = "text-embedding-3-large"
+from logger import create_logger
 
 
 def load_documents(data_dir: str) -> list[Document]:
@@ -66,80 +72,23 @@ def load_documents(data_dir: str) -> list[Document]:
     documents : list of Document
         List of Markdown documents.
     """
-    # Load Markdown documents from the specified directory.
-    logger.info("Loading Markdown documents...")
+    logger.info(f"Loading Markdown documents from {data_dir}...")
+    # Load Markdown documents from the specified directory
     loader = DirectoryLoader(
-        data_dir, glob="*.md", show_progress=True, loader_cls=TextLoader
+        data_dir, glob="*.md", show_progress=False, loader_cls=TextLoader
     )
     documents = loader.load()
 
-    # Order the documents by source.
+    # Order the documents by the file name
     documents = sorted(documents, key=lambda x: x.metadata.get("source", ""))
 
-    logger.success("Markdown document loading complete.\n")
-
+    logger.success(f"Loaded {len(documents)} Markdown documents successfully.")
     return documents
 
 
-def get_file_names(documents: list[Document]) -> list[str]:
-    """Extract the file names of the Markdown documents.
-
-    Parameters
-    ----------
-    documents : list of Document
-        List of Markdown documents.
-
-    Returns
-    -------
-    file_names : list of str
-        List of file names of the Markdown documents.
-    """
-    logger.info("Extracting file names...")
-
-    file_names = []
-    for document in documents:
-        # Extract the file name from the metadata source
-        source = document.metadata.get("source", "")
-        if source:
-            file_name = source.split("/")[-1].split(".")[
-                0
-            ]  # Extract the file name without extension
-            file_names.append(file_name)
-
-    logger.success("Extracted file names successfully.\n")
-
-    return sorted(file_names)
-
-
-def concatenate_content(documents: list[Document]) -> str:
-    """Concatenate the content of the Markdown documents.
-
-    Parameters
-    ----------
-    documents : list of Document
-        List of Markdown documents.
-
-    Returns
-    -------
-    concatenated_content : str
-        The concatenated content of all the Markdown documents.
-    """
-    logger.info("Concatenating content...")
-
-    concatenated_content = ""
-    for document in documents:
-        # Add the document content to the concatenated content
-        concatenated_content += document.page_content + "\n"
-    logger.info(
-        f"There is {len(concatenated_content)} characters in the concatenated content."
-    )
-
-    logger.success("Concatenated content successfully.\n")
-
-    return concatenated_content
-
-
-def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Document]:
+def split_text_into_chunks(
+    content: str, chunk_size: int, chunk_overlap: int
+) -> list[Document]:
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
     Parameters:
@@ -157,8 +106,6 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
         List of text chunks after splitting with content and metadata.
         format : [{"page_content": str, "metadata": dict}, ...]
     """
-    logger.info("Splitting the documents...")
-
     # create a Markdown header text splitter
     headers_to_split_on = [
         ("#", "chapter_name"),
@@ -183,13 +130,7 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     # Split the resulting chunks further based on character limits
     chunks = text_splitter.split_documents(md_header_splits)
 
-    logger.success(f"Split documents into {len(chunks)} chunks.\n")
-
-    # tests
-    # print(chunks[1], end="\n\n")
-    # print(chunks[100], end="\n\n")
-    # print(chunks[3000], end="\n\n")
-
+    logger.info(f"Split documents into {len(chunks)} chunks.")
     return chunks
 
 
@@ -210,18 +151,13 @@ def remove_small_chunks(
     chunks : list of Document
         List of text chunks after removing small chunks.
     """
-    logger.info("Removing small chunks...")
-    logger.info(f"Number of chunks before removing small chunks: {len(chunks)}")
-
     # Remove chunks with less than min_nb_char characters
     chunks_cleaned = [
         chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char
     ]
-
-    logger.info(f"Number of chunks after removing small chunks: {len(chunks_cleaned)}")
-    logger.info(f"Number of chunks removed: {len(chunks) - len(chunks_cleaned)}\n")
-    logger.success("Removed small chunks successfully.\n")
-
+    logger.info(
+        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks (less than {min_nb_char} characters)."
+    )
     return chunks_cleaned
 
 
@@ -238,13 +174,9 @@ def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
     chunks : list of Document
         List of text chunks with an index added to their metadata.
     """
-    logger.info("Adding index to metadata...")
-
     # Add an index to metadata of each chunk
     for index, chunk in enumerate(chunks):
         chunk.metadata["id"] = index
-
-    logger.success("Added index to metadata successfully.\n")
 
     return chunks
 
@@ -262,8 +194,6 @@ def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
     chunks : list of Document
         List of text chunks with the number of tokens added to their metadata.
     """
-    logger.info("Adding the number of tokens to metadata...")
-
     # Get the encoding for tokenization
     # for openai embeddings
     encoding = tiktoken.get_encoding("cl100k_base")
@@ -276,13 +206,16 @@ def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
         nb_tokens = len(token)
         chunk.metadata["nb_tokens"] = nb_tokens
 
-    logger.success("Added the number of tokens to metadata successfully.\n")
-
+    logger.info(
+        f"Total number of characters: {sum(len(chunk.page_content) for chunk in chunks):,}"
+    )
+    count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in chunks)
+    logger.info(f"Total number of tokens: {count_tokens:,}")
     return chunks
 
 
 def add_file_names_to_metadata(
-    chunks: list[Document], file_names: list[str]
+    chunks: list[Document], file_name: str
 ) -> list[Document]:
     """Add file names to the metadata of the text chunks.
 
@@ -290,16 +223,14 @@ def add_file_names_to_metadata(
     ----------
     chunks : list of Document
         List of text chunks to which file names are to be added.
-    file_names : list of str
-        List of file names of the Markdown documents.
+    file_name : str
+        File name of the Markdown documents.
 
     Returns
     -------
     chunks : list of Document
         List of text chunks with file names added to their metadata.
     """
-    logger.info("Adding file names to metadata...")
-
     # Add file names to metadata of each chunk
     for chunk in chunks:
         # Extract chapter_name from the metadata
@@ -308,17 +239,14 @@ def add_file_names_to_metadata(
         chapter_number = re.match(r"^\d+\s", chapter_name)
         appendix_letter = re.search(r"\b[A-Z]", chapter_name)
         # Corresponding chapter number or appendix letter with file name
-        for file_name in file_names:
-            if chapter_number and file_name.startswith(
-                f"{chapter_number.group(0).strip().zfill(2)}_"
-            ):  # zfill(2) to pad with zeros
-                chunk.metadata["file_name"] = file_name
-                break
-            elif appendix_letter.group(0) == file_name.split("_")[1]:
-                chunk.metadata["file_name"] = file_name
-                break
-
-    logger.success("Added file names to metadata successfully.\n")
+        if chapter_number and file_name.startswith(
+            f"{chapter_number.group(0).strip().zfill(2)}_"
+        ):  # zfill(2) to pad with zeros
+            chunk.metadata["file_name"] = file_name
+            break
+        elif appendix_letter.group(0) == file_name.split("_")[1]:
+            chunk.metadata["file_name"] = file_name
+            break
 
     return chunks
 
@@ -387,8 +315,6 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
     chunks : list of Document
         List of text chunks with URL added to their metadata.
     """
-    logger.info("Adding URL to metadata...")
-
     # Add URL to metadata of each chunk
     for chunk in chunks:
         # Extract file name from the metadata
@@ -410,38 +336,58 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
         chunk.metadata["url"] = (
             f"https://python.sdv.u-paris.fr/{file_name}/{section_id}"
         )
-
-    logger.success("Added URL to metadata successfully.\n")
+        logger.debug(f"Added URL: {chunk.metadata['url']}")
 
     return chunks
 
 
-def save_to_chroma(chunks: list[Document], chroma_output_path: Path) -> None:
+def save_to_chroma(
+    chunks: list[Document],
+    model_name: str,
+    provider_name: str,
+    chroma_output_path: Path,
+) -> None:
     """Save text chunks to ChromaDB.
 
     Parameters
     ----------
     chunks : list[Document]
         List of text chunks to save to ChromaDB.
+    model_name : str
+        Name of the embedding model to use.
+    provider_name : str
+        Name of the embedding provider to use.
     chroma_output_path : Path
         Path to the directory where the ChromaDB database will be saved.
     """
     logger.info("Saving to ChromaDB...")
-
     # Clear the existing database if it exists
     if chroma_output_path.exists():
         shutil.rmtree(chroma_output_path)
 
-    # Create a new ChromaDB from the documents
-    embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    # Get the API key and base URL based on the provider
+    if provider_name == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        base_url = "https://openrouter.ai/api/v1"
+    elif provider_name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = None
+
+    # Create the embeddings for each chunks
+    embeddings = OpenAIEmbeddings(
+        model=model_name,
+        base_url=base_url,
+        api_key=api_key,
+    )
+
+    # Create a ChromaDB with the embeddings
     Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=str(chroma_output_path),
         collection_metadata={"hnsw:space": "cosine"},  # distance metric
     )
-
-    logger.info(f"Saved {len(chunks)} chunks to {chroma_output_path}.")
+    logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path} successfully!")
 
 
 @click.command()
@@ -462,29 +408,46 @@ def save_to_chroma(chunks: list[Document], chroma_output_path: Path) -> None:
 @click.option(
     "-s",
     "--chunk-size",
-    default=CHUNK_SIZE,
-    type=int,
+    default=1000,
+    type=click.IntRange(min=1),
     help="Size of the text chunks to be created.",
 )
 @click.option(
     "-o",
     "--chunk-overlap",
-    default=CHUNK_OVERLAP,
-    type=int,
+    default=200,
+    type=click.IntRange(min=0),
     help="Overlap between text chunks.",
 )
+@click.option(
+    "-m",
+    "--model-name",
+    default="text-embedding-3-large",
+    type=str,
+    help="Name of the embedding model, chosen from OpenRouter’s available models.",
+)
+@click.option(
+    "-p",
+    "--provider-name",
+    default="openrouter",
+    type=str,
+    help="Name of the embedding provider to use.",
+)
 def generate_data_store(
-    data_path: Path, chroma_path: Path, chunk_size: int, chunk_overlap: int
+    data_path: Path,
+    chroma_path: Path,
+    chunk_size: int,
+    chunk_overlap: int,
+    model_name: str,
+    provider_name: str,
 ) -> None:
     """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
+    # Set-up the logger
+    log_path = f"logs/create_database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    logger = create_logger(log_path)
+    logger.info("Creating Chroma database...")
 
     # Validate the CLI arguments
-    if chunk_size <= 0:
-        logger.error("The chunk size must be a positive integer.")
-        sys.exit(1)
-    if chunk_overlap < 0:
-        logger.error("The chunk overlap must be a non-negative integer.")
-        sys.exit(1)
     if chunk_overlap >= chunk_size:
         logger.error(
             f"The chunk overlap ({chunk_overlap}) must be less than the chunk size ({chunk_size})."
@@ -493,11 +456,16 @@ def generate_data_store(
 
     # Load the environment variables with LLM api keys
     load_dotenv()
+
     all_chunks = []
     # load documents from the specified directory
-    for doc in load_documents(data_path):
+    documents = load_documents(data_path)
+    logger.info("Processing files...")
+    for doc in documents:
+        file_name = doc.metadata.get("source", "")
+        logger.info(f"File: {file_name}")
         # split text of the current document into chunks
-        chunks = split_text(doc.page_content, chunk_size, chunk_overlap)
+        chunks = split_text_into_chunks(doc.page_content, chunk_size, chunk_overlap)
 
         # remove small chunks
         chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
@@ -510,15 +478,23 @@ def generate_data_store(
 
         # add file name to the chunk metadata
         chunks_with_file_name = add_file_names_to_metadata(
-            chunks_with_tokens, [doc.metadata.get("source", "")]
+            chunks_with_tokens, file_name
         )
         # add URL to the chunk metadata if available
         chunks_with_url = add_url_to_metadata(chunks_with_file_name)
 
         all_chunks.extend(chunks_with_url)
 
-    # save chunks for this document to ChromaDB
-    save_to_chroma(all_chunks, chroma_path)
+    logger.info("Summary:")
+    logger.info(f"Total number of files processed: {len(documents)}")
+    logger.info(f"Total number of chunks: {len(all_chunks)}")
+    logger.info(
+        f"Total number of characters: {sum(len(chunk.page_content) for chunk in all_chunks):,}"
+    )
+    count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
+    logger.info(f"Total number of tokens: {count_tokens:,}")
+    # save the embeddings to ChromaDB
+    save_to_chroma(all_chunks, model_name, provider_name, chroma_path)
 
 
 # MAIN PROGRAM
