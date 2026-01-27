@@ -244,7 +244,7 @@ def contextualize_question(
             chat_context += f"Réponse {i // 2 + 1}: {message.content}\n"
 
     logger.info(f"Chat context: {chat_context}")
-    logger.success("Contextualized query constructed successfully.\n")
+    logger.success("Contextualized query constructed successfully.")
 
     return chat_context
 
