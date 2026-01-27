@@ -214,7 +214,7 @@ def format_chat_history(
 
     else:  # if chat history is empty
         logger.info("Chat history is empty.")
-        logger.success("Chat history formatted successfully with 0 entries.\n")
+        logger.success("Chat history formatted successfully with 0 entries.")
         return chat_history
 
 
