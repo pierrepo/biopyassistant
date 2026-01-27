@@ -4,6 +4,7 @@
 # vector database
 chroma_*
 
+logs/
 tmp/
 .DS_Store.env
 
