@@ -27,3 +27,8 @@ dependencies = [
     "gradio>=4.43",
     "click>=8.3.0",
 ]
+
+[dependency-groups]
+dev = [
+    "prek>=0.3.0",
+]
