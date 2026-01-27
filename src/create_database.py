@@ -463,7 +463,7 @@ def generate_data_store(
     logger.info("Processing files...")
     for doc in documents:
         file_name = doc.metadata.get("source", "")
-        logger.info(f"File: {file_name}")
+        logger.info(f"File path: {file_name}")
         # split text of the current document into chunks
         chunks = split_text_into_chunks(doc.page_content, chunk_size, chunk_overlap)
 
@@ -484,6 +484,7 @@ def generate_data_store(
         chunks_with_url = add_url_to_metadata(chunks_with_file_name)
 
         all_chunks.extend(chunks_with_url)
+        logger.info(f"Example chunk metadata: {all_chunks[-1].metadata}")
 
     logger.info("Summary:")
     logger.info(f"Total number of files processed: {len(documents)}")
