@@ -34,7 +34,7 @@ This command will search for answers to the query "Qu'est-ce que Python ?" in th
 And it will include metadata in the response.
 """
 
-import os
+import datetime
 import random
 import re
 import sys
@@ -52,19 +52,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
 
-CHROMA_PATH = "chroma_db"
-EMBEDDING_MODEL = "text-embedding-3-large"
-OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
-GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
-MISTRAL_MODELS = ["mistral-large-latest", "open-mixtral-8x7b", "open-mixtral-8x22b"]
-DEFAULT_LLM_MODEL = OPENAI_MODELS[0]
-OPENAI_MODEL_NAME = OPENAI_MODELS[0]
-
-QUERY_EXAMPLES = [
-    "Quelle est la différence entre une liste et un set ?",
-    "Comment écrire une boucle ?",
-    "Comment afficher un float avec 2 chiffres avec la virgule ?",
-]
+from logger import create_logger
 
 MSGS_QUERY_NOT_RELATED = [
     (
@@ -76,32 +64,10 @@ MSGS_QUERY_NOT_RELATED = [
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
         "Je ne suis pas en mesure de répondre à cette question."
     ),
-    (
-        "Je ne suis pas sûr de comprendre ta question. "
-        "Peux-tu la reformuler en utilisant des termes plus simples ?"
-    ),
 ]
 
 
-def get_available_llm_models() -> List[str]:
-    """List LLM models based on API keys found in the environment variables.
-
-    Returns
-    -------
-    List[str]
-        List of available LLM models.
-    """
-    llm_models = []
-    if os.getenv("OPENAI_API_KEY"):
-        llm_models += OPENAI_MODELS
-    if os.getenv("GROQ_API_KEY"):
-        llm_models += GROQ_MODELS
-    if os.getenv("MISTRAL_API_KEY"):
-        llm_models += MISTRAL_MODELS
-    return llm_models
-
-
-def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
+def load_database(vector_db_path: str, embedding_model: str) -> Tuple[Chroma, int]:
     """Prepare the vector database.
 
     Returns
@@ -111,7 +77,7 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     """
     logger.info("Loading the vector database.")
     embedding_function = OpenAIEmbeddings(
-        model=EMBEDDING_MODEL
+        model=embedding_model
     )  # define the embedding model
     # Load the database from the specified directory
     vector_db = Chroma(
@@ -501,9 +467,31 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
     "--model",
     "model_name",
     type=str,
-    default=DEFAULT_LLM_MODEL,
+    default="gpt-4o",
     show_default=True,
     help="The name or identifier of the model to be used for generating responses.",
+)
+@click.option(
+    "--provider",
+    "provider_name",
+    default="openrouter",
+    type=str,
+    help="Name of the LLM model provider to use.",
+)
+@click.option(
+    "--db-path",
+    "database_path",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    default="data/chroma_db",
+    show_default=True,
+    help="File path to the Chroma database containing the context embeddings.",
+)
+@click.option(
+    "--embedding-model",
+    "embedding_model",
+    default="text-embedding-3-large",
+    type=str,
+    help="Name of the embedding model to use.",
 )
 @click.option(
     "--prompt_path",
@@ -519,21 +507,25 @@ def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
     help="Include metadata in the response if this flag is provided.",
 )
 def interrogate_model(
-    user_query: str, model_name: str, prompt_path: Path, include_metadata: bool
+    user_query: str,
+    model_name: str,
+    provider_name: str,
+    database_path: str,
+    embedding_model: str,
+    prompt_path: Path,
+    include_metadata: bool,
 ) -> None:
     """Interrogate the AI model to search for answers in a vector database."""
+    # Set-up the logger
+    log_path = f"logs/query_chatbot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    logger = create_logger(log_path)
+
     # Load the environment variables
     load_dotenv()
 
-    # Check required model is available:
-    # LLM_MODELS = get_available_llm_models
-    # if model_name not in LLM_MODELS:
-    #     logger.error(f"Model {model_name} is not available.")
-    #     sys.exit(1)
-
     # CONTEXT RETRIEVAL
     # Load the vector database
-    vector_db = load_database(CHROMA_PATH)[0]
+    vector_db = load_database(database_path, embedding_model)[0]
     # Search for relevant documents in the database
     relevant_chunks = search_similarity_in_database(vector_db, user_query)
 
