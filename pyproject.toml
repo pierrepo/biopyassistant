@@ -7,12 +7,6 @@ requires-python = "==3.13.*"
 
 dependencies = [
     "python-dotenv",
-    "pycodestyle",
-    "pydocstyle",
-    "pylint",
-    "black",
-    "ruff",
-    "mypy",
     "chromadb",
     "openai",
     "tiktoken",
@@ -31,4 +25,5 @@ dependencies = [
 [dependency-groups]
 dev = [
     "prek>=0.3.0",
+    "ruff>=0.14.14",
 ]
