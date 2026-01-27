@@ -91,8 +91,8 @@ def split_text_into_chunks(
 ) -> list[Document]:
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     content : str
         Concatenated Markdown content to be split into chunks.
     chunk_size : int
@@ -100,8 +100,8 @@ def split_text_into_chunks(
     chunk_overlap : int
         The overlap between text chunks.
 
-    Returns:
-    --------
+    Returns
+    -------
     chunks : list of Document
         List of text chunks after splitting with content and metadata.
         format : [{"page_content": str, "metadata": dict}, ...]
@@ -239,12 +239,12 @@ def add_file_names_to_metadata(
         chapter_number = re.match(r"^\d+\s", chapter_name)
         appendix_letter = re.search(r"\b[A-Z]", chapter_name)
         # Corresponding chapter number or appendix letter with file name
-        if chapter_number and file_name.startswith(
-            f"{chapter_number.group(0).strip().zfill(2)}_"
-        ):  # zfill(2) to pad with zeros
-            chunk.metadata["file_name"] = file_name
-            break
-        elif appendix_letter.group(0) == file_name.split("_")[1]:
+        if (
+            chapter_number
+            and file_name.startswith(f"{chapter_number.group(0).strip().zfill(2)}_")
+        ) or appendix_letter.group(0) == file_name.split("_")[
+            1
+        ]:  # zfill(2) to pad with zeros
             chunk.metadata["file_name"] = file_name
             break
 
