@@ -110,6 +110,7 @@ def renumber_headers(content: str, chapter_number: Union[int, str]) -> str:
         2: 0,  # Level 2: section.
         3: 0,  # Level 3: Sub-section
         4: 0,  # Level 4: Sub-sub-section.
+        5: 0,  # Level 5: Sub-sub-sub-section.
     }
     # Stores the file content with renumbered headers
     processed_content = []
@@ -118,9 +119,9 @@ def renumber_headers(content: str, chapter_number: Union[int, str]) -> str:
         if match:
             header_level = len(match.group(1))
             header_text = match.group(2)
-            # Show errors if we are above level 4
-            if header_level > 4:
-                logger.error("Header level beyond level 4!")
+            # Show errors if we are above level 5
+            if header_level > 5:
+                logger.error("Header level beyond level 5!")
                 logger.error(line)
                 processed_content.append(line)
                 continue
@@ -173,12 +174,12 @@ def process_md_files(source_dir: Path, dest_dir: Path) -> None:
         logger.info(f"Processing file: {source_path.name}")
 
         content = source_path.read_text(encoding="utf-8")
-
         content = clean_python_comments(content)
 
         if source_path.name.startswith("annexe"):
             annex_character = source_path.stem.split("_")[1]
             content = renumber_headers(content, annex_character)
+
         elif re.match(r"\d{2}_", source_path.name):
             chapter_number = int(source_path.stem.split("_")[0])
             content = renumber_headers(content, chapter_number)
