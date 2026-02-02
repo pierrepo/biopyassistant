@@ -231,6 +231,7 @@ dependencies = [
     { name = "chromadb" },
     { name = "click" },
     { name = "gradio" },
+    { name = "htbuilder" },
     { name = "langchain" },
     { name = "langchain-chroma" },
     { name = "langchain-community" },
@@ -239,6 +240,8 @@ dependencies = [
     { name = "langchain-text-splitters" },
     { name = "loguru" },
     { name = "openai" },
+    { name = "pydantic-settings" },
+    { name = "pyperclip" },
     { name = "python-dotenv" },
     { name = "streamlit" },
     { name = "tiktoken" },
@@ -255,6 +258,7 @@ requires-dist = [
     { name = "chromadb" },
     { name = "click", specifier = ">=8.3.0" },
     { name = "gradio", specifier = ">=4.43" },
+    { name = "htbuilder", specifier = ">=0.9.0" },
     { name = "langchain" },
     { name = "langchain-chroma" },
     { name = "langchain-community" },
@@ -263,6 +267,8 @@ requires-dist = [
     { name = "langchain-text-splitters" },
     { name = "loguru" },
     { name = "openai" },
+    { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "pyperclip", specifier = ">=1.11.0" },
     { name = "python-dotenv" },
     { name = "streamlit" },
     { name = "tiktoken" },
@@ -723,6 +729,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/92/68/89ac4e5b12a9ff6286a12174c8538a5930e2ed662091dd2572bbe0a18c8a/hf_xet-1.2.0-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:a55558084c16b09b5ed32ab9ed38421e2d87cf3f1f89815764d1177081b99865", size = 3508920, upload-time = "2025-10-24T19:04:26.927Z" },
     { url = "https://files.pythonhosted.org/packages/cb/44/870d44b30e1dcfb6a65932e3e1506c103a8a5aea9103c337e7a53180322c/hf_xet-1.2.0-cp37-abi3-win_amd64.whl", hash = "sha256:e6584a52253f72c9f52f9e549d5895ca7a471608495c4ecaa6cc73dba2b24d69", size = 2905735, upload-time = "2025-10-24T19:04:35.928Z" },
 ]
+
+[[package]]
+name = "htbuilder"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/88/0f48d1125168e9eea33879ea820000702533d103f1123d27ca69839a0db4/htbuilder-0.9.0.tar.gz", hash = "sha256:58c0bc5502c1a46b42ae9e074c43ec0f6fdc24ed334936cb17e1ed5a8938aee2", size = 10591, upload-time = "2025-01-09T07:00:26.189Z" }
 
 [[package]]
 name = "httpcore"
@@ -1840,6 +1852,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
+]
+
+[[package]]
+name = "pyperclip"
+version = "1.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/52/d87eba7cb129b81563019d1679026e7a112ef76855d6159d24754dbd2a51/pyperclip-1.11.0.tar.gz", hash = "sha256:244035963e4428530d9e3a6101a1ef97209c6825edab1567beac148ccc1db1b6", size = 12185, upload-time = "2025-09-26T14:40:37.245Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/80/fc9d01d5ed37ba4c42ca2b55b4339ae6e200b456be3a1aaddf4a9fa99b8c/pyperclip-1.11.0-py3-none-any.whl", hash = "sha256:299403e9ff44581cb9ba2ffeed69c7aa96a008622ad0c46cb575ca75b5b84273", size = 11063, upload-time = "2025-09-26T14:40:36.069Z" },
 ]
 
 [[package]]

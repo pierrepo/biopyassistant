@@ -20,6 +20,9 @@ dependencies = [
     "streamlit",
     "gradio>=4.43",
     "click>=8.3.0",
+    "htbuilder>=0.9.0",
+    "pydantic-settings>=2.12.0",
+    "pyperclip>=1.11.0",
 ]
 
 [dependency-groups]
