@@ -1,0 +1,91 @@
+@import url("https://fonts.googleapis.com/css2?family=Rubik+Iso:wght@400;700&display=swap");
+
+.stApp {
+    bottom: 77px;
+    zoom: 1.3;
+}
+
+a {
+    font-weight: 500;
+    opacity: 0.85;
+}
+a:hover {
+    opacity: 1;
+    font-weight: 700;
+}
+
+.app-title {
+    text-align: center;
+    color: #8a1538;
+    font-family: "Rubik Iso", sans-serif;
+    font-size: 70px;
+    margin-bottom: 0;
+}
+
+.app-subtitle {
+    text-align: center;
+    color: #555555;
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.sidebar-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-top: 1.2rem;
+    margin-bottom: 0.4rem;
+}
+
+.sidebar-about {
+    font-size: 1rem;
+    color: #444;
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.sidebar-icons {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    margin-top: 0.8rem;
+}
+
+.sidebar-icons img {
+    width: 38px;
+    height: 38px;
+    opacity: 0.85;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.sidebar-icons img:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}
+
+.app-footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    padding: 4px 0;
+    color: #555555;
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    opacity: 1;
+    background-color: transparent;
+}
+
+.app-footer hr {
+    display: block;
+    border-width: 1px;
+    margin: 10px;
+}
