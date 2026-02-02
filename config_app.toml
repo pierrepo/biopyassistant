@@ -1,0 +1,11 @@
+# config.default.toml
+app_name = "BioPyAssistant"
+app_description = "BioPyAssistant is a teaching assistant for Patrick Fuchs and Pierre Poulain's Python programming course for biologists."
+app_version = "2.0"
+css_path = "assets/style.css"
+vector_database_path = "chroma_db"
+
+[llm]
+provider_name = "openrouter"
+llm_model_name= "gpt-4o"
+embedding_model_name = "text-embedding-3-large"
