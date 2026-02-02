@@ -81,7 +81,7 @@ def load_database(vector_db_path: str, embedding_model: str) -> tuple[Chroma, in
         Chroma: The prepared vector database.
         int: The number of chunks in the database.
     """
-    logger.info("Loading the vector database.")
+    logger.info("Loading the vector database...")
     embedding_function = OpenAIEmbeddings(
         model=embedding_model
     )  # define the embedding model
@@ -330,7 +330,7 @@ def generate_answer(
         logger.info("Generating an answer to the user query...")
 
     # Define the model
-    if model_name.startwith("gpt"):
+    if model_name.startswith("gpt"):
         chat_model = ChatOpenAI(model=model_name)
     # Retrieve the prompt template
     prompt_template_content = Path(prompt_path).read_text(encoding="utf-8")
