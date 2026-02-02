@@ -244,25 +244,11 @@ def add_file_names_to_metadata(
     """
     # Add file names to metadata of each chunk
     for chunk in chunks:
-        # Extract chapter_name from the metadata
-        chapter_name = chunk.metadata.get("chapter_name", "")
-        # Get the chapter number or appendix letter
-        chapter_number = re.match(r"^\d+\s", chapter_name)
-        appendix_letter = re.search(r"\b[A-Z]", chapter_name)
-        # Corresponding chapter number or appendix letter with file name
-        if (
-            chapter_number
-            and file_name.startswith(f"{chapter_number.group(0).strip().zfill(2)}_")
-        ) or appendix_letter.group(0) == file_name.split("_")[
-            1
-        ]:  # zfill(2) to pad with zeros
-            chunk.metadata["file_name"] = file_name
-            break
-
+        chunk.metadata["file_name"] = file_name
     return chunks
 
 
-def preprocess_for_url(text: str, *, is_subsubsection: bool = False) -> str:
+def preprocess_for_url(text: str, *, is_subsection: bool = False) -> str:
     """Preprocess text for creating URL.
 
     Parameters
@@ -304,7 +290,7 @@ def preprocess_for_url(text: str, *, is_subsubsection: bool = False) -> str:
     processed_text = re.sub(r"[^a-zA-Z]*$", "", processed_text)
 
     # Remove the subsubsection number
-    if is_subsubsection:
+    if is_subsection:
         processed_text = re.sub(r"^[a-zA-Z]?\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
