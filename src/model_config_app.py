@@ -27,6 +27,10 @@ class LLMConfig(BaseModel):
         ...,
         description="Name of the embedding model to use for vector representations.",
     )
+    prompt_path: FilePath = Field(
+        ...,
+        description="Path to the prompt template file used for generating responses.",
+    )
     api_key_openai: SecretStr | None = Field(
         None,
         description="Secret API key for authenticating on openai provider.",
