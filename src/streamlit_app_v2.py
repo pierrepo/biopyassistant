@@ -1,16 +1,15 @@
 """Streamlit app for chatbot testing."""
 
-import random
+import secrets
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 import loguru
 import pyperclip
 import streamlit as st
 from dotenv import load_dotenv
-from htbuilder import a, br, div, hr, img
 from langchain_community.vectorstores import Chroma
 from loguru import logger
 
@@ -90,14 +89,16 @@ def apply_custom_css(css_file: Path) -> None:
 
 
 @st.cache_resource
-def get_vector_db(vector_db: Path, embedding_model_name: str) -> Chroma:
+def get_vector_db(
+    vector_db: Path, embedding_model_name: str, logger: "loguru.Logger" = loguru.logger
+) -> Chroma:
     """Cache the vector database to prevent reloading on every rerun.
 
     Returns
     -------
     Chroma: The vector database containing the embedded course.
     """
-    vector_db, _nb_chunks = load_database(vector_db, embedding_model_name)
+    vector_db, _nb_chunks = load_database(vector_db, embedding_model_name, logger)
     return vector_db
 
 
@@ -115,11 +116,13 @@ def create_header(app_name: str) -> None:
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
                 programmation Python
             </a>
+            <br>
             pour les biologistes de Patrick Fuchs et Pierre Poulain.
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.space(30)
 
 
 def create_sidebar() -> dict[str, str]:
@@ -149,21 +152,21 @@ def create_sidebar() -> dict[str, str]:
             '<div class="sidebar-title">🎓 Profil étudiant</div>',
             unsafe_allow_html=True,
         )
-        st.info(
-            "Indiquez votre cursus et votre niveau pour des réponses adaptées.",
-            icon="🎯",
-        )
         cursus = st.pills("Cursus :material/school:", options=["Licence", "Master"])
         level = st.pills(
             "Niveau :material/sort:", options=["Débutant", "Intermédiaire", "Avancé"]
         )
-        st.space(150)
+        st.space(20)
+        st.info(
+            "Indiquez votre cursus et votre niveau pour des réponses adaptées.",
+            icon="🎯",
+        )
+        st.space(250)
         # About section
         st.markdown(
             """
             <div class="sidebar-about">
-                <strong>BioPyAssistant</strong><br>
-                Développé par
+                <strong>BioPyAssistant</strong> a été développé par
                 <strong>
                     <a href="https://www.linkedin.com/in/essmay-touami/"
                     target="_blank">
@@ -232,55 +235,26 @@ def show_disclaimer_dialog() -> None:
     """)
 
 
-def image(src: str):
-    return img(src=src)
-
-
-def link(url: str, text: str):
-    return a(text, href=url, target="_blank")
-
-
-def layout(*args) -> None:
-    body = div()
-
-    for arg in args:
-        body(arg)
-
-    footer = div(cls="app-footer")(
-        hr(),
-        body,
-    )
-
-    st.markdown(str(footer), unsafe_allow_html=True)
-
-
 def create_footer() -> None:
     """Render the application footer with legal information."""
-    layout(
-        "BioPyAssistant a été développé par ",
-        link("https://www.linkedin.com/in/essmay-touami/", "Essmay Touami "),
-        "et ",
-        link("https://www.linkedin.com/in/pierrepo/", "Pierre Poulain "),
-        "dans le cadre du projet pédagogique ",
-        link(
-            "https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/",
-            "LLM@UPCité ",
-        ),
-        ". Le code source est disponible sur ",
-        link("https://github.com/pierrepo/biopyassistant", "GitHub "),
-        "sous licence BSD 3-clause.",
-        br(),
-        "Cette application web n'utilise pas de cookie. Les résultats des votes sont "
-        "collectés anonymement à des fins de recherche.",
-        br(),
-        link(
-            "https://u-paris.fr/politique-de-confidentialite/",
-            "Mentions légales.",
-        ),
+    st.html(
+        """
+        <div class="app-footer">
+            <p>
+                Cette application web n'utilise pas de cookie. Les résultats des votes sont collectés anonymement à des fins de recherche.
+                <br>
+                <a href="https://u-paris.fr/politique-de-confidentialite/" target="_blank" rel="noopener noreferrer">
+                    Mentions légales.
+                </a>
+            </p>
+        </div>
+        """
     )
 
 
-def send_telemetry(**kwargs) -> None:
+def send_telemetry(
+    **kwargs,
+) -> None:  # TODO: ask pierre what telemetry to log and how to log it
     """
     Record telemetry data related to user interactions with the chatbot.
 
@@ -313,6 +287,9 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
     message_index : int
         Index of the message in `st.session_state.messages` for which
         the feedback is being collected.
+    assistant_msg : str
+        The content of the assistant message to which the feedback controls
+        are attached.
     """
     with st.container():
         option_map = {
@@ -357,6 +334,34 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
                         )
 
 
+def display_welcome_chat() -> None:
+    """Display the initial welcome chat message and suggestions."""
+    st.session_state.messages = []
+
+    # Display welcome container with chat input and suggestions
+    with st.container():
+        st.chat_input("Pose moi une question sur le cours...", key="initial_question")
+        st.pills(
+            label="Examples",
+            label_visibility="collapsed",
+            options=SUGGESTIONS,
+            key="selected_suggestion",
+        )
+    # Show disclaimer for ethical use
+    st.button(
+        (
+            "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
+            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
+            " critique !]]"
+        ),
+        type="tertiary",
+        on_click=show_disclaimer_dialog,
+    )
+
+    # Stop execution so the chat doesn't process until a question is asked
+    st.stop()
+
+
 def transform_messages(messages: list[dict[str, str]]) -> list[tuple[str, str]]:
     """
     Convert Streamlit message history into a list of (User, Assistant) tuples.
@@ -381,14 +386,21 @@ def transform_messages(messages: list[dict[str, str]]) -> list[tuple[str, str]]:
     return history_tuples
 
 
-def generate_response(user_query: str, vector_db: Chroma) -> str:
+def generate_response(
+    user_query: str, context: str, model_name: str, prompt_path: str
+) -> str:
     """Generate a response to the user question.
 
     Parameters
     ----------
     user_query : str
         The user question.
-    vector_db:
+    context : str
+        The relevant context retrieved from the vector database.
+    model_name : str
+        The name of the LLM to use for generating the response.
+    prompt_path : str
+        Path to the prompt template to use for generating the response.
 
     Returns
     -------
@@ -401,15 +413,13 @@ def generate_response(user_query: str, vector_db: Chroma) -> str:
     formatted_chat_history = format_chat_history(chat_history, len_history=10)
     # Contextualize the user question with the chat history
     chat_context = contextualize_question(chat_history_formatted=formatted_chat_history)
-    # Search for relevant documents in the database
-    context = search_similarity_in_database(vector_db=vector_db, user_query=user_query)
 
     # If no relevant document was found
     if context == []:
         logger.info("No relevant documents found in the database.")
         logger.success("Returning an automatic response without calling the model.")
         # random response betweet responses in MSGS_QUERY_NOT_RELATED
-        response = random.choice(MSGS_QUERY_NOT_RELATED)
+        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
         return response
     else:
         # Get the metadata of the relevant documents
@@ -419,14 +429,15 @@ def generate_response(user_query: str, vector_db: Chroma) -> str:
             query=user_query,
             chat_context=chat_context,
             relevant_chunks=context,
-            model_name="gpt-4o",
-            prompt_path="prompt/zero_shot.txt",
+            model_name=model_name,
+            prompt_path=prompt_path,
+            logger_flag=False,
         )
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, metadatas=metadata, iu=True)
 
-        logger.info(f"Response generated: {final_answer}")
-        logger.success("Response generated successfully.\n")
+        # logger.info(f"Response generated: {final_answer}")
+        # logger.success("Response generated successfully.\n")
 
         return final_answer
 
@@ -444,7 +455,9 @@ def clear_conversation():
     st.session_state.selected_suggestion = None
 
 
-def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
+def chat_with_bot(
+    vector_db: Chroma, student_infos: dict, model_name: str, prompt_path: str
+) -> None:
     """Handle the main chat interface with the user.
 
     Parameters
@@ -462,7 +475,6 @@ def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
     user_just_asked_initial_question = (
         "initial_question" in st.session_state and st.session_state.initial_question
     )
-    print(user_just_asked_initial_question)
     # Determine if this is the first user interaction
     user_just_clicked_suggestion = (
         "selected_suggestion" in st.session_state
@@ -486,32 +498,7 @@ def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
     )
     # --- Initial State (No conversation yet) ---
     if not user_first_interaction and not has_message_history:
-        st.session_state.messages = []
-
-        # Display welcome container with chat input and suggestions
-        with st.container():
-            st.chat_input(
-                "Pose moi une question sur le cours...", key="initial_question"
-            )
-            st.pills(
-                label="Examples",
-                label_visibility="collapsed",
-                options=SUGGESTIONS,
-                key="selected_suggestion",
-            )
-        # Show disclaimer for ethical use
-        st.button(
-            (
-                "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
-                " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
-                " critique !]]"
-            ),
-            type="tertiary",
-            on_click=show_disclaimer_dialog,
-        )
-
-        # Stop execution so the chat doesn't process until a question is asked
-        st.stop()
+        display_welcome_chat()
 
     # --- First step of the conversation ---
     # Show chat input at the bottom when a question has been asked.
@@ -527,8 +514,6 @@ def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
             icon=":material/refresh:",
             on_click=clear_conversation,
         )
-    if "prev_question_timestamp" not in st.session_state:
-        st.session_state.prev_question_timestamp = datetime.fromtimestamp(0)
 
     # --- Active Chat History ---
     # Display chat messages from history as speech bubbles.
@@ -553,32 +538,20 @@ def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
 
         # Display assistant response as a speech bubble.
         with st.chat_message("assistant"):
-            with st.spinner("Waiting..."):
-                # Rate-limit the input if needed.
-                question_timestamp = datetime.now()
-                time_diff = (
-                    question_timestamp - st.session_state.prev_question_timestamp
+            # Search for relevant context in the vector database.
+            with st.spinner("En recherche de contexte..."):
+                context = search_similarity_in_database(
+                    vector_db=vector_db,
+                    user_query=user_message,
+                    # user_level=student_infos["level"],
+                    # user_cursus=student_infos["cursus"],
+                    logger_flag=False,
                 )
-                st.session_state.prev_question_timestamp = question_timestamp
 
-                if time_diff < MIN_TIME_BETWEEN_REQUESTS:
-                    time.sleep(time_diff.seconds + time_diff.microseconds * 0.001)
-
-                user_message = user_message.replace("'", "")
-
-            # Build a detailed prompt.
-            # if DEBUG_MODE:
-            #     with st.status("Computing prompt...") as status:
-            #         full_prompt = build_question_prompt(user_message)
-            #         st.code(full_prompt)
-            #         status.update(label="Prompt computed")
-            # else:
-            #     with st.spinner("Researching..."):
-            #         full_prompt = build_question_prompt(user_message)
-
-            # Send prompt to LLM.
             with st.spinner("En réflexion..."):
-                response = generate_response(user_message, vector_db)
+                response = generate_response(
+                    user_message, context, model_name, prompt_path
+                )
                 rep_stream = stream_text(response)
 
             # Put everything after the spinners in a container to fix the
@@ -595,8 +568,10 @@ def chat_with_bot(vector_db: Chroma, student_infos: dict) -> None:
                     {"role": "assistant", "content": response}
                 )
 
-                # Other stuff.
+                # Show feedback controls (copy, thumbs up/down, report)
                 show_feedback_controls(len(st.session_state.messages) - 1, response)
+                # Send telemetry data for logging and analysis
+                # (to be implemented in the future)
                 send_telemetry(question=user_message, response=response)
 
 
@@ -630,7 +605,7 @@ def main():
     student_infos = create_sidebar()
 
     # Create footer
-    # create_footer()
+    create_footer()
 
     # Load the vector database one
     vector_db = get_vector_db(
@@ -638,7 +613,9 @@ def main():
     )
 
     # Chat with the bot
-    chat_with_bot(vector_db, student_infos)
+    chat_with_bot(
+        vector_db, student_infos, settings.llm.llm_model_name, settings.llm.prompt_path
+    )
 
 
 if __name__ == "__main__":

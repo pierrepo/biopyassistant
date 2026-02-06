@@ -47,6 +47,7 @@ import sys
 from pathlib import Path
 
 import click
+import loguru
 import tiktoken
 from dotenv import load_dotenv
 from langchain.messages import AIMessage, HumanMessage
@@ -73,7 +74,9 @@ MSGS_QUERY_NOT_RELATED = [
 ]
 
 
-def load_database(vector_db_path: str, embedding_model: str) -> tuple[Chroma, int]:
+def load_database(
+    vector_db_path: str, embedding_model: str, logger: "loguru.Logger" = loguru.logger
+) -> tuple[Chroma, int]:
     """Prepare the vector database.
 
     Returns
@@ -92,9 +95,7 @@ def load_database(vector_db_path: str, embedding_model: str) -> tuple[Chroma, in
     # Count the number of chunks in the database
     nb_chunks = vector_db._collection.count()
     logger.info(f"Chunks in the database: {nb_chunks}")
-
     logger.success("Vector database prepared successfully.\n")
-
     return vector_db, nb_chunks
 
 
@@ -214,15 +215,15 @@ def format_chat_history(
             formatted_history.append(AIMessage(content=cleaned_ai))
             logger.info(f"AI message (cleaned): {cleaned_ai}")
 
-        logger.success(
-            f"Chat history formatted successfully with {len(formatted_history)} \
-                entries.\n"
-        )
+        # logger.success(
+        #     f"Chat history formatted successfully with {len(formatted_history)} \
+        #         entries.\n"
+        # )
         return formatted_history
 
     else:  # if chat history is empty
-        logger.info("Chat history is empty.")
-        logger.success("Chat history formatted successfully with 0 entries.")
+        # logger.info("Chat history is empty.")
+        # logger.success("Chat history formatted successfully with 0 entries.")
         return chat_history
 
 
@@ -251,8 +252,8 @@ def contextualize_question(
         elif isinstance(message, AIMessage):
             chat_context += f"Réponse {i // 2 + 1}: {message.content}\n"
 
-    logger.info(f"Chat context: {chat_context}")
-    logger.success("Contextualized query constructed successfully.")
+    # logger.info(f"Chat context: {chat_context}")
+    # logger.success("Contextualized query constructed successfully.")
 
     return chat_context
 
@@ -270,9 +271,9 @@ def get_metadata(relevant_chunks: list) -> list[dict]:
     metadatas : list
         List of metadata dictionaries for the top matching documents.
     """
-    logger.info("Extracting metadata of the top matching documents.")
+    # logger.info("Extracting metadata of the top matching documents.")
     metadatas = [doc.metadata for doc in relevant_chunks]
-    logger.success("Metadata extracted successfully.\n")
+    # logger.success("Metadata extracted successfully.\n")
 
     return metadatas
 
@@ -437,8 +438,8 @@ def add_metadata_to_answer(
     # Add the sources to the response
     response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
 
-    logger.info(f"Answer with metadata: {response_with_metadata}")
-    logger.success("Metadata added to the response successfully.\n")
+    # logger.info(f"Answer with metadata: {response_with_metadata}")
+    # logger.success("Metadata added to the response successfully.\n")
 
     return response_with_metadata
 
