@@ -5,137 +5,137 @@ chapters:
   # List of all available Python chapters and annexes.
   # These entries define which Markdown files are ingested into the vector database.
 
-  - id: 01
+  - id: "01"
     title: Introduction
     source_file_path: data/markdown_raw/01_introduction.md
     processed_file_path: data/markdown_processed/01_introduction.md
 
-  - id: 02
+  - id: "02"
     title: Variables
     source_file_path: data/markdown_raw/02_variables.md
     processed_file_path: data/markdown_processed/02_variables.md
 
-  - id: 03
+  - id: "03"
     title: Affichage
     source_file_path: data/markdown_raw/03_affichage.md
     processed_file_path: data/markdown_processed/03_affichage.md
 
-  - id: 04
+  - id: "04"
     title: Listes
     source_file_path: data/markdown_raw/04_listes.md
     processed_file_path: data/markdown_processed/04_listes.md
 
-  - id: 05
+  - id: "05"
     title: Boucles et comparaisons
     source_file_path: data/markdown_raw/05_boucles_comparaisons.md
     processed_file_path: data/markdown_processed/05_boucles_comparaisons.md
 
-  - id: 06
+  - id: "06"
     title: Tests
     source_file_path: data/markdown_raw/06_tests.md
     processed_file_path: data/markdown_processed/06_tests.md
 
-  - id: 07
+  - id: "07"
     title: Fichiers
     source_file_path: data/markdown_raw/07_fichiers.md
     processed_file_path: data/markdown_processed/07_fichiers.md
 
-  - id: 08
+  - id: "08"
     title: Dictionnaires et tuples
     source_file_path: data/markdown_raw/08_dictionnaires_tuples.md
     processed_file_path: data/markdown_processed/08_dictionnaires_tuples.md
 
-  - id: 9
+  - id: "09"
     title: Modules
     source_file_path: data/markdown_raw/09_modules.md
     processed_file_path: data/markdown_processed/09_modules.md
 
-  - id: 10
+  - id: "10"
     title: Fonctions
     source_file_path: data/markdown_raw/10_fonctions.md
     processed_file_path: data/markdown_processed/10_fonctions.md
 
-  - id: 11
+  - id: "11"
     title: Plus sur les chaînes de caractères
     source_file_path: data/markdown_raw/11_plus_sur_les_chaines_de_caracteres.md
     processed_file_path: data/markdown_processed/11_plus_sur_les_chaines_de_caracteres.md
 
-  - id: 12
+  - id: "12"
     title: Plus sur les listes
     source_file_path: data/markdown_raw/12_plus_sur_les_listes.md
     processed_file_path: data/markdown_processed/12_plus_sur_les_listes.md
 
-  - id: 13
+  - id: "13"
     title: Plus sur les fonctions
     source_file_path: data/markdown_raw/13_plus_sur_les_fonctions.md
     processed_file_path: data/markdown_processed/13_plus_sur_les_fonctions.md
 
-  - id: 14
+  - id: "14"
     title: Conteneurs
     source_file_path: data/markdown_raw/14_conteneurs.md
     processed_file_path: data/markdown_processed/14_conteneurs.md
 
-  - id: 15
+  - id: "15"
     title: Création de modules
     source_file_path: data/markdown_raw/15_creation_modules.md
     processed_file_path: data/markdown_processed/15_creation_de_modules.md
 
-  - id: 16
+  - id: "16"
     title: Bonnes pratiques en programmation Python
     source_file_path: data/markdown_raw/16_bonnes_pratiques.md
     processed_file_path: data/markdown_processed/16_bonnes_pratiques.md
 
-  - id: 17
+  - id: "17"
     title: Expressions régulières et parsing
     source_file_path: data/markdown_raw/17_expressions_regulieres.md
     processed_file_path: data/markdown_processed/17_expressions_regulieres.md
 
-  - id: 18
+  - id: "18"
     title: Jupyter et ses notebooks
     source_file_path: data/markdown_raw/18_jupyter.md
     processed_file_path: data/markdown_processed/18_jupyter.md
 
-  - id: 19
+  - id: "19"
     title: Module Biopython
     source_file_path: data/markdown_raw/19_module_biopython.md
     processed_file_path: data/markdown_processed/19_module_biopython.md
 
-  - id: 20
+  - id: "20"
     title: Module Numpy
     source_file_path: data/markdown_raw/20_module_numpy.md
     processed_file_path: data/markdown_processed/20_module_numpy.md
 
-  - id: 21
+  - id: "21"
     title: Module Matplotlib
     source_file_path: data/markdown_raw/21_module_matplotlib.md
     processed_file_path: data/markdown_processed/21_module_matplotlib.md
 
-  - id: 22
+  - id: "22"
     title: Module Pandas
     source_file_path: data/markdown_raw/22_module_pandas.md
     processed_file_path: data/markdown_processed/22_module_pandas.md
 
-  - id: 23
+  - id: "23"
     title: Avoir la classe avec les objets
     source_file_path: data/markdown_raw/23_avoir_la_classe_avec_les_objets.md
     processed_file_path: data/markdown_processed/23_avoir_la_classe_avec_les_objets.md
 
-  - id: 24
+  - id: "24"
     title: Avoir plus la classe avec les objets
     source_file_path: data/markdown_raw/24_avoir_plus_la_classe_avec_les_objets.md
     processed_file_path: data/markdown_processed/24_avoir_plus_la_classe_avec_les_objets.md
 
-  - id: 25
+  - id: "25"
     title: Fenêtres graphiques et Tkinter
     source_file_path: data/markdown_raw/25_tkinter.md
     processed_file_path: data/markdown_processed/25_tkinter.md
 
-  - id: 26
+  - id: "26"
     title: Remarques complémentaires
     source_file_path: data/markdown_raw/26_remarques_complementaires.md
     processed_file_path: data/markdown_processed/26_remarques_complementaires.md
 
-  - id: 27
+  - id: "27"
     title: Mini-projets
     source_file_path: data/markdown_raw/27_mini_projets.md
     processed_file_path: data/markdown_processed/27_mini_projets.md
@@ -162,15 +162,15 @@ levels:
       and are looking for guidance on fundamental Python topics.
 
     chapters:
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-      - 11
-      - 12
+      - "01"
+      - "02"
+      - "03"
+      - "04"
+      - "05"
+      - "06"
+      - "07"
+      - "11"
+      - "12"
 
   - name: intermediaire
     display_name: "Intermédiaire (Python 1)"
@@ -180,23 +180,23 @@ levels:
       certain fundamentals while deepening their understanding.
 
     chapters:
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-      - 8
-      - 9
-      - 10
-      - 11
-      - 12
-      - 13
-      - 14
-      - 15
-      - 16
-      - B
+      - "01"
+      - "02"
+      - "03"
+      - "04"
+      - "05"
+      - "06"
+      - "07"
+      - "08"
+      - "09"
+      - "10"
+      - "11"
+      - "12"
+      - "13"
+      - "14"
+      - "15"
+      - "16"
+      - "B"
 
   - name: avance
     display_name: "Avancé (Python 2)"
@@ -207,29 +207,29 @@ levels:
       and are ready to explore more complex concepts.
 
     chapters:
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-      - 8
-      - 9
-      - 10
-      - 11
-      - 12
-      - 13
-      - 14
-      - 15
-      - 16
-      - 17
-      - 18
-      - 19
-      - 20
-      - 21
-      - 22
-      - 23
-      - 24
-      - 27
-      - B
+      - "01"
+      - "02"
+      - "03"
+      - "04"
+      - "05"
+      - "06"
+      - "07"
+      - "08"
+      - "09"
+      - "10"
+      - "11"
+      - "12"
+      - "13"
+      - "14"
+      - "15"
+      - "16"
+      - "17"
+      - "18"
+      - "19"
+      - "20"
+      - "21"
+      - "22"
+      - "23"
+      - "24"
+      - "27"
+      - "B"
