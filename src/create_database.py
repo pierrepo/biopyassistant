@@ -6,14 +6,16 @@ The resulting chunks are saved to a ChromaDB database.
 
 Usage:
 ======
-    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path]
+    python src/create_database.py --course-yaml [course-yaml]
+                               --chroma-path [chroma-path]
                                --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
                                --model-name [model-name] --provider-name [provider-name]
 
 Arguments:
 ==========
-    --data-path : str
-        The directory containing the processed Markdown files of the python course.
+    --course-yaml : str
+        The YAML file containing the course structure, including chapter names, titles,
+        source Markdown paths, and processed file paths.
     --chroma-path : str
         The name of the output path to save the ChromaDB database.
     --chunk-size : int (optional)
@@ -32,16 +34,16 @@ Arguments:
 
 Example:
 ========
-    python src/create_database.py --data-path data/markdown_processed \
+    python src/create_database.py --course-yaml data/chapters_and_levels.yaml \
                                     --chroma-path chroma_db \
                                     --model-name text-embedding-3-large \
                                     --provider-name openai
 
 This command will create a Chroma vector database from the processed Markdown files
-located in the `data/markdown_processed` directory. The text will be split into chunks
-of 1000 characters with an overlap of 200 characters and will be embedded with the model
-`text-embedding-3-large`. And finally the vector database will be saved to the
-`chroma_db` directory.
+located in the paths specified in the `data/chapters_and_levels.yaml` file.
+The text will be split into chunks of 1000 characters with an overlap of 200 characters
+and will be embedded with the model `text-embedding-3-large`.
+And finally the vector database will be saved to the `chroma_db` directory.
 """
 
 import os
@@ -53,50 +55,85 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+import loguru
 import tiktoken
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
     RecursiveCharacterTextSplitter,
 )
-from loguru import logger
 
 from logger import create_logger
+from parse_clean_markdown import load_chapters_from_yaml
 
 
-def load_documents(data_dir: str) -> list[Document]:
+def load_documents(
+    course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> list[Document]:
     """Load Markdown files, concatenate their content, and extract filenames.
 
     Parameters
     ----------
-    data_dir : str
-        The directory containing the Markdown files to be processed.
+    course_yaml : Path
+        The YAML file containing the course structure, including chapter names, titles,
+        source Markdown paths, and processed file paths.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     documents : list of Document
         List of Markdown documents.
     """
-    logger.info(f"Loading Markdown documents from {data_dir}...")
-    # Load Markdown documents from the specified directory
-    loader = DirectoryLoader(
-        data_dir, glob="*.md", show_progress=False, loader_cls=TextLoader
-    )
-    documents = loader.load()
+    documents = []
+
+    # Load chapters and levels from the YAML file
+    chapters = load_chapters_from_yaml(course_yaml, logger)
+
+    # Iterate through the chapters and load the processed Markdown files as Documents
+    logger.info("Converting Markdown file to Document...")
+    for chapter in chapters:
+        # Get the processed Markdown file path
+        processed_path = chapter.get("processed_file_path")
+        # Check if the processed file path is defined for the chapter
+        if not processed_path:
+            logger.warning(
+                f"No processed_file_path defined for chapter {chapter.get('name')}"
+            )
+            continue
+
+        processed_path = Path(processed_path)
+        # Check if the processed Markdown file exists
+        if not processed_path.exists():
+            logger.warning(f"Processed Markdown file not found: {processed_path}")
+            continue
+        # Load the processed Markdown file as a Document
+        loader = TextLoader(processed_path)
+        doc = loader.load()
+        documents.extend(doc)
+        logger.debug(
+            f"Converted {processed_path} to Document with "
+            f"{len(doc[0].page_content)} characters."
+        )
 
     # Order the documents by the file name
     documents = sorted(documents, key=lambda x: x.metadata.get("source", ""))
 
-    logger.success(f"Loaded {len(documents)} Markdown documents successfully.")
+    logger.success(
+        f"Converted {len(documents)}/{len(chapters)} Markdown documents successfully."
+    )
     return documents
 
 
 def split_text_into_chunks(
-    content: str, chunk_size: int, chunk_overlap: int
+    content: str,
+    chunk_size: int,
+    chunk_overlap: int,
+    logger: "loguru.Logger" = loguru.logger,
 ) -> list[Document]:
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
@@ -108,6 +145,8 @@ def split_text_into_chunks(
         The size of the text chunks to be created.
     chunk_overlap : int
         The overlap between text chunks.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -144,7 +183,9 @@ def split_text_into_chunks(
 
 
 def remove_small_chunks(
-    chunks: list[Document], min_nb_char: int = 100
+    chunks: list[Document],
+    logger: "loguru.Logger" = loguru.logger,
+    min_nb_char: int = 100,
 ) -> list[Document]:
     """Remove small chunks from the list of text chunks.
 
@@ -154,6 +195,8 @@ def remove_small_chunks(
         List of text chunks to be filtered.
     min_nb_char : int
         Minimum number of characters for a chunk to be kept.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -165,8 +208,8 @@ def remove_small_chunks(
         chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char
     ]
     logger.info(
-        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks \
-            (less than {min_nb_char} characters)."
+        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks"
+        f" (less than {min_nb_char} characters)."
     )
     return chunks_cleaned
 
@@ -191,13 +234,18 @@ def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
     return chunks
 
 
-def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_token_number_to_metadata(
+    chunks: list[Document],
+    logger: "loguru.Logger" = loguru.logger,
+) -> list[Document]:
     """Add the number of tokens to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
         List of text chunks to which the number of tokens is to be added.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -226,7 +274,7 @@ def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
 
 
 def add_file_names_to_metadata(
-    chunks: list[Document], file_name: str
+    chunks: list[Document], file_name: str, logger: "loguru.Logger" = loguru.logger
 ) -> list[Document]:
     """Add file names to the metadata of the text chunks.
 
@@ -236,6 +284,8 @@ def add_file_names_to_metadata(
         List of text chunks to which file names are to be added.
     file_name : str
         File name of the Markdown documents.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -299,13 +349,17 @@ def preprocess_for_url(text: str, *, is_subsection: bool = False) -> str:
     return processed_text
 
 
-def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_url_to_metadata(
+    chunks: list[Document], logger: "loguru.Logger" = loguru.logger
+) -> list[Document]:
     """Add URL to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
         List of text chunks to which URL is to be added.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -313,7 +367,7 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
         List of text chunks with URL added to their metadata.
     """
     # Add URL to metadata of each chunk
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks, start=1):
         # Extract file name from the metadata
         file_name = chunk.metadata.get("file_name", "")
 
@@ -335,7 +389,7 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
         chunk.metadata["url"] = (
             f"https://python.sdv.u-paris.fr/{file_name}/{section_id}"
         )
-        logger.debug(f"Added URL: {chunk.metadata['url']}")
+        logger.debug(f"Chunk {i} URL: {chunk.metadata['url']}")
 
     return chunks
 
@@ -345,6 +399,7 @@ def save_to_chroma(
     model_name: str,
     provider_name: str,
     chroma_output_path: Path,
+    logger: "loguru.Logger" = loguru.logger,
 ) -> None:
     """Save text chunks to ChromaDB.
 
@@ -358,6 +413,8 @@ def save_to_chroma(
         Name of the embedding provider to use.
     chroma_output_path : Path
         Path to the directory where the ChromaDB database will be saved.
+    logger: "loguru.Logger"
+        Logger for logging messages.
     """
     logger.info("Saving to ChromaDB...")
     # Clear the existing database if it exists
@@ -391,11 +448,14 @@ def save_to_chroma(
 
 @click.command()
 @click.option(
-    "-d",
-    "--data-path",
+    "--course-yaml",
     required=True,
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-    help="Directory containing the processed Markdown files of the Python course.",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help=(
+        "Path to the YAML file defining the course chapters and student levels. "
+        "The YAML should include chapter names, titles, source Markdown paths, "
+        "and processed file paths."
+    ),
 )
 @click.option(
     "-c",
@@ -433,7 +493,7 @@ def save_to_chroma(
     help="Name of the embedding provider to use.",
 )
 def generate_data_store(
-    data_path: Path,
+    course_yaml: Path,
     chroma_path: Path,
     chunk_size: int,
     chunk_overlap: int,
@@ -442,7 +502,7 @@ def generate_data_store(
 ) -> None:
     """Build a ChromaDB store from chunked text with metadata."""
     # Set-up the logger
-    log_path = f"logs/create_database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_path = f"logs/{datetime.now().strftime('%Y%m%d')}/create_database.log"
     logger = create_logger(log_path)
     logger.info("Creating Chroma database...")
 
@@ -459,29 +519,30 @@ def generate_data_store(
 
     all_chunks = []
     # load documents from the specified directory
-    documents = load_documents(data_path)
-    logger.info("Processing files...")
+    documents = load_documents(course_yaml, logger)
+    logger.info("Processing Documents...")
     for doc in documents:
         file_name = doc.metadata.get("source", "")
         logger.info(f"File path: {file_name}")
         # split text of the current document into chunks
-        chunks = split_text_into_chunks(doc.page_content, chunk_size, chunk_overlap)
-
+        chunks = split_text_into_chunks(
+            doc.page_content, chunk_size, chunk_overlap, logger
+        )
         # remove small chunks
-        chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
+        chunks_cleaned = remove_small_chunks(chunks, logger, min_nb_char=100)
 
         # add index to the metadata
         chunks_with_index = add_index_to_metadata(chunks_cleaned)
 
         # add number of tokens to the metadata
-        chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
+        chunks_with_tokens = add_token_number_to_metadata(chunks_with_index, logger)
 
         # add file name to the chunk metadata
         chunks_with_file_name = add_file_names_to_metadata(
-            chunks_with_tokens, file_name
+            chunks_with_tokens, file_name, logger
         )
         # add URL to the chunk metadata if available
-        chunks_with_url = add_url_to_metadata(chunks_with_file_name)
+        chunks_with_url = add_url_to_metadata(chunks_with_file_name, logger)
 
         all_chunks.extend(chunks_with_url)
         logger.info(f"Example chunk metadata: {all_chunks[-1].metadata}")
@@ -490,15 +551,14 @@ def generate_data_store(
     logger.info(f"Total number of files processed: {len(documents)}")
     logger.info(f"Total number of chunks: {len(all_chunks)}")
     logger.info(
-        f"Total number of characters: {
-            sum(len(chunk.page_content) for chunk in all_chunks):,}"
+        f"Total number of characters: \
+        {sum(len(chunk.page_content) for chunk in all_chunks):,}"
     )
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")
     # save the embeddings to ChromaDB
-    save_to_chroma(all_chunks, model_name, provider_name, chroma_path)
+    save_to_chroma(all_chunks, model_name, provider_name, chroma_path, logger)
 
 
-# MAIN PROGRAM
 if __name__ == "__main__":
     generate_data_store()
