@@ -277,10 +277,11 @@ def process_md_files(yaml_path: Path) -> None:
             content = renumber_headers(content, chapter_number, logger)
 
         # Get destination file path from YAML
-        dest_path = Path(chapter.get("processed_file_path"))
-        if not dest_path:
+        dest_file = chapter.get("processed_file_path")
+        if not dest_file:
             logger.warning(f"No processed file path defined for chapter {chapter_name}")
             continue
+        dest_path = Path(dest_file)
         # Create output directory if it does not exist
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         # Save processed content to destination path
