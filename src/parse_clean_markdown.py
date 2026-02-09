@@ -36,32 +36,66 @@ Output:
 
 Usage:
 ======
-    python src/parse_clean_markdown.py --in source_dir --out dest_dir
+    python src/parse_clean_markdown.py --config path/to/chapters_and_levels.yaml
 
 Where:
-    source_dir : Path
-        The source directory containing Markdown files to be processed.
-    dest_dir : Path
-        The destination directory to save the processed Markdown files.
+    config : Path
+        Path to the YAML file defining all chapters and levels.
+        This YAML file should include the chapter names, titles, and the paths to the
+        source Markdown files and the destination paths for the processed files.
 
 Example:
 ========
-    python src/parse_clean_markdown.py --in data/markdown_raw \
-                                        --out data/markdown_processed
+    python src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 
-This command processes Markdown files located in the 'data/markdown_raw'
-directory and saves the cleaned and renumbered files to the
-'data/markdown_processed' directory.
+This command processes Markdown files listed in the YAML file and saves
+the cleaned and renumbered files to the paths specified in the YAML file.
 """
 
 import re
+from datetime import datetime
 from pathlib import Path
 
 import click
-from loguru import logger
+import loguru
+import yaml
+
+from logger import create_logger
 
 
-def clean_python_comments(content: str) -> str:
+def load_chapters_from_yaml(
+    yaml_path: Path, logger: "loguru.Logger" = loguru.logger
+) -> list[dict]:
+    """Load chapters and levels from a YAML file.
+
+    Parameters
+    ----------
+    yaml_path : Path
+        Path to the YAML file defining chapters and levels.
+    logger: "loguru.Logger"
+        Logger for logging messages.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries, each containing chapter information.
+    """
+    logger.info(f"Loading chapters from YAML file: {yaml_path}...")
+    try:
+        with yaml_path.open("r", encoding="utf-8") as file:
+            data = yaml.safe_load(file)
+            chapters = data.get("chapters", [])
+            logger.info(f"Loaded {len(chapters)} chapters successfully.")
+            return chapters
+    except FileNotFoundError:
+        logger.error(f"YAML file not found: {yaml_path}")
+        return []
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML file: {e}")
+        return []
+
+
+def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger) -> str:
     """Remove spaces between '#' and comments in Python code blocks in Markdown content.
 
     Example:
@@ -77,6 +111,8 @@ def clean_python_comments(content: str) -> str:
     ----------
     content : str
         Content of Markdown file.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -114,12 +150,14 @@ def clean_python_comments(content: str) -> str:
         f"Number of space lines modified comment lines: {modified_comment_lines}"
     )
     logger.info(f"Number of final content lines: {len(cleaned_content)}")
-    logger.success("Cleaning comments in Python code blocks complete.")
+    logger.success("Python code block comments cleaned.")
 
     return "\n".join(cleaned_content)
 
 
-def renumber_headers(content: str, header_prefix: int | str) -> str:
+def renumber_headers(
+    content: str, header_prefix: int | str, logger: "loguru.Logger" = loguru.logger
+) -> str:
     """Renumber headers in Markdown content.
 
     Parameters
@@ -128,6 +166,8 @@ def renumber_headers(content: str, header_prefix: int | str) -> str:
         The Markdown content to renumber.
     header_prefix : Union[int, str]
         The chapter number or appendix letter to use for renumbering headers.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
@@ -177,59 +217,83 @@ def renumber_headers(content: str, header_prefix: int | str) -> str:
 
 @click.command()
 @click.option(
-    "--in",
-    "source_dir",
+    "--config",
+    "yaml_path",
     required=True,
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Source directory containing Markdown files.",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to the YAML file defining chapters and levels.",
 )
-@click.option(
-    "--out",
-    "dest_dir",
-    required=True,
-    type=click.Path(file_okay=False, path_type=Path),
-    help="Destination directory to save processed files.",
-)
-def process_md_files(source_dir: Path, dest_dir: Path) -> None:
-    """Process Markdown files in the source directory and save them to the destination directory.
+def process_md_files(yaml_path: Path) -> None:
+    """Process Markdown files listed in a YAML file and save them.
 
     Parameters
     ----------
-    source_dir : Path
-        The source directory containing Markdown files.
-    dest_dir : Path
-        The destination directory to save processed files.
+    yaml_path : Path
+        Path to the YAML file defining chapters and their Markdown filenames.
     """
-    logger.info("Processing Markdown files...")
+    # Set up logging
+    log_path = f"logs/{datetime.now().strftime('%Y%m%d')}/parse_clean_markdown.log"
+    logger = create_logger(log_path)
+    logger.info("Starting Markdown processing...")
 
-    # Create the output directory if it does not exist
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    # Load chapters from YAML file
+    chapters = load_chapters_from_yaml(yaml_path)
 
-    # Iterate over all Markdown files in sorted order
-    for source_path in sorted(source_dir.glob("*.md")):
+    # Process each chapter's Markdown file
+    saved_count = 0
+    for i, chapter in enumerate(chapters, start=1):
+        chapter_name = f"{chapter.get('id')}. {chapter.get('title')}"
+        logger.info(f"Chapter: {chapter_name} ({i}/{len(chapters)})")
+
+        # Get source file path from YAML
+        source_file = chapter.get("source_file_path")
+        if not source_file:
+            logger.warning(f"No source file defined for chapter {chapter_name}")
+            continue
+        # Check if source file exists
+        source_path = Path(source_file)
+        if not source_path.exists():
+            logger.warning(f"Markdown file not found: {source_path}")
+            continue
         logger.info(f"Processing file: {source_path.name}")
-
-        # Read file content
+        # Read content
         content = source_path.read_text(encoding="utf-8")
-
-        # Remove or normalize Python-style comments
-        content = clean_python_comments(content)
-
-        # Handle appendix files (e.g., annexe_A_*.md)
-        if source_path.name.startswith("annexe"):
-            annex_character = source_path.stem.split("_")[1]
-            content = renumber_headers(content, annex_character)
-
-        # Handle numbered chapter files (e.g., 01_intro.md)
+        # Clean Python-style comments
+        content = clean_python_comments(content, logger)
+        # Renumber headers
+        # Determine if it's an annex or a chapter based on filename
+        stem = source_path.stem.lower()
+        # Annex files are named with "annexe" followed by an underscore + letter
+        # For example: "annexe_a.md", "annexe_b.md", etc.
+        if stem.startswith("annexe"):
+            annex_character = stem.split("_")[1]
+            content = renumber_headers(content, annex_character, logger)
+        # Chapter files are named with a number followed by an underscore
+        # For example: "01_introduction.md", "02_variables.md", etc.
         elif re.match(r"\d{2}_", source_path.name):
-            chapter_number = int(source_path.stem.split("_")[0])
-            content = renumber_headers(content, chapter_number)
+            chapter_number = int(stem.split("_")[0])
+            content = renumber_headers(content, chapter_number, logger)
 
-        # Write processed content to destination directory
-        dest_path = dest_dir / source_path.name
-        dest_path.write_text(content, encoding="utf-8")
+        # Get destination file path from YAML
+        dest_path = Path(chapter.get("processed_file_path"))
+        if not dest_path:
+            logger.warning(f"No processed file path defined for chapter {chapter_name}")
+            continue
+        # Create output directory if it does not exist
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save processed content to destination path
+        try:
+            dest_path.write_text(content, encoding="utf-8")
+            logger.info(f"Processed file saved to: {dest_path}")
+            saved_count += 1
+        except PermissionError:
+            logger.error(f"Permission denied when writing file: {dest_path}")
+        except OSError as e:
+            logger.error(f"OS error when writing file {dest_path}: {e}")
 
-    logger.success("Markdown files processed successfully")
+    logger.success(
+        f"Saved {saved_count}/{len(chapters)} processed Markdown files successfully!"
+    )
 
 
 # MAIN PROGRAM
