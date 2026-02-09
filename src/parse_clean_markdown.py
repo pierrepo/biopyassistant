@@ -85,7 +85,7 @@ def load_chapters_from_yaml(
         with yaml_path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file)
             chapters = data.get("chapters", [])
-            logger.info(f"Loaded {len(chapters)} chapters successfully.")
+            logger.success(f"Loaded {len(chapters)} chapters successfully.")
             return chapters
     except FileNotFoundError:
         logger.error(f"YAML file not found: {yaml_path}")
@@ -221,7 +221,9 @@ def renumber_headers(
     "yaml_path",
     required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="Path to the YAML file defining chapters and levels.",
+    help="Path to the YAML file defining chapters and levels."
+    " This YAML file should include the chapter names, titles, and the paths to the "
+    "source Markdown files and the destination paths for the processed files.",
 )
 def process_md_files(yaml_path: Path) -> None:
     """Process Markdown files listed in a YAML file and save them.
