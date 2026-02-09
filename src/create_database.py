@@ -274,27 +274,50 @@ def add_token_number_to_metadata(
 
 
 def add_file_names_to_metadata(
-    chunks: list[Document], file_name: str, logger: "loguru.Logger" = loguru.logger
+    chunks: list[Document], file_path: str, logger: "loguru.Logger" = loguru.logger
 ) -> list[Document]:
-    """Add file names to the metadata of the text chunks.
+    """Add file paths to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
-        List of text chunks to which file names are to be added.
-    file_name : str
-        File name of the Markdown documents.
+        List of text chunks to which file paths are to be added.
+    file_path : str
+        File path of the Markdown documents.
     logger: "loguru.Logger"
         Logger for logging messages.
 
     Returns
     -------
     chunks : list of Document
-        List of text chunks with file names added to their metadata.
+        List of text chunks with file paths added to their metadata.
     """
-    # Add file names to metadata of each chunk
+    file_name = Path(file_path).name
+
+    # Determine chapter id based on the file name
+    chapter_id = None
+    # Match numbered chapters, e.g., "01_intro.md" or "24_avoir_plus_la_classe.md"
+    match_chapter = re.match(r"(\d+)_", file_name)
+    if match_chapter:
+        chapter_id = int(match_chapter.group(1))
+    else:
+        # Match annexes, e.g., "annexe_A.md"
+        match_annex = re.match(r"annexe[_-]([A-Z0-9]+)", file_name, re.IGNORECASE)
+        if match_annex:
+            chapter_id = match_annex.group(1).upper()
+
+    if chapter_id is None:
+        logger.warning(
+            f"Could not extract chapter index from file name: {file_name}. "
+            "No chapter index added to metadata."
+        )
+
+    # Add metadata to each chunk
     for chunk in chunks:
-        chunk.metadata["file_name"] = file_name
+        chunk.metadata["file_path"] = file_path
+        chunk.metadata["file_name"] = Path(file_path).name
+        chunk.metadata["chapter_id"] = chapter_id
+
     return chunks
 
 
@@ -537,7 +560,7 @@ def generate_data_store(
         # add number of tokens to the metadata
         chunks_with_tokens = add_token_number_to_metadata(chunks_with_index, logger)
 
-        # add file name to the chunk metadata
+        # add file name and chapter id to the chunk metadata
         chunks_with_file_name = add_file_names_to_metadata(
             chunks_with_tokens, file_name, logger
         )
