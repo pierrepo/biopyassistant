@@ -61,14 +61,91 @@ from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
     RecursiveCharacterTextSplitter,
 )
+from openai import OpenAI
 
 from logger import create_logger
 from parse_clean_markdown import load_chapters_from_yaml
+
+
+class OpenRouterEmbeddings(Embeddings):
+    """LangChain-compatible embeddings using OpenRouter."""
+
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        base_url: str = "https://openrouter.ai/api/v1",
+        logger: "loguru.Logger" = loguru.logger,
+    ) -> None:
+        self.model = model
+        self.api_key = api_key
+        self.logger = logger
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+        )
+
+    def embed_query(self, text: str) -> list[float]:
+        """Embed search query.
+
+        Returns
+        -------
+            Embedding for the input query text.
+        """
+        response = self.client.embeddings.create(
+            model=self.model,
+            input=text,
+            encoding_format="float",
+        )
+        return response.data[0].embedding
+
+    def embed_documents(
+        self,
+        texts: list[str],
+        max_retries: int = 3,
+    ) -> list[list[float]]:
+        """Embed documents one by one with retries and chunk logging.
+
+        Parameters
+        ----------
+        texts : list[str]
+            List of input texts to embed.
+        max_retries : int
+            Maximum number of retry attempts for a failed embedding.
+
+        Returns
+        -------
+        list[list[float]]
+            List of embeddings, one per input text.
+        """
+        embeddings: list[list[float]] = []
+
+        for idx, text in enumerate(texts):
+            for attempt in range(1, max_retries + 1):
+                try:
+                    embedding = self.embed_query(text=text)
+                    embeddings.append(embedding)
+                    self.logger.debug(
+                        f"Chunk {idx} embedded successfully on attempt {attempt}."
+                    )
+                    break  # Exit the retry loop on success
+                except Exception as e:
+                    self.logger.warning(
+                        f"Attempt {attempt} failed for chunk {idx}: {e}"
+                    )
+                    if attempt == max_retries:
+                        self.logger.error(
+                            f"Failed to embed chunk {idx} after {max_retries} attempts."
+                        )
+                        raise  # Re-raise the exception after max retries
+
+        return embeddings
 
 
 def load_documents(
@@ -102,7 +179,8 @@ def load_documents(
         # Check if the processed file path is defined for the chapter
         if not processed_path:
             logger.warning(
-                f"No processed_file_path defined for chapter {chapter.get('name')}"
+                f"No processed_file_path defined for chapter id={chapter.get('id')} "
+                f"title={chapter.get('title')}"
             )
             continue
 
@@ -214,26 +292,6 @@ def remove_small_chunks(
     return chunks_cleaned
 
 
-def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
-    """Add an index to the metadata of the text chunks.
-
-    Parameters
-    ----------
-    chunks : list of Document
-        List of text chunks to which an index is to be added.
-
-    Returns
-    -------
-    chunks : list of Document
-        List of text chunks with an index added to their metadata.
-    """
-    # Add an index to metadata of each chunk
-    for index, chunk in enumerate(chunks):
-        chunk.metadata["id"] = index
-
-    return chunks
-
-
 def add_token_number_to_metadata(
     chunks: list[Document],
     logger: "loguru.Logger" = loguru.logger,
@@ -299,7 +357,7 @@ def add_file_names_to_metadata(
     # Match numbered chapters, e.g., "01_intro.md" or "24_avoir_plus_la_classe.md"
     match_chapter = re.match(r"(\d+)_", file_name)
     if match_chapter:
-        chapter_id = int(match_chapter.group(1))
+        chapter_id = str(match_chapter.group(1))
     else:
         # Match annexes, e.g., "annexe_A.md"
         match_annex = re.match(r"annexe[_-]([A-Z0-9]+)", file_name, re.IGNORECASE)
@@ -321,7 +379,7 @@ def add_file_names_to_metadata(
     return chunks
 
 
-def preprocess_for_url(text: str, *, is_subsection: bool = False) -> str:
+def preprocess_for_url(text: str, *, is_subsubsection_name: bool = False) -> str:
     """Preprocess text for creating URL.
 
     Parameters
@@ -363,7 +421,7 @@ def preprocess_for_url(text: str, *, is_subsection: bool = False) -> str:
     processed_text = re.sub(r"[^a-zA-Z]*$", "", processed_text)
 
     # Remove the subsubsection number
-    if is_subsection:
+    if is_subsubsection_name:
         processed_text = re.sub(r"^[a-zA-Z]?\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
@@ -392,17 +450,16 @@ def add_url_to_metadata(
     # Add URL to metadata of each chunk
     for i, chunk in enumerate(chunks, start=1):
         # Extract file name from the metadata
-        file_name = chunk.metadata.get("file_name", "")
+        file_path = chunk.metadata.get("file_name", "")
+        file_name = Path(file_path).stem
 
         # Extract section_id from the metadata
         if chunk.metadata.get("subsubsection_name", ""):  # subsubsection
             section_id = preprocess_for_url(
-                chunk.metadata.get("subsubsection_name", ""), is_subsection=True
+                chunk.metadata.get("subsubsection_name", ""), is_subsubsection_name=True
             )
         elif chunk.metadata.get("subsection_name", ""):  # subsection
-            section_id = preprocess_for_url(
-                chunk.metadata.get("subsection_name", ""), is_subsection=True
-            )
+            section_id = preprocess_for_url(chunk.metadata.get("subsection_name", ""))
         elif chunk.metadata.get("section_name", ""):  # section
             section_id = preprocess_for_url(chunk.metadata.get("section_name", ""))
         else:  # chapter
@@ -415,6 +472,50 @@ def add_url_to_metadata(
         logger.debug(f"Chunk {i} URL: {chunk.metadata['url']}")
 
     return chunks
+
+
+def create_embeddings_function(
+    model_name: str,
+    provider_name: str,
+) -> OpenAIEmbeddings | OpenRouterEmbeddings:
+    """Create an embeddings function based on the specified model and provider.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the embedding model to use.
+    provider_name : str
+        Name of the embedding provider to use.
+
+    Returns
+    -------
+    OpenAIEmbeddings | OpenRouterEmbeddings
+        An instance of the OpenAIEmbeddings or
+        OpenRouterEmbeddings class initialized
+        with the specified model and provider.
+
+    Raises
+    ------
+    KeyError
+        If the API key for the specified provider is not found in environment variables.
+    """
+    # Load the environment variables with LLM api keys
+    load_dotenv()
+    try:
+        # Get the API key and base URL based on the provider
+        if provider_name == "openrouter":
+            return OpenRouterEmbeddings(
+                model=model_name,
+                api_key=os.environ["OPENROUTER_API_KEY"],
+            )
+        elif provider_name == "openai":
+            return OpenAIEmbeddings(
+                model=model_name, api_key=os.getenv("OPENAI_API_KEY")
+            )
+    # Handle the case where the API key is not found in environment variables
+    except KeyError as e:
+        msg = f"API key for {provider_name} not found in environment variables."
+        raise KeyError(msg) from e
 
 
 def save_to_chroma(
@@ -439,30 +540,22 @@ def save_to_chroma(
     logger: "loguru.Logger"
         Logger for logging messages.
     """
-    logger.info("Saving to ChromaDB...")
+    logger.info(f"Saving to ChromaDB using embedding model `{model_name}`...")
     # Clear the existing database if it exists
     if chroma_output_path.exists():
         shutil.rmtree(chroma_output_path)
 
-    # Get the API key and base URL based on the provider
-    if provider_name == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        base_url = "https://openrouter.ai/api/v1"
-    elif provider_name == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        base_url = None
+    # Create the embeddings function
+    embeddings_function = create_embeddings_function(model_name, provider_name)
 
-    # Create the embeddings for each chunks
-    embeddings = OpenAIEmbeddings(
-        model=model_name,
-        base_url=base_url,
-        api_key=api_key,
-    )
+    # Generate unique IDs for each chunk
+    uuids = [str(index) for index in range(len(chunks))]
 
     # Create a ChromaDB with the embeddings
     Chroma.from_documents(
         documents=chunks,
-        embedding=embeddings,
+        ids=uuids,
+        embedding=embeddings_function,
         persist_directory=str(chroma_output_path),
         collection_metadata={"hnsw:space": "cosine"},  # distance metric
     )
@@ -491,7 +584,7 @@ def save_to_chroma(
     "-s",
     "--chunk-size",
     default=1000,
-    type=click.IntRange(min=1),
+    type=click.IntRange(min=50),
     help="Size of the text chunks to be created.",
 )
 @click.option(
@@ -506,13 +599,14 @@ def save_to_chroma(
     "--model-name",
     default="text-embedding-3-large",
     type=str,
-    help="Name of the embedding model, chosen from OpenRouter`s available models.",
+    help="Name of the embedding model,"
+    "chosen from OpenAI and OpenRouter`s embedding models. ",
 )
 @click.option(
     "-p",
     "--provider-name",
-    default="openrouter",
-    type=str,
+    default="openai",
+    type=click.Choice(["openrouter", "openai"], case_sensitive=False),
     help="Name of the embedding provider to use.",
 )
 def generate_data_store(
@@ -537,9 +631,6 @@ def generate_data_store(
         )
         sys.exit(1)
 
-    # Load the environment variables with LLM api keys
-    load_dotenv()
-
     all_chunks = []
     # load documents from the specified directory
     documents = load_documents(course_yaml, logger)
@@ -554,11 +645,8 @@ def generate_data_store(
         # remove small chunks
         chunks_cleaned = remove_small_chunks(chunks, logger, min_nb_char=100)
 
-        # add index to the metadata
-        chunks_with_index = add_index_to_metadata(chunks_cleaned)
-
         # add number of tokens to the metadata
-        chunks_with_tokens = add_token_number_to_metadata(chunks_with_index, logger)
+        chunks_with_tokens = add_token_number_to_metadata(chunks_cleaned, logger)
 
         # add file name and chapter id to the chunk metadata
         chunks_with_file_name = add_file_names_to_metadata(
@@ -568,7 +656,7 @@ def generate_data_store(
         chunks_with_url = add_url_to_metadata(chunks_with_file_name, logger)
 
         all_chunks.extend(chunks_with_url)
-        logger.info(f"Example chunk metadata: {all_chunks[-1].metadata}")
+        logger.debug(f"Example chunk metadata: {all_chunks[-1].metadata}")
 
     logger.info("Summary:")
     logger.info(f"Total number of files processed: {len(documents)}")
@@ -579,6 +667,7 @@ def generate_data_store(
     )
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")
+
     # save the embeddings to ChromaDB
     save_to_chroma(all_chunks, model_name, provider_name, chroma_path, logger)
 
