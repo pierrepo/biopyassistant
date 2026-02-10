@@ -32,18 +32,15 @@ git clone https://github.com/pierrepo/biopyassistant.git
 cd biopyassistant
 ```
 
-### Install [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
+### Activate the environment
 
-### Create a Conda environment
+We use [uv](https://docs.astral.sh/uv/getting-started/installation/)
+to manage dependencies and the project environment.
 
-```bash
-conda env create -f environment.yml
-```
-
-### Activate the Conda environment
+Sync dependencies:
 
 ```bash
-conda activate biopyassistantenv
+uv sync
 ```
 
 ### Copy the raw Markdown files of the Python [course](https://github.com/bioinfo-prog/cours-python):
@@ -59,27 +56,30 @@ rm -rf cours-python
 
 ```bash
 rm -f data/markdown_processed/*.md
-python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
+uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 ```
 
 In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/markdown_processed`
 
 
-### Add OpenAI API key
+### Add OpenAI and OpenRouter API key
 
-Create an `.env` file with a valid OpenAI API key:
+Create an .env file with a valid [OpenAI](https://platform.openai.com/docs/api-reference/authentication) and [OpenRouter](https://openrouter.ai/docs/api/reference/authentication) API key:
 
-```text
+```sh
 OPENAI_API_KEY=<your-openai-api-key>
+OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```
-
-> Remark: This `.env` file is ignored by git.
+> Remark: This .env file is ignored by git.
 
 
 ### Create the vector database
 
 ```bash
-python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
+uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
+                              --chroma-path chroma_db \
+                              --model-name text-embedding-3-large \
+                              --provider-name openai
 ```
 
 This command will create a Chroma vector database from the processed Markdown files. All files will be split into chunks of 1000 characters with an overlap of 200 characters. 
@@ -91,21 +91,31 @@ This command will create a Chroma vector database from the processed Markdown fi
 
 
 ```bash
-python src/query_chatbot.py --query "Your question here" [--model "model_name"]  [--include-metadata]
+uv run python src/query_chatbot.py --query "Your question here" \
+                  --level "user_level" \
+                  --model "model_name" \
+                  --prompt_path "path_to_prompt_template" \
+                  --include-metadata
 ```
 
 ### Options
 
-- 🤖 Model Selection. For instance: `gpt-4o`, `gpt-4-turbo`
-- 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
+- 📚 **User Level**: For instance: `debutant`, `intermediaire`, `avance`, etc. This helps the chatbot tailor its responses to the user's level of understanding.
+- 🤖 **Model Selection**: For instance: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
+- 📄 **Prompt Template**: The file path to the text file containing the instruction and format for the chatbot's response. 
+- 📝 **Include Metadata**: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
 
 Example:
 
 ```bash
-python src/query_chatbot.py --query "What is the difference between list and set ?" --model gpt-4-turbo --include-metadata
+uv run python src/query_chatbot.py --query "What is the difference between list and set ?" \
+                  --level "intermediaire" \
+                  --model gpt-4o \
+                  --prompt_path "prompts/zero_shot.txt" \
+                  --include-metadata
 ```
 
-This command will query the chatbot with the question "What is the difference between list and set ?" using the `gpt-4-turbo` model and include metadata in the response.
+This command will query the chatbot for a response to the question "What is the difference between list and set ?" for an intermediate user using the `gpt-4o` model. The response will be generated based on the prompt template located at [`prompts/zero_shot.txt`](prompts/zero_shot.txt) and will include metadata about the sources of the answer.
 
 Output:
 
@@ -124,8 +134,6 @@ For more information, you can refer to the following sources:
 
 ## Usage (web interface)
 
-### Streamlit app
-
 
 ```bash
 streamlit run src/streamlit_app.py
@@ -134,12 +142,4 @@ streamlit run src/streamlit_app.py
 This will run the Streamlit app in your web browser.
 
 
-### Gradio App
-
-
-```bash
-python src/gradio_app.py
-```
-
-This will run the Gradio app in your web browser. A battle mode is available to compare the responses of different models.
 
