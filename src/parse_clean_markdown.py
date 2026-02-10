@@ -28,15 +28,15 @@ Input:
 
 Output:
     ```python
-    # Votre premier commentaire en  Python.
+    #Votre premier commentaire en  Python.
     print("Hello world!")
 
-    # D'autres commandes plus utiles pourraient suivre.
+    #D'autres commandes plus utiles pourraient suivre.
     ```
 
 Usage:
 ======
-    python src/parse_clean_markdown.py --config path/to/chapters_and_levels.yaml
+    uv run src/parse_clean_markdown.py --config path/to/chapters_and_levels.yaml
 
 Where:
     config : Path
@@ -46,7 +46,7 @@ Where:
 
 Example:
 ========
-    python src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
+    uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 
 This command processes Markdown files listed in the YAML file and saves
 the cleaned and renumbered files to the paths specified in the YAML file.

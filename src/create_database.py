@@ -6,7 +6,7 @@ The resulting chunks are saved to a ChromaDB database.
 
 Usage:
 ======
-    python src/create_database.py --course-yaml [course-yaml]
+    uv run src/create_database.py --course-yaml [course-yaml]
                                --chroma-path [chroma-path]
                                --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
                                --model-name [model-name] --provider-name [provider-name]
@@ -34,7 +34,7 @@ Arguments:
 
 Example:
 ========
-    python src/create_database.py --course-yaml data/chapters_and_levels.yaml \
+    uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
                                     --chroma-path chroma_db \
                                     --model-name text-embedding-3-large \
                                     --provider-name openai

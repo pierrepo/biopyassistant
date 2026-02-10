@@ -7,7 +7,7 @@ as context.
 
 Usage:
 ======
-    python src/query_chatbot.py --query "Your question here"
+    uv run src/query_chatbot.py --query "Your question here"
                                 --level "user_level"
                                 [--yaml-path "path_to_yaml_file"]
                                 [--model "model_name"]
@@ -71,7 +71,7 @@ Arguments:
 
 Example:
 ========
-    python src/query_chatbot.py --query "D'où vient le nom Python ?" \
+    uv run src/query_chatbot.py --query "D'où vient le nom Python ?" \
         --level "debutant" --model "gpt-4o" \
         --course-yaml "data/chapters_and_levels.yaml" \
         --provider-llm "openai" --db-path "chroma_db" \
@@ -618,7 +618,7 @@ def display_answer(
     "--db-path",
     "database_path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
-    default="data/chroma_db",
+    default="chroma_db",
     show_default=True,
     help="File path to the Chroma database containing the context embeddings.",
 )
@@ -643,7 +643,7 @@ def display_answer(
 @click.option(
     "--prompt_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-    default="prompt/zero_shot.txt",
+    default="prompts/zero_shot.txt",
     show_default=True,
     help="File path to the text file containing the prompt template.",
 )
