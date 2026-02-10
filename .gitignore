@@ -1,5 +1,5 @@
-# API keys and tokens
-.env
+# logging files
+logs/
 
 # vector database
 chroma_*
