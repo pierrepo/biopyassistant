@@ -9,7 +9,7 @@ Usage:
 ======
     uv run src/query_chatbot.py --query "Your question here"
                                 --level "user_level"
-                                [--yaml-path "path_to_yaml_file"]
+                                [--course-yaml "path_to_yaml_file"]
                                 [--model "model_name"]
                                 [--provider-llm "provider_llm_name"]
                                 [--db-path "database_path"]
@@ -47,7 +47,7 @@ Arguments:
 
     --db-path (str):
             File path to the Chroma database containing the context embeddings.
-            Default: "data/chroma_db"
+            Default: "chroma_db"
 
     --embedding-model (str):
             Name of the embedding model to use.
@@ -79,7 +79,7 @@ Example:
         --prompt_path "prompts/zero_shot.txt" --include-metadata
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
-begginer user in the Chroma database located at "data/chroma_db"
+beginner user in the Chroma database located at "data/chroma_db"
 using the "text-embedding-3-large" embedding model from the "openai" provider,
 The answer will be generated using the "gpt-4o" model from the "openai" provider,
 and the response will include metadata from the relevant documents.
@@ -120,7 +120,7 @@ MSGS_QUERY_NOT_RELATED = [
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
         "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce cours. Je te conseille de te concentrer d`abord sur les chapitres "
+        "dans ce cours. Je te conseille de te concentrer d'abord sur les chapitres "
         "actuellement au programme."
     ),
     (
@@ -407,7 +407,7 @@ def generate_answer(
     # Define the model
     if provider_llm_name == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
-        chat_model = ChatOpenAI(model=model_name, openai_api_key=api_key)
+        chat_model = ChatOpenAI(model=model_name, ai_api_key=api_key)
     # For OpenRouter, we don't have a specific class in LangChain,
     # but we can use the ChatOpenAI class with the appropriate base URL and API key.
     # Doc: https://openrouter.ai/docs/guides/community/langchain

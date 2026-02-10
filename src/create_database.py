@@ -626,8 +626,8 @@ def generate_data_store(
     # Validate the CLI arguments
     if chunk_overlap >= chunk_size:
         logger.error(
-            f"The chunk overlap ({chunk_overlap}) must be less than \
-                the chunk size ({chunk_size})."
+            f"The chunk overlap ({chunk_overlap}) must be less than "
+            f" the chunk size ({chunk_size})."
         )
         sys.exit(1)
 
@@ -661,10 +661,8 @@ def generate_data_store(
     logger.info("Summary:")
     logger.info(f"Total number of files processed: {len(documents)}")
     logger.info(f"Total number of chunks: {len(all_chunks)}")
-    logger.info(
-        f"Total number of characters: \
-        {sum(len(chunk.page_content) for chunk in all_chunks):,}"
-    )
+    total_characters = sum(len(chunk.page_content) for chunk in chunks)
+    logger.info(f"Total number of characters: {total_characters:,}")
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")
 
