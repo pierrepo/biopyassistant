@@ -574,28 +574,24 @@ def save_to_chroma(
     ),
 )
 @click.option(
-    "-c",
     "--chroma-path",
     required=True,
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
     help="Output path to save the ChromaDB database.",
 )
 @click.option(
-    "-s",
     "--chunk-size",
     default=1000,
     type=click.IntRange(min=50),
     help="Size of the text chunks to be created.",
 )
 @click.option(
-    "-o",
     "--chunk-overlap",
     default=200,
     type=click.IntRange(min=0),
     help="Overlap between text chunks.",
 )
 @click.option(
-    "-m",
     "--model-name",
     default="text-embedding-3-large",
     type=str,
@@ -603,7 +599,6 @@ def save_to_chroma(
     "chosen from OpenAI and OpenRouter`s embedding models. ",
 )
 @click.option(
-    "-p",
     "--provider-name",
     default="openai",
     type=click.Choice(["openrouter", "openai"], case_sensitive=False),
