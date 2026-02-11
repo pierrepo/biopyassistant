@@ -9,8 +9,8 @@ tmp/
 .DS_Store.env
 
 # course content
-data/markdown_raw/*
-data/markdown_processed/*
+data/course_raw/*
+data/course_processed/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
