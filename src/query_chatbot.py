@@ -407,7 +407,7 @@ def generate_answer(
     # Define the model
     if provider_llm_name == "openai":
         api_key = os.getenv("OPENAI_API_KEY")
-        chat_model = ChatOpenAI(model=model_name, ai_api_key=api_key)
+        chat_model = ChatOpenAI(model=model_name, api_key=api_key)
     # For OpenRouter, we don't have a specific class in LangChain,
     # but we can use the ChatOpenAI class with the appropriate base URL and API key.
     # Doc: https://openrouter.ai/docs/guides/community/langchain
