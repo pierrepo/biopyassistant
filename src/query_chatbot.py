@@ -15,7 +15,6 @@ Usage:
                                 [--db-path "database_path"]
                                 [--embedding-model "embedding_model"]
                                 [--provider-emb "provider_embeddings_name"]
-                                [--prompt_path "prompt_path"]
                                 [--include-metadata]
 
 Arguments:
@@ -23,9 +22,7 @@ Arguments:
     "Your question here" : The query text for which you want to search for answers.
     "user_level" : The user level used to adapt model responses.
                    It can be one of the following:
-                        - "debutant" : for beginner users
-                        - "intermediaire" : for intermediate users
-                        - "avance" : for advanced users
+                   "beginner", "intermediate", "advanced".
 
 
     Options:
@@ -60,10 +57,6 @@ Arguments:
             It can be either "openai" or "openrouter".
             Default: "openai"
 
-    --prompt_path (Path):
-            File path to the text file containing the prompt template.
-            Default: "prompts/zero_shot.txt"
-
     --include-metadata (bool):
             Optional flag to specify whether to include metadata in the response.
             If provided, metadata will be included; otherwise, it will be excluded.
@@ -72,11 +65,10 @@ Arguments:
 Example:
 ========
     uv run src/query_chatbot.py --query "D'où vient le nom Python ?" \
-        --level "debutant" --model "gpt-4o" \
+        --level "beginner" --model "gpt-4o" \
         --course-yaml "data/chapters_and_levels.yaml" \
         --provider-llm "openai" --db-path "chroma_db" \
-        --provider-emb "openai" --embedding-model "text-embedding-3-large" \
-        --prompt_path "prompts/zero_shot.txt" --include-metadata
+        --provider-emb "openai" --embedding-model "text-embedding-3-large"
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
 beginner user in the Chroma database located at "data/chroma_db"
@@ -116,19 +108,129 @@ MSGS_QUERY_NOT_RELATED = [
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
         "Je ne suis pas en mesure de répondre à cette question."
     ),
+    (
+        "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
+        "pas être liée à la programmation Python. Si tu as des questions sur Python, "
+        "n'hésite pas à me les poser, je serai heureux de t'aider !"
+    ),
 ]
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
         "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce cours. Je te conseille de te concentrer d'abord sur les chapitres "
-        "actuellement au programme."
+        "dans ce cours."
     ),
     (
-        "Je suis désolé, mais cette question semble faire référence à des notions qui "
-        "ne sont pas encore couvertes dans le cours. Je te recommande de suivre les "
-        "chapitres dans l'ordre pour une meilleure compréhension."
+        "Cette notion n'est pas encore abordée à votre niveau actuel "
+        "et fait partie de la suite du programme."
+    ),
+    (
+        "Cette question fait référence à des notions qui dépassent "
+        "le cadre du niveau actuel de votre formation."
     ),
 ]
+
+
+def get_level_infos(
+    course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> dict[str, dict]:
+    """
+    Load all user level information from a YAML file.
+
+    Parameters
+    ----------
+    course_yaml : Path
+        Path to the YAML file defining course levels.
+    logger : loguru.Logger
+        Logger for logging messages.
+
+    Returns
+    -------
+    dict[str, dict]
+        Dictionary mapping level name to its info:
+        {
+            "name": str,
+            "display_name": str,
+            "comment": str,
+            "prompt_path": str,
+            "chapters": list[str]
+        }
+    """
+    try:
+        with course_yaml.open("r", encoding="utf-8") as f:
+            course_data = yaml.safe_load(f) or {}
+
+        levels = course_data.get("levels", [])
+        if not levels:
+            logger.warning("No levels defined in YAML file.")
+            return {}
+
+        level_infos = {}
+        for level in levels:
+            name = level.get("name")
+            if not name:
+                logger.warning("Level without a name found, skipping.")
+                continue
+
+            level_infos[name] = {
+                "name": name,
+                "display_name": level.get("display_name", ""),
+                "comment": level.get("comment", ""),
+                "prompt_path": Path(level.get("prompt_path", "")),
+                "chapters": [str(ch) for ch in level.get("chapters", [])],
+            }
+        return level_infos
+
+    except FileNotFoundError:
+        logger.error(f"YAML file not found: {course_yaml}")
+        return {}
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML file: {e}")
+        return {}
+
+
+def get_user_level_data(
+    user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> dict:
+    """
+    Retrieve user level information, including relevant chapters and prompt file.
+
+    Parameters
+    ----------
+    user_level : str
+        The identifier of the user's level (e.g., 'beginner').
+    course_yaml : Path
+        Path to the YAML file defining course levels.
+    logger : loguru.Logger
+        Logger for messages.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+            - "chapters": list[str] of chapter IDs relevant to the user level
+            - "prompt_file": str path to the prompt template
+
+    Raises
+    ------
+    SystemExit
+        Exits with code 1 if the specified user level is not found in the YAML file.
+    """
+    # Load all levels
+    level_infos = get_level_infos(course_yaml, logger)
+
+    # Retrieve the specific user level info
+    user_info = level_infos.get(user_level)
+    if not user_info:
+        available_levels = ", ".join(level_infos.keys()) or "None"
+        logger.error(
+            f"Failed to retrieve user level '{user_level}' from YAML. "
+            f"Available levels: {available_levels}. Exiting."
+        )
+        raise SystemExit(1)
+    chapters = user_info["chapters"]
+    prompt_path = user_info["prompt_path"]
+
+    return {"chapters": chapters, "prompt_path": prompt_path}
 
 
 def load_database(
@@ -157,6 +259,8 @@ def load_database(
         Chroma: The prepared vector database.
     """
     logger.info("Loading the vector database...")
+    logger.debug(f"Vector database path: {vector_db_path}")
+    logger.debug(f"Embedding model: {embedding_model} from {provider_embeddings_name}")
     # Define the embedding function to use for loading the database
     embedding_function = create_embeddings_function(
         embedding_model, provider_embeddings_name
@@ -172,47 +276,9 @@ def load_database(
     return vector_db
 
 
-def get_level_relevant_chapter_ids(
-    user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> list[str]:
-    """Get the list of chapter IDs relevant to the user level.
-
-    Parameters
-    ----------
-    user_level : str
-        The user level used to adapt model responses.
-    course_yaml : Path
-        The file path to the YAML file defining the course chapters and student levels.
-    logger: "loguru.Logger"
-        Logger for logging messages.
-
-    Returns
-    -------
-        list[str]: List of chapter IDs relevant to the user level.
-    """
-    logger.info("Getting the list of chapter IDs relevant to the user level...")
-    with open(course_yaml, encoding="utf-8") as f:
-        course_data = yaml.safe_load(f)
-    # Get the list of chapter IDs relevant to the user level
-    levels = course_data.get("levels", [])
-    if not levels:
-        logger.warning("No levels defined in YAML file.")
-        return []
-
-    for level in levels:
-        if level.get("name") == user_level:
-            chapter_ids = [str(ch_id) for ch_id in level.get("chapters", [])]
-            logger.success(f"Chapter IDs for level '{user_level}': {chapter_ids}")
-            return chapter_ids
-
-    logger.warning(f"User level '{user_level}' not found in YAML file.")
-    return []
-
-
 def search_similarity_in_database(
     vector_db: Chroma,
     user_query: str,
-    level_relevant_chapter_ids: list[str],
     nb_chunks: int = 3,
     score_threshold: float = 0.35,
     logger: "loguru.Logger" = loguru.logger,
@@ -225,8 +291,6 @@ def search_similarity_in_database(
         The textual database to search.
     user_query : str
         The query text.
-    level_relevant_chapter_ids : list[str]
-        List of chapter IDs relevant to the user level.
     nb_chunks : int
         The number of top matching documents to retrieve.
     score_threshold : float
@@ -240,19 +304,12 @@ def search_similarity_in_database(
         List of relevant documents found in the database.
     """
     logger.info("Searching for relevant documents in the database...")
-
-    # Create a filter dictionary to restrict the search to user-level relevant chapters
-    level_relevant_chapter_ids_filter_dict = {
-        "chapter_id": {"$in": level_relevant_chapter_ids}
-    }
-
     # Define the retriever
     retriever = vector_db.as_retriever(
         search_type="similarity_score_threshold",
         search_kwargs={
             "k": nb_chunks,
             "score_threshold": score_threshold,
-            "filter": level_relevant_chapter_ids_filter_dict,
         },
     )
     # Perform a similarity search
@@ -266,75 +323,14 @@ def search_similarity_in_database(
         logger.debug(f"Number of tokens: {chunk.metadata['nb_tokens']}")
         logger.debug("Chunk content:")
         for line in chunk.page_content.splitlines():
-            logger.debug(f"{line}")
+            # Split into sentences for better readability
+            for sentence in line.split(". "):
+                logger.debug(f"{sentence}")
+        logger.debug("--------------------------------------")
     logger.success(
         f"Retrieval completed with {len(relevant_chunks)} relevant chunks found."
     )
     return relevant_chunks
-
-
-def generate_answer_without_model(
-    vector_db: Chroma,
-    user_query: str,
-    logger: "loguru.Logger" = loguru.logger,
-    nb_chunks: int = 3,
-    score_threshold: float = 0.35,
-) -> str:
-    """Generate an answer to the user query without calling the model.
-
-    This function is used when no relevant documents are found in the database for the
-    user query. It displays personalized messages to the user based on whether the
-    query is not related to the user level or not related to the course at all.
-
-
-    Parameters
-    ----------
-    vector_db : Chroma
-        The textual database to search.
-    user_query : str
-        The query text.
-    logger : loguru.Logger
-        Logger for logging messages.
-    nb_chunks : int
-        The number of top matching documents to retrieve.
-    score_threshold : float
-        The relevance score threshold for filtering the results.
-
-    Returns
-    -------
-    response : str
-        The response message to be displayed to the user.
-    """
-    logger.debug(f"Question: {user_query}")
-    # Define the retriever without level filter
-    retriever = vector_db.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={
-            "k": nb_chunks,
-            "score_threshold": score_threshold,
-        },
-    )
-    # Perform a similarity search
-    relevant_chunks = retriever.invoke(user_query)
-    # If there are some relevant chunks but they are not related to the user level
-    if relevant_chunks != []:
-        logger.warning(
-            "This question seems to be related to the course "
-            "but not relevant to the user level."
-        )
-        response = secrets.choice(MSGS_QUERY_OUT_OF_SCOPE_LEVEL)
-        logger.debug(
-            f"Answer generated automatically without calling the model: {response}"
-        )
-    else:
-        logger.warning(
-            "This question does not seem to be related to the course content."
-        )
-        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
-        logger.debug(
-            f"Answer generated automatically without calling the model: {response}"
-        )
-    return response
 
 
 def calculate_nb_tokens(text: str) -> int:
@@ -359,9 +355,11 @@ def calculate_nb_tokens(text: str) -> int:
 
 def generate_answer(
     query: str,
+    user_level: str,
     provider_llm_name: str,
     chat_history: str | None,
     relevant_chunks: list,
+    level_relevant_chapter_ids: list[str],
     model_name: str,
     prompt_path: Path,
     logger: "loguru.Logger",
@@ -372,6 +370,8 @@ def generate_answer(
     ----------
     query : str
         The user query.
+    user_level : str
+        The user level, used for logging purposes.
     provider_llm_name : str
         The name of the LLM model provider to use.
     chat_history : str | None
@@ -379,6 +379,8 @@ def generate_answer(
         or None for non-IU users.
     relevant_chunks : list
         List of relevant documents from the database.
+    level_relevant_chapter_ids : list[str]
+        List of chapter IDs relevant to the user level, used for logging purposes.
     model_name : str
         The name of the OpenAI model to use for generating the answer.
     prompt_path : Path
@@ -431,12 +433,31 @@ def generate_answer(
     # Generate the answer
     answer = answer_chain.invoke(input_data)
     logger.debug(f"Question: {query}")
-    logger.debug(f"Answer generated by the model: {answer}")
+    logger.debug(f"Prompt path: {prompt_path}")
+    logger.debug(f"LLM model used: {model_name} from {provider_llm_name}")
+    logger.debug(f"Answer generated by the LLM: {answer}")
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
     # Calculate the number of tokens in the answer
     nb_tokens_answer = calculate_nb_tokens(answer)
+
+    # Formate the answer if relevant chunks are found but not relevant to the user level
+    for chunk in relevant_chunks:
+        if chunk.metadata["chapter_id"] not in level_relevant_chapter_ids:
+            logger.warning(
+                "This question seems to be related to the course "
+                "but not relevant to the user level."
+            )
+            logger.debug(
+                f"Chapter `{chunk.metadata['chapter_id']}` "
+                f" not in the list of level-relevant chapters for {user_level}: "
+                f"{level_relevant_chapter_ids}"
+            )
+            warning_sentence = secrets.choice(MSGS_QUERY_OUT_OF_SCOPE_LEVEL)
+            answer = f"{warning_sentence}\n\n{answer}"
+            logger.debug(f"Final answer: {answer.replace('\n\n', ' ')}")
+            break
 
     return answer, nb_tokens_prompt, nb_tokens_answer
 
@@ -579,7 +600,7 @@ def display_answer(
     "--level",
     "user_level",
     type=click.Choice(
-        ["debutant", "intermediaire", "avance"],
+        ["beginner", "intermediate", "advanced"],
         case_sensitive=False,
     ),
     required=True,
@@ -641,13 +662,6 @@ def display_answer(
     help="Name of the embeddings model provider to use.",
 )
 @click.option(
-    "--prompt_path",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-    default="prompts/zero_shot.txt",
-    show_default=True,
-    help="File path to the text file containing the prompt template.",
-)
-@click.option(
     "--include-metadata",
     is_flag=True,
     default=False,
@@ -662,7 +676,6 @@ def interrogate_model(
     database_path: str,
     embedding_model: str,
     provider_embeddings_name: str,
-    prompt_path: Path,
     *,
     include_metadata: bool,
 ) -> None:
@@ -674,44 +687,43 @@ def interrogate_model(
         f"query_chatbot_{datetime.now().strftime('%H:%M:%S')}.log"
     )
     logger = create_logger(log_path)
-    # Log the user query and parameters
     logger.info("Starting the command line interface for querying the chatbot...")
-    logger.debug(f"User query: {user_query}")
-    logger.debug(f"User level: {user_level}")
-    logger.debug(f"YAML path: {course_yaml}")
-    logger.debug(f"Model name: {model_name}")
-    logger.debug(f"Provider LLM name: {provider_llm_name}")
-    logger.debug(f"Database path: {database_path}")
-    logger.debug(f"Embedding model: {embedding_model}")
-    logger.debug(f"Provider embeddings name: {provider_embeddings_name}")
-    logger.debug(f"Prompt path: {prompt_path}")
-    logger.debug(f"Include metadata: {include_metadata}")
+
+    # USER LEVEL INFORMATION RETRIEVAL
+    # Retrieve the user level information from the YAML file
+    user_infos = get_user_level_data(user_level, course_yaml, logger)
+    level_relevant_chapter_ids = user_infos["chapters"]
+    prompt_path = user_infos["prompt_path"]
 
     # CONTEXT RETRIEVAL
     # Load the vector database
     vector_db = load_database(database_path, embedding_model, provider_embeddings_name)
-    # Get the list of chapter IDs relevant to the user level
-    level_relevant_chapter_ids = get_level_relevant_chapter_ids(
-        user_level, course_yaml, logger
-    )
     # Search for relevant documents in the database
     relevant_chunks = search_similarity_in_database(
-        vector_db, user_query, level_relevant_chapter_ids, logger=logger
+        vector_db, user_query, logger=logger
     )
 
     # ANSWER GENERATION
     # Check if there are relevant documents
     if relevant_chunks == []:
+        logger.warning(
+            "This question does not seem to be related to the course content."
+        )
         # Avoids calling the model for queries that are not relevant to the course
-        answer = generate_answer_without_model(vector_db, user_query)
+        answer = secrets.choice(MSGS_QUERY_NOT_RELATED)
+        logger.debug(
+            f"Answer generated automatically without calling the model: {answer}"
+        )
         nb_tokens_prompt = 0
         nb_tokens_answer = 0
     else:
         # Generate the answer
         answer, nb_tokens_prompt, nb_tokens_answer = generate_answer(
             query=user_query,
+            user_level=user_level,
             chat_history=None,
             relevant_chunks=relevant_chunks,
+            level_relevant_chapter_ids=level_relevant_chapter_ids,
             model_name=model_name,
             provider_llm_name=provider_llm_name,
             prompt_path=prompt_path,
