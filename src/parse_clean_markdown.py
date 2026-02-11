@@ -63,10 +63,36 @@ import yaml
 from logger import create_logger
 
 
+def build_chapter_paths(
+    file_name: str,
+    raw_base_path: Path,
+    processed_base_path: Path,
+) -> tuple[Path, Path]:
+    """Build source and processed file paths for a chapter.
+
+    Parameters
+    ----------
+    file_name : str
+        The name of the Markdown file for the chapter (e.g., "01_introduction.md").
+    raw_base_path : Path
+        The base path for raw Markdown files.
+    processed_base_path : Path
+        The base path for processed Markdown files.
+
+    Returns
+    -------
+    tuple[Path, Path]
+        A tuple containing the source path and the processed path for the chapter.
+    """
+    source_path = raw_base_path / file_name
+    processed_path = processed_base_path / file_name
+    return source_path, processed_path
+
+
 def load_chapters_from_yaml(
     yaml_path: Path, logger: "loguru.Logger" = loguru.logger
 ) -> list[dict]:
-    """Load chapters and levels from a YAML file.
+    """Load chapters from a YAML file and construct paths.
 
     Parameters
     ----------
@@ -78,13 +104,33 @@ def load_chapters_from_yaml(
     Returns
     -------
     list[dict]
-        A list of dictionaries, each containing chapter information.
+        A list of dictionaries with chapter information, including constructed paths
+        for source and processed Markdown course files.
     """
-    logger.info(f"Loading chapters from YAML file: {yaml_path}...")
+    logger.info(f"Loading chapters and paths from YAML file: {yaml_path}...")
     try:
         with yaml_path.open("r", encoding="utf-8") as file:
+            # Load YAML data
             data = yaml.safe_load(file)
+            # Get chapter information
             chapters = data.get("chapters", [])
+            # Get base paths of raw and processed courses
+            raw_base_path = Path(data.get("raw_course_base_path", ""))
+            processed_base_path = Path(data.get("processed_course_base_path", ""))
+            # Build source and processed paths for each chapter
+            for chapter in chapters:
+                file_name = chapter.get("file_name")
+                if file_name:
+                    chapter["source_path"], chapter["processed_path"] = (
+                        build_chapter_paths(
+                            file_name, raw_base_path, processed_base_path
+                        )
+                    )
+                else:
+                    logger.warning(
+                        f"No file name defined for chapter: {chapter.get('id')}"
+                    )
+
             logger.success(f"Loaded {len(chapters)} chapters successfully.")
             return chapters
     except FileNotFoundError:
@@ -248,12 +294,11 @@ def process_md_files(yaml_path: Path) -> None:
         logger.info(f"Chapter: {chapter_name} ({i}/{len(chapters)})")
 
         # Get source file path from YAML
-        source_file = chapter.get("source_file_path")
-        if not source_file:
+        source_path = chapter.get("source_path")
+        if not source_path:
             logger.warning(f"No source file defined for chapter {chapter_name}")
             continue
         # Check if source file exists
-        source_path = Path(source_file)
         if not source_path.exists():
             logger.warning(f"Markdown file not found: {source_path}")
             continue
@@ -277,11 +322,10 @@ def process_md_files(yaml_path: Path) -> None:
             content = renumber_headers(content, chapter_number, logger)
 
         # Get destination file path from YAML
-        dest_file = chapter.get("processed_file_path")
-        if not dest_file:
+        dest_path = chapter.get("processed_path")
+        if not dest_path:
             logger.warning(f"No processed file path defined for chapter {chapter_name}")
             continue
-        dest_path = Path(dest_file)
         # Create output directory if it does not exist
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         # Save processed content to destination path
