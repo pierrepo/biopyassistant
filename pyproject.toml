@@ -1,0 +1,31 @@
+[project]
+name = "biopyassistantenv"
+version = "0.1.0"
+description = "BioPyAssistant environment"
+readme = "README.md"
+requires-python = "==3.13.*"
+
+dependencies = [
+    "python-dotenv",
+    "chromadb",
+    "openai",
+    "tiktoken",
+    "langchain",
+    "langchain-openai",
+    "langchain-chroma",
+    "langchain-core",
+    "langchain-community",
+    "langchain-text-splitters",
+    "loguru",
+    "streamlit",
+    "click>=8.3.0",
+    "htbuilder>=0.9.0",
+    "pydantic-settings>=2.12.0",
+    "pyperclip>=1.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "prek>=0.3.0",
+    "ruff>=0.14.14",
+]

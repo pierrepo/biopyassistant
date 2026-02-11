@@ -1,189 +1,270 @@
 """CLI application for searching answers in a vectorial database.
 
-This program allows users to search for answers in a textual database based on a given query text. 
-It utilizes a similarity search algorithm to find relevant documents in the database and generates 
-responses to the query using an LLM and the retrieved documents as context.
+This program allows users to search for answers in a textual database based on a given
+query text. It utilizes a similarity search algorithm to find relevant documents in the
+database and generates responses to the query using an LLM and the retrieved documents
+as context.
 
 Usage:
 ======
-    python src/query_chatbot.py --query "Your question here"  [--model "model_name"]
-                                                              [--include-metadata]                                
-                                                           
+    uv run src/query_chatbot.py --query "Your question here"
+                                --level "user_level"
+                                [--course-yaml "path_to_yaml_file"]
+                                [--model "model_name"]
+                                [--provider-llm "provider_llm_name"]
+                                [--db-path "database_path"]
+                                [--embedding-model "embedding_model"]
+                                [--provider-emb "provider_embeddings_name"]
+                                [--include-metadata]
+
 Arguments:
 ==========
     "Your question here" : The query text for which you want to search for answers.
+    "user_level" : The user level used to adapt model responses.
+                   It can be one of the following:
+                   "beginner", "intermediate", "advanced".
+
 
     Options:
     ========
-    --model "model_name" : The name or identifier of the model to be used for generating responses.
-                           (Default model: DEFAULT_LLM_MODEL)
-    
-    --include-metadata : Optional flag to specify whether to include metadata in the response.
-                         If provided, metadata will be included; otherwise, it will be excluded.
-                         (Default: metadata is excluded)
+    --course-yaml (Path):
+            Path to the YAML file defining the course chapters and student levels.
+            The YAML should include chapter names, titles, source Markdown paths, and
+            processed file paths.
+            Default: "data/chapters_and_levels.yaml"
+
+    --model (str):
+            The name of the model to be used for generating responses.
+            Default: "gpt-4o"
+
+    --provider-llm (str):
+            Name of the LLM model provider to use.
+            It can be either "openai" or "openrouter".
+            Default: "openai"
+
+    --db-path (str):
+            File path to the Chroma database containing the context embeddings.
+            Default: "chroma_db"
+
+    --embedding-model (str):
+            Name of the embedding model to use.
+            This should match the embedding model used
+            to create the Chroma database.
+            Default: "text-embedding-3-large"
+
+    --provider-emb (str):
+            Name of the embeddings model provider to use.
+            It can be either "openai" or "openrouter".
+            Default: "openai"
+
+    --include-metadata (bool):
+            Optional flag to specify whether to include metadata in the response.
+            If provided, metadata will be included; otherwise, it will be excluded.
+            Default: metadata is excluded
 
 Example:
 ========
-    python src/query_chatbot.py --query "D'où vient le nom Python ?" --model "gpt-4o" --include-metadata
+    uv run src/query_chatbot.py --query "D'où vient le nom Python ?" \
+        --level "beginner" --model "gpt-4o" \
+        --course-yaml "data/chapters_and_levels.yaml" \
+        --provider-llm "openai" --db-path "chroma_db" \
+        --provider-emb "openai" --embedding-model "text-embedding-3-large"
 
-This command will search for answers to the query "Qu'est-ce que Python ?" in the vectorial Chroma database using the "gpt-4o" model.
-And it will include metadata in the response.
+This command will search for answers to the query "Qu'est-ce que Python ?" from a
+beginner user in the Chroma database located at "data/chroma_db"
+using the "text-embedding-3-large" embedding model from the "openai" provider,
+The answer will be generated using the "gpt-4o" model from the "openai" provider,
+and the response will include metadata from the relevant documents.
 """
 
-# METADATA
-__authors__ = ("Pierre Poulain", "Essmay Touami")
-__contact__ = "pierre.poulain@u-paris.fr"
-__copyright__ = "BSD-3 clause"
-__date__ = "2024"
-__version__ = "1.0.0"
-
-
-# LIBRARY IMPORTS
 import os
-import re
-import sys
-import random
-import argparse
-from typing import Tuple, Union, List
+import secrets
+from datetime import datetime
+from pathlib import Path
+from time import perf_counter
 
+import click
+import loguru
 import tiktoken
+import yaml
 from dotenv import load_dotenv
-from loguru import logger
-from langchain_core.documents import Document
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.schema import AIMessage, HumanMessage
-from langchain.prompts import ChatPromptTemplate
-from langchain_mistralai.chat_models import ChatMistralAI
-from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 
-
-# CONSTANTS
-CHROMA_PATH = "chroma_db"
-EMBEDDING_MODEL = "text-embedding-3-large"
-OPENAI_MODELS = ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
-GROQ_MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
-MISTRAL_MODELS = ["mistral-large-latest", "open-mixtral-8x7b", "open-mixtral-8x22b"]
-DEFAULT_LLM_MODEL = OPENAI_MODELS[0]
-OPENAI_MODEL_NAME = OPENAI_MODELS[0]
-
-PROMPT_TEMPLATE = """
-Tu es un assistant conversationnel pour aider des étudiants en biologie à apprendre la programmation Python.
-Tu dois fournir une réponse à la question posée en te basant strictement sur les extraits de cours donnés dans le contexte.
-Utilise uniquement le contexte suivant pour répondre à la question. 
-La discussion précédente peut t'aider à comprendre le contexte de la question,
-mais tu ne dois pas l'utiliser pour répondre à la question.
-
-Discussion précédente :
-{chat_history}
-
-Question :
-"{question}"
-
-Contexte : 
-"{contexte}"
-
-Répond en français à la question posée de façon claire et concise.
-La réponse doit être compréhensible pour des étudiants débutants en programmation Python.
-Si tu ne connais pas la réponse, dis que tu ne sais pas.
-Si tu as besoin de plus d'informations, demande-le.
-Si tu as besoin de clarifier la question, demande-le aussi.
-"""
-
-QUERY_EXAMPLES = [
-    "Quelle est la différence entre une liste et un set ?",
-    "Comment écrire une boucle ?",
-    "Comment afficher un float avec 2 chiffres avec la virgule ?"
-]
+from create_database import create_embeddings_function
+from logger import create_logger
 
 MSGS_QUERY_NOT_RELATED = [
-    ("Je suis désolé, je ne peux pas répondre à cette question. "
-     "Mon domaine d'expertise est la programmation Python. "
-     "N'hésite pas à me poser des questions liées à ce sujet, je serai ravi de t'aider."),
-    ("Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
-     "Je ne suis pas en mesure de répondre à cette question."),
-    ("Je ne suis pas sûr de comprendre ta question. "
-     "Peux-tu la reformuler en utilisant des termes plus simples ?"),
+    (
+        "Je suis désolé, je ne peux pas répondre à cette question. "
+        "Mon domaine d'expertise est la programmation Python. "
+        "N'hésite pas à me poser des questions liées à ce sujet,"
+        "je serai ravi de t'aider."
+    ),
+    (
+        "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
+        "Je ne suis pas en mesure de répondre à cette question."
+    ),
+    (
+        "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
+        "pas être liée à la programmation Python. Si tu as des questions sur Python, "
+        "n'hésite pas à me les poser, je serai heureux de t'aider !"
+    ),
+]
+MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
+    (
+        "Cette question fait référence à des notions qui ne sont pas encore abordées "
+        "dans ce cours."
+    ),
+    (
+        "Cette notion n'est pas encore abordée à votre niveau actuel "
+        "et fait partie de la suite du programme."
+    ),
+    (
+        "Cette question fait référence à des notions qui dépassent "
+        "le cadre du niveau actuel de votre formation."
+    ),
 ]
 
 
-# FUNCTIONS
-def get_args() -> Tuple[str, str, bool]:
-    """Parse the command line arguments.
+def get_level_infos(
+    course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> dict[str, dict]:
+    """
+    Load all user level information from a YAML file.
+
+    Parameters
+    ----------
+    course_yaml : Path
+        Path to the YAML file defining course levels.
+    logger : loguru.Logger
+        Logger for logging messages.
 
     Returns
     -------
-    Tuple[str, str, bool]
-        A tuple containing the query, the model name and a flag to include metadata.
+    dict[str, dict]
+        Dictionary mapping level name to its info:
+        {
+            "name": str,
+            "display_name": str,
+            "comment": str,
+            "prompt_path": str,
+            "chapters": list[str]
+        }
     """
-    logger.info("Parsing the command line arguments.")
-    parser = argparse.ArgumentParser()  # Create a parser object
-    # Add arguments to the parser
-    parser.add_argument(
-        "--query",
-        type=str,
-        default="",
-        help="The query text for which you want to search for answers.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default=DEFAULT_LLM_MODEL,
-        help="The name or identifier of the model to be used for generating responses.",
-    )
-    parser.add_argument(
-        "--include-metadata",
-        action="store_true",
-        default=False,
-        help="Flag to specify whether to include metadata in the response. If provided, metadata will be included.",
-    )
-    # Parse the command line arguments
-    args = parser.parse_args()
+    try:
+        with course_yaml.open("r", encoding="utf-8") as f:
+            course_data = yaml.safe_load(f) or {}
 
-    # Checks
-    # query is required
-    if args.query == "":
-        logger.error("Please provide a query")
-        sys.exit(1)
+        levels = course_data.get("levels", [])
+        if not levels:
+            logger.warning("No levels defined in YAML file.")
+            return {}
 
-    logger.info(f"Query : {args.query}")
-    logger.info(f"Model name: {args.model}")
-    logger.info(f"Include metadata: {args.include_metadata}")
-    logger.success("Command line arguments parsed successfully.\n")
+        level_infos = {}
+        for level in levels:
+            name = level.get("name")
+            if not name:
+                logger.warning("Level without a name found, skipping.")
+                continue
 
-    return args.query, args.model, args.include_metadata
+            level_infos[name] = {
+                "name": name,
+                "display_name": level.get("display_name", ""),
+                "comment": level.get("comment", ""),
+                "prompt_path": Path(level.get("prompt_path", "")),
+                "chapters": [str(ch) for ch in level.get("chapters", [])],
+            }
+        return level_infos
 
-def get_available_llm_models() -> List[str]:
-    """List LLM models based on API keys found in the environment variables.
-    
+    except FileNotFoundError:
+        logger.error(f"YAML file not found: {course_yaml}")
+        return {}
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML file: {e}")
+        return {}
+
+
+def get_user_level_data(
+    user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> dict:
+    """
+    Retrieve user level information, including relevant chapters and prompt file.
+
+    Parameters
+    ----------
+    user_level : str
+        The identifier of the user's level (e.g., 'beginner').
+    course_yaml : Path
+        Path to the YAML file defining course levels.
+    logger : loguru.Logger
+        Logger for messages.
+
     Returns
     -------
-    List[str]
-        List of available LLM models.
+    dict
+        Dictionary containing:
+            - "chapters": list[str] of chapter IDs relevant to the user level
+            - "prompt_file": str path to the prompt template
+
+    Raises
+    ------
+    SystemExit
+        Exits with code 1 if the specified user level is not found in the YAML file.
     """
-    llm_models = []
-    if os.getenv("OPENAI_API_KEY"):
-        llm_models += OPENAI_MODELS
-    if os.getenv("GROQ_API_KEY"):
-        llm_models += GROQ_MODELS
-    if os.getenv("MISTRAL_API_KEY"):
-        llm_models += MISTRAL_MODELS
-    return llm_models
+    # Load all levels
+    level_infos = get_level_infos(course_yaml, logger)
+
+    # Retrieve the specific user level info
+    user_info = level_infos.get(user_level)
+    if not user_info:
+        available_levels = ", ".join(level_infos.keys()) or "None"
+        logger.error(
+            f"Failed to retrieve user level '{user_level}' from YAML. "
+            f"Available levels: {available_levels}. Exiting."
+        )
+        raise SystemExit(1)
+    chapters = user_info["chapters"]
+    prompt_path = user_info["prompt_path"]
+
+    return {"chapters": chapters, "prompt_path": prompt_path}
 
 
-def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
+def load_database(
+    vector_db_path: str,
+    embedding_model: str,
+    provider_embeddings_name: str,
+    logger: "loguru.Logger" = loguru.logger,
+) -> Chroma:
     """Prepare the vector database.
+
+    Parameters
+    ----------
+    vector_db_path : str
+        The file path to the Chroma database containing the context embeddings.
+    embedding_model : str
+        The name of the embedding model to use for loading the database.
+    provider_embeddings_name : str
+        The name of the embeddings model provider to use,
+        needed to create the appropriate
+        embedding function for loading the database.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
         Chroma: The prepared vector database.
-        int: The number of chunks in the database.
     """
-    logger.info("Loading the vector database.")
-    embedding_function = OpenAIEmbeddings(
-        model=EMBEDDING_MODEL
-    )  # define the embedding model
+    logger.info("Loading the vector database...")
+    logger.debug(f"Vector database path: {vector_db_path}")
+    logger.debug(f"Embedding model: {embedding_model} from {provider_embeddings_name}")
+    # Define the embedding function to use for loading the database
+    embedding_function = create_embeddings_function(
+        embedding_model, provider_embeddings_name
+    )
     # Load the database from the specified directory
     vector_db = Chroma(
         persist_directory=vector_db_path, embedding_function=embedding_function
@@ -191,10 +272,8 @@ def load_database(vector_db_path: str) -> Tuple[Chroma, int]:
     # Count the number of chunks in the database
     nb_chunks = vector_db._collection.count()
     logger.info(f"Chunks in the database: {nb_chunks}")
-
-    logger.success("Vector database prepared successfully.\n")
-
-    return vector_db, nb_chunks
+    logger.success("Vector database prepared successfully.")
+    return vector_db
 
 
 def search_similarity_in_database(
@@ -202,8 +281,8 @@ def search_similarity_in_database(
     user_query: str,
     nb_chunks: int = 3,
     score_threshold: float = 0.35,
-    logger_flag: bool = True,
-) -> List[Document]:
+    logger: "loguru.Logger" = loguru.logger,
+) -> list[Document]:
     """Search for relevant documents in the database based on the query text.
 
     Parameters
@@ -216,161 +295,42 @@ def search_similarity_in_database(
         The number of top matching documents to retrieve.
     score_threshold : float
         The relevance score threshold for filtering the results.
-    logger_flag : bool
-        Flag to indicate whether to log the search results.
+    logger : "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     relevant_chunks : list
         List of relevant documents found in the database.
     """
-    if logger_flag:
-        logger.info("Searching for relevant documents in the database...")
-    
+    logger.info("Searching for relevant documents in the database...")
     # Define the retriever
     retriever = vector_db.as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": nb_chunks, "score_threshold": score_threshold},
+        search_kwargs={
+            "k": nb_chunks,
+            "score_threshold": score_threshold,
+        },
     )
-
-    # Perform a similarity search with relevance scores
+    # Perform a similarity search
     relevant_chunks = retriever.invoke(user_query)
 
-    if logger_flag:
-        # Display information about the relevant chunks
-        for chunk in relevant_chunks:
-            logger.info(f"Chunk ID: {chunk.metadata['id']}")
-            logger.info(f"Number of tokens: {chunk.metadata['nb_tokens']}")
-            logger.info(f"Content: {chunk.page_content[:20]}...\n")
-
-        logger.success("Search completed successfully.\n")
-
-    return relevant_chunks
-
-
-def format_relevant_chunks(relevant_chunks: list) -> str:
-    """Format the relevant documents for the OpenAI model.
-
-    Parameters
-    ----------
-    relevant_chunks : list
-        List of relevant documents from the database.
-
-    Returns
-    -------
-    formatted_chunks : str
-        The formatted relevant documents.
-    """
-    logger.info("Formatting the relevant documents.")
-    formatted_chunks = ""
-
+    # Display information about the relevant chunks
     for chunk in relevant_chunks:
-        formatted_chunks += f"Chunk ID: {chunk.metadata['id']}\n"
-        formatted_chunks += f"Content: {chunk.page_content}\n"
-        formatted_chunks += f"Source: {chunk.metadata}\n\n"
-    
-    logger.success("Relevant documents formatted successfully.\n")
-
-    return formatted_chunks
-        
-
-def format_chat_history(
-    chat_history: list[Tuple[str, str]] = [], len_history: int = 10
-) -> List[Union[HumanMessage, AIMessage]]:
-    """Format the chat history for the promt template.
-
-    Parameters
-    ----------
-    chat_history : list[tuple[str, str]], optional
-        The chat history to format, by default [].
-    len_history : int, optional
-        The number of chat history entries to consider, by default 10.
-
-    Returns
-    -------
-    list[Union[HumanMessage, AIMessage]]
-        The formatted chat history.
-    """
-    logger.info("Formatting the chat history...")
-    formatted_history = []
-    # Define the pattern to identify and remove metadata
-    metadata_pattern = re.compile(
-        r"Pour plus d\'informations, consultez les sources suivantes :.*$", re.DOTALL
+        logger.debug(f"Chunk ID: {chunk.id}")
+        logger.debug(f"Chapter name: {chunk.metadata['chapter_name']}")
+        logger.debug(f"URL: {chunk.metadata['url']}")
+        logger.debug(f"Number of tokens: {chunk.metadata['nb_tokens']}")
+        logger.debug("Chunk content:")
+        for line in chunk.page_content.splitlines():
+            # Split into sentences for better readability
+            for sentence in line.split(". "):
+                logger.debug(f"{sentence}")
+        logger.debug("--------------------------------------")
+    logger.success(
+        f"Retrieval completed with {len(relevant_chunks)} relevant chunks found."
     )
-    # if chat history is not empty
-    if len(chat_history) > 0:
-        for human, ai in chat_history[-len_history:]:
-            # Append the human and AI messages to the formatted history
-            if human != None:
-                formatted_history.append(HumanMessage(content=human))
-            else:
-                formatted_history.append(HumanMessage(content=""))
-            logger.info(f"Human message: {human}")
-
-            # Remove metadata from AI message
-            cleaned_ai = re.sub(metadata_pattern, "", ai).strip()
-            formatted_history.append(AIMessage(content=cleaned_ai))
-            logger.info(f"AI message (cleaned): {cleaned_ai}")
-
-        logger.success(
-            f"Chat history formatted successfully with {len(formatted_history)} entries.\n"
-        )
-        return formatted_history
-
-    else:  # if chat history is empty
-        logger.info("Chat history is empty.")
-        logger.success("Chat history formatted successfully with 0 entries.\n")
-        return chat_history
-
-
-def contextualize_question(chat_history_formatted: list[Union[HumanMessage, AIMessage]]
-) -> str:
-    """Add context to the user query using the chat history.
-
-    Parameters
-    ----------
-    chat_history_formatted : list[Union[HumanMessage, AIMessage]]
-        The formatted chat history.
-    
-    Returns
-    -------
-    chat_context : str
-        The contextualized user query.
-    """
-    logger.info("Contextualizing the user query...")
-    chat_context = ""
-
-    # Iterate over the formatted chat history and append to the context
-    for i, message in enumerate(chat_history_formatted):
-        if isinstance(message, HumanMessage):
-            chat_context += f"Question {i // 2 + 1}: {message.content}\n"
-        elif isinstance(message, AIMessage):
-            chat_context += f"Réponse {i // 2 + 1}: {message.content}\n"
-
-    logger.info(f"Chat context: {chat_context}")
-    logger.success("Contextualized query constructed successfully.\n")
-
-    return chat_context
-
-
-def get_metadata(relevant_chunks: list) -> list[dict]:
-    """Get the metadata of the top matching documents.
-
-    Parameters
-    ----------
-    relevant_chunks : list
-        List of top matching documents and their metadata.
-
-    Returns
-    -------
-    metadatas : list
-        List of metadata dictionaries for the top matching documents.
-    """
-    logger.info("Extracting metadata of the top matching documents.")
-    metadatas = [doc.metadata for doc in relevant_chunks]
-    logger.success("Metadata extracted successfully.\n")
-
-    return metadatas
+    return relevant_chunks
 
 
 def calculate_nb_tokens(text: str) -> int:
@@ -394,73 +354,128 @@ def calculate_nb_tokens(text: str) -> int:
 
 
 def generate_answer(
-    query: str, chat_context: str, relevant_chunks: list, model_name: str, logger_flag: bool = True
-) -> str:
+    query: str,
+    user_level: str,
+    provider_llm_name: str,
+    chat_history: str | None,
+    relevant_chunks: list,
+    level_relevant_chapter_ids: list[str],
+    model_name: str,
+    prompt_path: Path,
+    logger: "loguru.Logger",
+) -> tuple[str, int, int]:
     """Generate an answer to the user query.
 
     Parameters
     ----------
     query : str
         The user query.
-    chat_context : str
-        The contextualized chat history.
+    user_level : str
+        The user level, used for logging purposes.
+    provider_llm_name : str
+        The name of the LLM model provider to use.
+    chat_history : str | None
+        The contextualized chat history, for IU interface users,
+        or None for non-IU users.
     relevant_chunks : list
         List of relevant documents from the database.
+    level_relevant_chapter_ids : list[str]
+        List of chapter IDs relevant to the user level, used for logging purposes.
     model_name : str
         The name of the OpenAI model to use for generating the answer.
-    logger_flag : bool, optional
-        Flag to indicate whether to log the output, by default True.
+    prompt_path : Path
+        The file path to the text file containing the prompt template.
+    logger : loguru.Logger
+        Logger for logging messages.
 
     Returns
     -------
     answer : str
         The answer generated by the model.
+    nb_tokens_prompt : int
+        The number of tokens in the prompt.
+    nb_tokens_answer : int
+        The number of tokens in the answer.
     """
-    if logger_flag:
-        logger.info("Generating an answer to the user query...")
-
+    # Format the relevant documents for the model
+    context = "\n\n".join(
+        [
+            f"Document {chunk.id} : {chunk.page_content}"
+            for i, chunk in enumerate(relevant_chunks)
+        ]
+    )
+    # Load environment variables
+    load_dotenv()
     # Define the model
-    if model_name in MISTRAL_MODELS:
-        chat_model = ChatMistralAI(model=model_name)
-    elif model_name in GROQ_MODELS:
-        chat_model = ChatGroq(model=model_name)
-    elif model_name in OPENAI_MODELS:
-        chat_model = ChatOpenAI(model=model_name)
+    if provider_llm_name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        chat_model = ChatOpenAI(model=model_name, api_key=api_key)
+    # For OpenRouter, we don't have a specific class in LangChain,
+    # but we can use the ChatOpenAI class with the appropriate base URL and API key.
+    # Doc: https://openrouter.ai/docs/guides/community/langchain
+    elif provider_llm_name == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        chat_model = ChatOpenAI(
+            model=model_name, api_key=api_key, base_url="https://openrouter.ai/api/v1"
+        )
+    # Retrieve the prompt template
+    prompt_template_content = Path(prompt_path).read_text(encoding="utf-8")
     # Define the prompt template
-    answer_prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+    answer_prompt = ChatPromptTemplate.from_template(prompt_template_content)
     # Define the chained prompt
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
     input_data = {
-        "contexte": relevant_chunks,
+        "contexte": context,
         "question": query,
-        "chat_history": chat_context,
+        "chat_history": chat_history,
     }
-    if logger_flag:
-        # Fill the prompt with the input data
-        filled_prompt = answer_prompt.format(**input_data)
-        logger.info(f"Filled prompt: {filled_prompt}")
-        nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
-        logger.info(f"Number of tokens in the prompt: {nb_tokens_prompt}\n")
     # Generate the answer
     answer = answer_chain.invoke(input_data)
-    if logger_flag:
-        logger.success("Answer generated from LLM successfully.\n")
+    logger.debug(f"Question: {query}")
+    logger.debug(f"Prompt path: {prompt_path}")
+    logger.debug(f"LLM model used: {model_name} from {provider_llm_name}")
+    logger.debug("Answer generated by the LLM:")
+    for line in answer.splitlines():
+        for sentence in line.split(". "):
+            logger.debug(f"{sentence}")
+    # Fill the prompt with the input data
+    filled_prompt = answer_prompt.format(**input_data)
+    nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
+    # Calculate the number of tokens in the answer
+    nb_tokens_answer = calculate_nb_tokens(answer)
 
-    return answer
+    # Formate the answer if relevant chunks are found but not relevant to the user level
+    for chunk in relevant_chunks:
+        if chunk.metadata["chapter_id"] not in level_relevant_chapter_ids:
+            logger.warning(
+                "This question seems to be related to the course "
+                "but not relevant to the user level."
+            )
+            logger.debug(
+                f"Chapter `{chunk.metadata['chapter_id']}` "
+                f" not in the list of level-relevant chapters for {user_level}: "
+                f"{level_relevant_chapter_ids}"
+            )
+            warning_sentence = secrets.choice(MSGS_QUERY_OUT_OF_SCOPE_LEVEL)
+            answer = f"{warning_sentence}\n\n{answer}"
+            logger.debug(f"Final answer: {answer.replace('\n\n', ' ')}")
+            break
+
+    return answer, nb_tokens_prompt, nb_tokens_answer
 
 
 def add_metadata_to_answer(
-    answer_from_model, metadatas: list[dict], iu: bool = False
+    answer_from_model, relevant_chunks: list[Document], *, iu: bool = False
 ) -> str:
     """Add metadata to the response.
 
     Parameters
     ----------
-    answer : str
+    answer_from_model : str
         The response text predicted by the AI model.
-    metadatas : list
-        List of metadata dictionaries for the top matching documents.
+    relevant_chunks : list[Document]
+        List of relevant document chunks with their metadata.
     iu : bool
         Flag to specify interface user or not.
 
@@ -469,10 +484,11 @@ def add_metadata_to_answer(
     str
         The answer with added metadata.
     """
-    logger.info("Adding metadata to the response...")
-
     # Generate sources string
     sources_set = set()  # Use a set to store unique sources
+
+    # Extract metadata for each relevant chunk
+    metadatas = [doc.metadata for doc in relevant_chunks]
 
     for metadata in metadatas:
         file_name = metadata["file_name"]  # get the file name
@@ -523,86 +539,209 @@ def add_metadata_to_answer(
     sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
     sources_string = (
-        f"Pour plus d'informations, je t'invite à consulter les rubriques suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n- {sources_text}"
+        "Pour plus d'informations, je t'invite à consulter les rubriques "
+        "suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n"
+        f"- {sources_text}"
     )
 
     # Add the sources to the response
     response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
 
-    logger.info(f"Answer with metadata: {response_with_metadata}")
-    logger.success("Metadata added to the response successfully.\n")
-
     return response_with_metadata
 
 
-def display_answer(user_query: str, final_response: Union[str, dict]) -> None:
+def display_answer(
+    user_query: str,
+    answer: str,
+    start_time: float,
+    logger: "loguru.Logger",
+    nb_tokens_prompt: int,
+    nb_tokens_answer: int,
+) -> None:
     """Display the results.
 
     Parameters
     ----------
     user_query : str
         The query from the user.
-    final_response : str
+    answer : str
         The response text with added metadata.
+    start_time : float
+        The start time of the process, used to calculate elapsed time.
+    logger : loguru.Logger
+        Logger for logging messages.
+    nb_tokens_prompt : int
+        The number of tokens in the prompt, used for logging usage statistics.
+    nb_tokens_answer : int
+        The number of tokens in the answer, used for logging usage statistics.
     """
-    logger.info("Displaying the results.")
+    print("\n\nQuestion:")
+    print(f"{user_query}\n\n")
+    print("Réponse:")
+    print(f"{answer}\n\n")
 
-    print("\n\n")
-    print("Question:")
-    print(f"{user_query}\n")
-    print("Reponse:")
-    print(f"{final_response}")
-    print("\n\n")
+    logger.debug("Usage statistics:")
+    logger.debug(f"Number of tokens in the prompt: {nb_tokens_prompt}")
+    logger.debug(f"Number of tokens in the answer: {nb_tokens_answer}")
+    logger.debug(f"Total number of tokens: {nb_tokens_prompt + nb_tokens_answer}")
 
-    logger.success("Results displayed successfully.")
+    elapsed_time = perf_counter() - start_time
+    logger.success(
+        f"Query chatbot completed successfully in {elapsed_time:.2f} seconds!"
+    )
 
 
-def interrogate_model() -> None:
+@click.command()
+@click.option(
+    "--query",
+    "user_query",
+    type=str,
+    required=True,
+    help="The query text for which you want to search for answers.",
+)
+@click.option(
+    "--level",
+    "user_level",
+    type=click.Choice(
+        ["beginner", "intermediate", "advanced"],
+        case_sensitive=False,
+    ),
+    required=True,
+    help="User level used to adapt model responses.",
+)
+@click.option(
+    "--course-yaml",
+    "course_yaml",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=Path("data/chapters_and_levels.yaml"),
+    help=(
+        "Path to the YAML file defining the course chapters and student levels. "
+        "The YAML should include chapter names, titles, source Markdown paths, "
+        "and processed file paths."
+    ),
+)
+@click.option(
+    "--model",
+    "model_name",
+    type=str,
+    default="gpt-4o",
+    show_default=True,
+    help="The name or identifier of the model to be used for generating responses.",
+)
+@click.option(
+    "--provider-llm",
+    "provider_llm_name",
+    type=click.Choice(
+        ["openai", "openrouter"],
+        case_sensitive=False,
+    ),
+    default="openai",
+    help="Name of the LLM model provider to use.",
+)
+@click.option(
+    "--db-path",
+    "database_path",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    default="chroma_db",
+    show_default=True,
+    help="File path to the Chroma database containing the context embeddings.",
+)
+@click.option(
+    "--embedding-model",
+    "embedding_model",
+    default="text-embedding-3-large",
+    type=str,
+    help="Name of the embedding model to use."
+    "This should match the embedding model used to create the Chroma database.",
+)
+@click.option(
+    "--provider-emb",
+    "provider_embeddings_name",
+    type=click.Choice(
+        ["openai", "openrouter"],
+        case_sensitive=False,
+    ),
+    default="openai",
+    help="Name of the embeddings model provider to use.",
+)
+@click.option(
+    "--include-metadata",
+    is_flag=True,
+    default=False,
+    help="Include metadata in the response if this flag is provided.",
+)
+def interrogate_model(
+    user_query: str,
+    user_level: str,
+    course_yaml: Path,
+    model_name: str,
+    provider_llm_name: str,
+    database_path: str,
+    embedding_model: str,
+    provider_embeddings_name: str,
+    *,
+    include_metadata: bool,
+) -> None:
     """Interrogate the AI model to search for answers in a vector database."""
-    # Load the environment variables
-    load_dotenv()
-    # Load the query text from the command line arguments
-    user_query, model_name, include_metadata = get_args()
+    start_time = perf_counter()
+    # Set-up the logger
+    log_path = (
+        f"logs/{datetime.now().strftime('%Y%m%d')}/"
+        f"query_chatbot_{datetime.now().strftime('%H:%M:%S')}.log"
+    )
+    logger = create_logger(log_path)
+    logger.info("Starting the command line interface for querying the chatbot...")
 
-    # Check required model is available:
-    LLM_MODELS = get_available_llm_models
-    if model_name not in LLM_MODELS:
-        logger.error(f"Model {model_name} is not available.")
-        sys.exit(1)
-
+    # USER LEVEL INFORMATION RETRIEVAL
+    # Retrieve the user level information from the YAML file
+    user_infos = get_user_level_data(user_level, course_yaml, logger)
+    level_relevant_chapter_ids = user_infos["chapters"]
+    prompt_path = user_infos["prompt_path"]
 
     # CONTEXT RETRIEVAL
     # Load the vector database
-    vector_db = load_database(CHROMA_PATH)[0]
+    vector_db = load_database(database_path, embedding_model, provider_embeddings_name)
     # Search for relevant documents in the database
-    relevant_chunks = search_similarity_in_database(vector_db, user_query)
+    relevant_chunks = search_similarity_in_database(
+        vector_db, user_query, logger=logger
+    )
 
     # ANSWER GENERATION
     # Check if there are relevant documents
     if relevant_chunks == []:
-        # random response betweet responses in MSGS_QUERY_NOT_RELATED
-        response = random.choice(MSGS_QUERY_NOT_RELATED)
-        print(response)
-        sys.exit(0)
+        logger.warning(
+            "This question does not seem to be related to the course content."
+        )
+        # Avoids calling the model for queries that are not relevant to the course
+        answer = secrets.choice(MSGS_QUERY_NOT_RELATED)
+        logger.debug(
+            f"Answer generated automatically without calling the model: {answer}"
+        )
+        nb_tokens_prompt = 0
+        nb_tokens_answer = 0
     else:
-        # Format the relevant documents for the model
-        relevant_chunks_formatted = format_relevant_chunks(relevant_chunks)
-        # Get the metadata of the top matching documents
-        metadatas = get_metadata(relevant_chunks)
         # Generate the answer
-        answer = generate_answer(query=user_query, chat_context=None, relevant_chunks=relevant_chunks_formatted, model_name=model_name)
-        # Calculate the number of tokens in the answer
-        logger.info("Calculating the number of tokens in the answer.")
-        nb_tokens_answer = calculate_nb_tokens(answer)
-        logger.success(f"Number of tokens in the answer: {nb_tokens_answer}\n")
+        answer, nb_tokens_prompt, nb_tokens_answer = generate_answer(
+            query=user_query,
+            user_level=user_level,
+            chat_history=None,
+            relevant_chunks=relevant_chunks,
+            level_relevant_chapter_ids=level_relevant_chapter_ids,
+            model_name=model_name,
+            provider_llm_name=provider_llm_name,
+            prompt_path=prompt_path,
+            logger=logger,
+        )
 
         # ANSWER FORMATTING
-        # Add metadata to the answer
+        # Display the answer with or without metadata based on the include_metadata flag
         if include_metadata:
-            answer_with_metadata = add_metadata_to_answer(answer, metadatas)
-            display_answer(user_query, answer_with_metadata)
-        else:
-            display_answer(user_query, answer)
+            # Add metadata of the top matching documents to the answer
+            answer = add_metadata_to_answer(answer, relevant_chunks)
+
+    display_answer(
+        user_query, answer, start_time, logger, nb_tokens_prompt, nb_tokens_answer
+    )
 
 
 # MAIN PROGRAM

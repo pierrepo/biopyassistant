@@ -1,252 +1,238 @@
 """Creates the vectorial Chroma database from Markdown files in the specified directory.
 
-This script loads Markdown files from the specified directory, concatenates their content, 
-and splits the content into chunks based on headers and word limits. The resulting chunks are saved to a ChromaDB database.
+This script loads Markdown files from the specified directory, concatenates their
+content, and splits the content into chunks based on headers and word limits.
+The resulting chunks are saved to a ChromaDB database.
 
 Usage:
 ======
-    python src/create_database.py --data-path [data-path] --chroma-path [chroma-path] --chunk-size [chunk-size] --chunk-overlap [chunk-overlap] 
+    uv run src/create_database.py --course-yaml [course-yaml]
+                            --chroma-path [chroma-path]
+                            --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
+                            --embedding-model [embedding-model]
+                            --model-provider [model-provider]
 
 Arguments:
 ==========
-    --data-path : str
-        The directory containing the processed Markdown files of the python course.
+    --course-yaml : str
+        The YAML file containing the course structure, including chapter names, titles,
+        source Markdown paths, and processed file paths.
     --chroma-path : str
         The name of the output path to save the ChromaDB database.
     --chunk-size : int (optional)
         The size of the text chunks to be created. Default is 1000.
     --chunk-overlap : int (optional)
         The overlap between text chunks. Default is 200.
-    
+    --embedding-model : str (optional)
+        Name of the embedding model to use.
+        Possible choices : https://openrouter.ai/models?fmt=cards&supported_parameters=structured_outputs&output_modalities=embeddings
+        Default is "text-embedding-3-large".
+    --model-provider : str (optional)
+        Name of the embedding provider to use.
+        Possible choices are "openrouter" and "openai".
+        Default is "openai".
+
 
 Example:
 ========
-    python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
+    uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
+                                    --chroma-path chroma_db \
+                                    --embedding-model text-embedding-3-large \
+                                    --model-provider openai
 
-This command will create a Chroma vector database from the processed Markdown files located in the `data/markdown_processed` directory.
-The text will be split into chunks of 1000 characters with an overlap of 200 characters.
+This command will create a Chroma vector database from the processed Markdown files
+located in the paths specified in the `data/chapters_and_levels.yaml` file.
+The text will be split into chunks of 1000 characters with an overlap of 200 characters
+and will be embedded with the model `text-embedding-3-large`.
 And finally the vector database will be saved to the `chroma_db` directory.
 """
 
-# METADATA
-__authors__ = ("Pierre Poulain", "Essmay Touami")
-__contact__ = "pierre.poulain@u-paris.fr"
-__copyright__ = "BSD-3 clause"
-__date__ = "2024"
-__version__ = "1.0.0"
-
-
-# LIBRARY IMPORTS
 import os
 import re
-import sys
 import shutil
-import argparse
+import sys
 import unicodedata
+from datetime import datetime
+from pathlib import Path
 
-from dotenv import load_dotenv
+import click
+import loguru
 import tiktoken
-from loguru import logger
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.documents import Document
+from dotenv import load_dotenv
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import TextLoader, DirectoryLoader
+from langchain_community.document_loaders import TextLoader
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
     RecursiveCharacterTextSplitter,
 )
+from openai import OpenAI
+
+from logger import create_logger
+from parse_clean_markdown import load_chapters_from_yaml
 
 
-# CONSTANTS
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
-EMBEDDING_MODEL = "text-embedding-3-large"
+class OpenRouterEmbeddings(Embeddings):
+    """LangChain-compatible embeddings using OpenRouter."""
 
-
-# FUNCTIONS
-def get_args() -> tuple[str, str, int, int]:
-    """Parse command-line arguments.
-
-    Returns
-    -------
-    data_path, chroma_output_path, chunk_size, chunk_overlap : Tuple[str, str, int, int]
-        - data_path : str
-            The directory containing the processed Markdown files of the python course.
-        - chroma_output_path : str
-            The name of the output path to save the ChromaDB database.
-        - chunk_size : int
-            The size of the text chunks to be created.
-        - chunk_overlap : int
-            The overlap between text chunks.
-    """
-    # Create the parser
-    parser = argparse.ArgumentParser(
-        description="Create a ChromaDB database from Markdown files in the specified directory."
-    )
-    # Add the arguments
-    parser.add_argument(
-        "-d",
-        "--data-path",
-        dest="data_path",
-        help="The directory containing the processed Markdown files of the python course.",
-    )
-    parser.add_argument(
-        "-c",
-        "--chroma-path",
-        dest="chroma_path",
-        help="The name of the output path to save the ChromaDB database.",
-    )
-    parser.add_argument(
-        "-s",
-        "--chunk-size",
-        dest="chunk_size",
-        type=int,
-        default=CHUNK_SIZE,
-        help="The size of the text chunks to be created.",
-    )
-    parser.add_argument(
-        "-o",
-        "--chunk-overlap",
-        dest="chunk_overlap",
-        type=int,
-        default=CHUNK_OVERLAP,
-        help="The overlap between text chunks.",
-    )
-    # Parse the arguments
-    args = parser.parse_args()
-
-    # Checks
-    # db_path should exist
-    if not os.path.exists(args.data_path):
-        logger.error(f"The data directory '{args.data_path}' does not exist.")
-        sys.exit(1)
-    if args.chunk_size <= 0:
-        logger.error("The chunk size should be a positive integer.")
-        sys.exit(1)
-    if args.chunk_overlap <= 0:
-        logger.error("The chunk overlap should be a positive integer.")
-        sys.exit(1)
-    # chunk_overlap should be less than chunk_size
-    if args.chunk_overlap >= args.chunk_size:
-        logger.error(
-            f"The chunk overlap ({args.chunk_overlap}) should be less than the chunk size ({args.chunk_size})."
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        base_url: str = "https://openrouter.ai/api/v1",
+        logger: "loguru.Logger" = loguru.logger,
+    ) -> None:
+        self.model = model
+        self.api_key = api_key
+        self.logger = logger
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
         )
-        sys.exit(1)
 
-    return (
-        args.data_path,
-        args.chroma_path,
-        args.chunk_size,
-        args.chunk_overlap,
-    )
+    def embed_query(self, text: str) -> list[float]:
+        """Embed search query.
+
+        Returns
+        -------
+            Embedding for the input query text.
+        """
+        response = self.client.embeddings.create(
+            model=self.model,
+            input=text,
+            encoding_format="float",
+        )
+        return response.data[0].embedding
+
+    def embed_documents(
+        self,
+        texts: list[str],
+        max_retries: int = 3,
+    ) -> list[list[float]]:
+        """Embed documents one by one with retries and chunk logging.
+
+        Parameters
+        ----------
+        texts : list[str]
+            List of input texts to embed.
+        max_retries : int
+            Maximum number of retry attempts for a failed embedding.
+
+        Returns
+        -------
+        list[list[float]]
+            List of embeddings, one per input text.
+        """
+        embeddings: list[list[float]] = []
+
+        for idx, text in enumerate(texts):
+            for attempt in range(1, max_retries + 1):
+                try:
+                    embedding = self.embed_query(text=text)
+                    embeddings.append(embedding)
+                    self.logger.debug(
+                        f"Chunk {idx} embedded successfully on attempt {attempt}."
+                    )
+                    break  # Exit the retry loop on success
+                except Exception as e:
+                    self.logger.warning(
+                        f"Attempt {attempt} failed for chunk {idx}: {e}"
+                    )
+                    if attempt == max_retries:
+                        self.logger.error(
+                            f"Failed to embed chunk {idx} after {max_retries} attempts."
+                        )
+                        raise  # Re-raise the exception after max retries
+
+        return embeddings
 
 
-def load_documents(data_dir: str) -> list[Document]:
-    """Load Markdown documents, concatenate their content, and extract the name of the Markdown files.
+def load_documents(
+    course_yaml: Path, logger: "loguru.Logger" = loguru.logger
+) -> list[Document]:
+    """Load Markdown files, concatenate their content, and extract filenames.
 
     Parameters
     ----------
-    data_dir : str
-        The directory containing the Markdown files to be processed.
+    course_yaml : Path
+        The YAML file containing the course structure, including chapter names, titles,
+        source Markdown paths, and processed file paths.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     documents : list of Document
         List of Markdown documents.
     """
-    # Load Markdown documents from the specified directory.
-    logger.info("Loading Markdown documents...")
-    loader = DirectoryLoader(
-        data_dir, glob="*.md", show_progress=True, loader_cls=TextLoader
-    )
-    documents = loader.load()
+    documents = []
 
-    # Order the documents by source.
+    # Load chapters and levels from the YAML file
+    chapters = load_chapters_from_yaml(course_yaml, logger)
+
+    # Iterate through the chapters and load the processed Markdown files as Documents
+    logger.info("Converting Markdown file to Document...")
+    for chapter in chapters:
+        # Get the processed Markdown file path
+        processed_path = chapter.get("processed_path")
+        # Check if the processed file path is defined for the chapter
+        if not processed_path:
+            logger.warning(
+                f"No processed_path defined for chapter id={chapter.get('id')} "
+                f"title={chapter.get('title')}"
+            )
+            continue
+
+        processed_path = Path(processed_path)
+        # Check if the processed Markdown file exists
+        if not processed_path.exists():
+            logger.warning(f"Processed Markdown file not found: {processed_path}")
+            continue
+        # Load the processed Markdown file as a Document
+        loader = TextLoader(processed_path)
+        doc = loader.load()
+        documents.extend(doc)
+        logger.debug(
+            f"Converted {processed_path} to Document with "
+            f"{len(doc[0].page_content)} characters."
+        )
+
+    # Order the documents by the file name
     documents = sorted(documents, key=lambda x: x.metadata.get("source", ""))
 
-    logger.success("Markdown document loading complete.\n")
-
+    logger.success(
+        f"Converted {len(documents)}/{len(chapters)} Markdown documents successfully."
+    )
     return documents
 
 
-def get_file_names(documents: list[Document]) -> list[str]:
-    """Extract the file names of the Markdown documents.
-
-    Parameters
-    ----------
-    documents : list of Document
-        List of Markdown documents.
-
-    Returns
-    -------
-    file_names : list of str
-        List of file names of the Markdown documents.
-    """
-    logger.info("Extracting file names...")
-
-    file_names = []
-    for document in documents:
-        # Extract the file name from the metadata source
-        source = document.metadata.get("source", "")
-        if source:
-            file_name = source.split("/")[-1].split(".")[
-                0
-            ]  # Extract the file name without extension
-            file_names.append(file_name)
-
-    logger.success("Extracted file names successfully.\n")
-
-    return sorted(file_names)
-
-
-def concatenate_content(documents: list[Document]) -> str:
-    """Concatenate the content of the Markdown documents.
-
-    Parameters
-    ----------
-    documents : list of Document
-        List of Markdown documents.
-
-    Returns
-    -------
-    concatenated_content : str
-        The concatenated content of all the Markdown documents.
-    """
-    logger.info("Concatenating content...")
-
-    concatenated_content = ""
-    for document in documents:
-        # Add the document content to the concatenated content
-        concatenated_content += document.page_content + "\n"
-    logger.info(
-        f"There is {len(concatenated_content)} characters in the concatenated content."
-    )
-
-    logger.success("Concatenated content successfully.\n")
-
-    return concatenated_content
-
-
-def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Document]:
+def split_text_into_chunks(
+    content: str,
+    chunk_size: int,
+    chunk_overlap: int,
+    logger: "loguru.Logger" = loguru.logger,
+) -> list[Document]:
     """Split concatenated Markdown content into chunks based on headers and word limits.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     content : str
         Concatenated Markdown content to be split into chunks.
     chunk_size : int
         The size of the text chunks to be created.
     chunk_overlap : int
         The overlap between text chunks.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
-    Returns:
-    --------
+    Returns
+    -------
     chunks : list of Document
         List of text chunks after splitting with content and metadata.
         format : [{"page_content": str, "metadata": dict}, ...]
     """
-    logger.info("Splitting the documents...")
-
     # create a Markdown header text splitter
     headers_to_split_on = [
         ("#", "chapter_name"),
@@ -271,18 +257,14 @@ def split_text(content: str, chunk_size: int, chunk_overlap: int) -> list[Docume
     # Split the resulting chunks further based on character limits
     chunks = text_splitter.split_documents(md_header_splits)
 
-    logger.success(f"Split documents into {len(chunks)} chunks.\n")
-
-    # tests
-    # print(chunks[1], end="\n\n")
-    # print(chunks[100], end="\n\n")
-    # print(chunks[3000], end="\n\n")
-
+    logger.info(f"Split documents into {len(chunks)} chunks.")
     return chunks
 
 
 def remove_small_chunks(
-    chunks: list[Document], min_nb_char: int = 100
+    chunks: list[Document],
+    logger: "loguru.Logger" = loguru.logger,
+    min_nb_char: int = 100,
 ) -> list[Document]:
     """Remove small chunks from the list of text chunks.
 
@@ -292,66 +274,43 @@ def remove_small_chunks(
         List of text chunks to be filtered.
     min_nb_char : int
         Minimum number of characters for a chunk to be kept.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     chunks : list of Document
         List of text chunks after removing small chunks.
     """
-    logger.info("Removing small chunks...")
-    logger.info(f"Number of chunks before removing small chunks: {len(chunks)}")
-
     # Remove chunks with less than min_nb_char characters
     chunks_cleaned = [
         chunk for chunk in chunks if len(chunk.page_content) >= min_nb_char
     ]
-
-    logger.info(f"Number of chunks after removing small chunks: {len(chunks_cleaned)}")
-    logger.info(f"Number of chunks removed: {len(chunks) - len(chunks_cleaned)}\n")
-    logger.success("Removed small chunks successfully.\n")
-
+    logger.info(
+        f"Removed {len(chunks) - len(chunks_cleaned)} small chunks"
+        f" (less than {min_nb_char} characters)."
+    )
     return chunks_cleaned
 
 
-def add_index_to_metadata(chunks: list[Document]) -> list[Document]:
-    """Add an index to the metadata of the text chunks.
-
-    Parameters
-    ----------
-    chunks : list of Document
-        List of text chunks to which an index is to be added.
-
-    Returns
-    -------
-    chunks : list of Document
-        List of text chunks with an index added to their metadata.
-    """
-    logger.info("Adding index to metadata...")
-
-    # Add an index to metadata of each chunk
-    for index, chunk in enumerate(chunks):
-        chunk.metadata["id"] = index
-
-    logger.success("Added index to metadata successfully.\n")
-
-    return chunks
-
-
-def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_token_number_to_metadata(
+    chunks: list[Document],
+    logger: "loguru.Logger" = loguru.logger,
+) -> list[Document]:
     """Add the number of tokens to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
         List of text chunks to which the number of tokens is to be added.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     chunks : list of Document
         List of text chunks with the number of tokens added to their metadata.
     """
-    logger.info("Adding the number of tokens to metadata...")
-
     # Get the encoding for tokenization
     # for openai embeddings
     encoding = tiktoken.get_encoding("cl100k_base")
@@ -364,54 +323,64 @@ def add_token_number_to_metadata(chunks: list[Document]) -> list[Document]:
         nb_tokens = len(token)
         chunk.metadata["nb_tokens"] = nb_tokens
 
-    logger.success("Added the number of tokens to metadata successfully.\n")
-
+    logger.info(
+        f"Total number of characters: \
+            {sum(len(chunk.page_content) for chunk in chunks):,}"
+    )
+    count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in chunks)
+    logger.info(f"Total number of tokens: {count_tokens:,}")
     return chunks
 
 
 def add_file_names_to_metadata(
-    chunks: list[Document], file_names: list[str]
+    chunks: list[Document], file_path: str, logger: "loguru.Logger" = loguru.logger
 ) -> list[Document]:
-    """Add file names to the metadata of the text chunks.
+    """Add file paths to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
-        List of text chunks to which file names are to be added.
-    file_names : list of str
-        List of file names of the Markdown documents.
+        List of text chunks to which file paths are to be added.
+    file_path : str
+        File path of the Markdown documents.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     chunks : list of Document
-        List of text chunks with file names added to their metadata.
+        List of text chunks with file paths added to their metadata.
     """
-    logger.info("Adding file names to metadata...")
+    file_name = Path(file_path).name
 
-    # Add file names to metadata of each chunk
+    # Determine chapter id based on the file name
+    chapter_id = None
+    # Match numbered chapters, e.g., "01_intro.md" or "24_avoir_plus_la_classe.md"
+    match_chapter = re.match(r"(\d+)_", file_name)
+    if match_chapter:
+        chapter_id = str(match_chapter.group(1))
+    else:
+        # Match annexes, e.g., "annexe_A.md"
+        match_annex = re.match(r"annexe[_-]([A-Z0-9]+)", file_name, re.IGNORECASE)
+        if match_annex:
+            chapter_id = match_annex.group(1).upper()
+
+    if chapter_id is None:
+        logger.warning(
+            f"Could not extract chapter index from file name: {file_name}. "
+            "No chapter index added to metadata."
+        )
+
+    # Add metadata to each chunk
     for chunk in chunks:
-        # Extract chapter_name from the metadata
-        chapter_name = chunk.metadata.get("chapter_name", "")
-        # Get the chapter number or appendix letter
-        chapter_number = re.match(r"^\d+\s", chapter_name)
-        appendix_letter = re.search(r"\b[A-Z]", chapter_name)
-        # Corresponding chapter number or appendix letter with file name
-        for file_name in file_names:
-            if chapter_number and file_name.startswith(
-                f"{chapter_number.group(0).strip().zfill(2)}_"
-            ):  # zfill(2) to pad with zeros
-                chunk.metadata["file_name"] = file_name
-                break 
-            elif appendix_letter.group(0) == file_name.split("_")[1]:
-                chunk.metadata["file_name"] = file_name
-                break
-
-    logger.success("Added file names to metadata successfully.\n")
+        chunk.metadata["file_path"] = file_path
+        chunk.metadata["file_name"] = Path(file_path).name
+        chunk.metadata["chapter_id"] = chapter_id
 
     return chunks
 
 
-def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
+def preprocess_for_url(text: str, *, is_subsubsection_name: bool = False) -> str:
     """Preprocess text for creating URL.
 
     Parameters
@@ -453,7 +422,7 @@ def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
     processed_text = re.sub(r"[^a-zA-Z]*$", "", processed_text)
 
     # Remove the subsubsection number
-    if is_subsubsection:
+    if is_subsubsection_name:
         processed_text = re.sub(r"^[a-zA-Z]?\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
@@ -462,30 +431,33 @@ def preprocess_for_url(text: str, is_subsubsection: bool = False) -> str:
     return processed_text
 
 
-def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
+def add_url_to_metadata(
+    chunks: list[Document], logger: "loguru.Logger" = loguru.logger
+) -> list[Document]:
     """Add URL to the metadata of the text chunks.
 
     Parameters
     ----------
     chunks : list of Document
         List of text chunks to which URL is to be added.
+    logger: "loguru.Logger"
+        Logger for logging messages.
 
     Returns
     -------
     chunks : list of Document
         List of text chunks with URL added to their metadata.
     """
-    logger.info("Adding URL to metadata...")
-
     # Add URL to metadata of each chunk
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks, start=1):
         # Extract file name from the metadata
-        file_name = chunk.metadata.get("file_name", "")
+        file_path = chunk.metadata.get("file_name", "")
+        file_name = Path(file_path).stem
 
         # Extract section_id from the metadata
         if chunk.metadata.get("subsubsection_name", ""):  # subsubsection
             section_id = preprocess_for_url(
-                chunk.metadata.get("subsubsection_name", ""), True
+                chunk.metadata.get("subsubsection_name", ""), is_subsubsection_name=True
             )
         elif chunk.metadata.get("subsection_name", ""):  # subsection
             section_id = preprocess_for_url(chunk.metadata.get("subsection_name", ""))
@@ -498,79 +470,201 @@ def add_url_to_metadata(chunks: list[Document]) -> list[Document]:
         chunk.metadata["url"] = (
             f"https://python.sdv.u-paris.fr/{file_name}/{section_id}"
         )
-
-    logger.success("Added URL to metadata successfully.\n")
+        logger.debug(f"Chunk {i} URL: {chunk.metadata['url']}")
 
     return chunks
 
 
-def save_to_chroma(chunks: list[Document], chroma_output_path: str) -> None:
+def create_embeddings_function(
+    model_name: str,
+    provider_name: str,
+) -> OpenAIEmbeddings | OpenRouterEmbeddings:
+    """Create an embeddings function based on the specified model and provider.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of the embedding model to use.
+    provider_name : str
+        Name of the embedding provider to use.
+
+    Returns
+    -------
+    OpenAIEmbeddings | OpenRouterEmbeddings
+        An instance of the OpenAIEmbeddings or
+        OpenRouterEmbeddings class initialized
+        with the specified model and provider.
+
+    Raises
+    ------
+    KeyError
+        If the API key for the specified provider is not found in environment variables.
+    """
+    # Load the environment variables with LLM api keys
+    load_dotenv()
+    try:
+        # Get the API key and base URL based on the provider
+        if provider_name == "openrouter":
+            return OpenRouterEmbeddings(
+                model=model_name,
+                api_key=os.environ["OPENROUTER_API_KEY"],
+            )
+        elif provider_name == "openai":
+            return OpenAIEmbeddings(
+                model=model_name, api_key=os.getenv("OPENAI_API_KEY")
+            )
+    # Handle the case where the API key is not found in environment variables
+    except KeyError as e:
+        msg = f"API key for {provider_name} not found in environment variables."
+        raise KeyError(msg) from e
+
+
+def save_to_chroma(
+    chunks: list[Document],
+    model_name: str,
+    provider_name: str,
+    chroma_output_path: Path,
+    logger: "loguru.Logger" = loguru.logger,
+) -> None:
     """Save text chunks to ChromaDB.
 
     Parameters
     ----------
-    chunks : list of str
+    chunks : list[Document]
         List of text chunks to save to ChromaDB.
-    chroma_output_path : str
-        The name of the output path to save the ChromaDB database.
+    model_name : str
+        Name of the embedding model to use.
+    provider_name : str
+        Name of the embedding provider to use.
+    chroma_output_path : Path
+        Path to the directory where the ChromaDB database will be saved.
+    logger: "loguru.Logger"
+        Logger for logging messages.
     """
-    logger.info("Saving to Chroma...")
-
-    # Clear out the database first.
-    if os.path.exists(chroma_output_path):
+    logger.info(f"Saving to ChromaDB using embedding model `{model_name}`...")
+    # Clear the existing database if it exists
+    if chroma_output_path.exists():
         shutil.rmtree(chroma_output_path)
 
-    # Create a new DB from the documents and save it to disk
-    model_embedding = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    # Create the embeddings function
+    embeddings_function = create_embeddings_function(model_name, provider_name)
+
+    # Generate unique IDs for each chunk
+    uuids = [str(index) for index in range(len(chunks))]
+
+    # Create a ChromaDB with the embeddings
     Chroma.from_documents(
-        chunks,
-        model_embedding,
-        persist_directory=chroma_output_path,
-        collection_metadata={"hnsw:space": "cosine"},
-    )  # distance metric
+        documents=chunks,
+        ids=uuids,
+        embedding=embeddings_function,
+        persist_directory=str(chroma_output_path),
+        collection_metadata={"hnsw:space": "cosine"},  # distance metric
+    )
+    logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path} successfully!")
 
-    logger.success(f"Saved {len(chunks)} chunks to {chroma_output_path}.")
 
+@click.command()
+@click.option(
+    "--course-yaml",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help=(
+        "Path to the YAML file defining the course chapters and student levels. "
+        "The YAML should include chapter names, titles, source Markdown paths, "
+        "and processed file paths."
+    ),
+)
+@click.option(
+    "--chroma-path",
+    required=True,
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    help="Output path to save the ChromaDB database.",
+)
+@click.option(
+    "--chunk-size",
+    default=1000,
+    type=click.IntRange(min=50),
+    help="Size of the text chunks to be created.",
+)
+@click.option(
+    "--chunk-overlap",
+    default=200,
+    type=click.IntRange(min=0),
+    help="Overlap between text chunks.",
+)
+@click.option(
+    "--embedding-model",
+    default="text-embedding-3-large",
+    type=str,
+    help="Name of the embedding model,"
+    "chosen from OpenAI and OpenRouter`s embedding models. ",
+)
+@click.option(
+    "--model-provider",
+    default="openai",
+    type=click.Choice(["openrouter", "openai"], case_sensitive=False),
+    help="Name of the embedding provider to use.",
+)
+def generate_data_store(
+    course_yaml: Path,
+    chroma_path: Path,
+    chunk_size: int,
+    chunk_overlap: int,
+    embedding_model: str,
+    model_provider: str,
+) -> None:
+    """Build a ChromaDB store from chunked text with metadata."""
+    # Set-up the logger
+    log_path = f"logs/{datetime.now().strftime('%Y%m%d')}/create_database.log"
+    logger = create_logger(log_path)
+    logger.info("Creating Chroma database...")
 
-def generate_data_store() -> None:
-    """Generates data store by loading, splitting text into chunks, adding metadata and saving the chunks to ChromaDB."""
-    # Get command-line arguments.
-    data_path, chroma_path, chunk_size, chunk_overlap = get_args()
+    # Validate the CLI arguments
+    if chunk_overlap >= chunk_size:
+        logger.error(
+            f"The chunk overlap ({chunk_overlap}) must be less than "
+            f" the chunk size ({chunk_size})."
+        )
+        sys.exit(1)
 
-    # Load the environment variables with LLM api keys.
-    load_dotenv()
-
+    all_chunks = []
     # load documents from the specified directory
-    documents = load_documents(data_path)
+    documents = load_documents(course_yaml, logger)
+    logger.info("Processing Documents...")
+    for doc in documents:
+        file_name = doc.metadata.get("source", "")
+        logger.info(f"File path: {file_name}")
+        # split text of the current document into chunks
+        chunks = split_text_into_chunks(
+            doc.page_content, chunk_size, chunk_overlap, logger
+        )
+        # remove small chunks
+        chunks_cleaned = remove_small_chunks(chunks, logger, min_nb_char=100)
 
-    # extract file names from the documents
-    file_names = get_file_names(documents)
+        # add number of tokens to the metadata
+        chunks_with_tokens = add_token_number_to_metadata(chunks_cleaned, logger)
 
-    # concatenate the content of the documents
-    content = concatenate_content(documents)
+        # add file name and chapter id to the chunk metadata
+        chunks_with_file_name = add_file_names_to_metadata(
+            chunks_with_tokens, file_name, logger
+        )
+        # add URL to the chunk metadata if available
+        chunks_with_url = add_url_to_metadata(chunks_with_file_name, logger)
 
-    # split text into chunks
-    chunks = split_text(content, chunk_size, chunk_overlap)
+        all_chunks.extend(chunks_with_url)
+        logger.debug(f"Example chunk metadata: {all_chunks[-1].metadata}")
 
-    # remove small chunks
-    chunks_cleaned = remove_small_chunks(chunks, min_nb_char=100)
+    logger.info("Summary:")
+    logger.info(f"Total number of files processed: {len(documents)}")
+    logger.info(f"Total number of chunks: {len(all_chunks)}")
+    total_characters = sum(len(chunk.page_content) for chunk in all_chunks)
+    logger.info(f"Total number of characters: {total_characters:,}")
+    count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
+    logger.info(f"Total number of tokens: {count_tokens:,}")
 
-    # add index to the metadata
-    chunks_with_index = add_index_to_metadata(chunks_cleaned)
-
-    # add number of tokens to the metadata
-    chunks_with_tokens = add_token_number_to_metadata(chunks_with_index)
-
-    # add file names to the chunks
-    chunks_with_file_names = add_file_names_to_metadata(chunks_with_tokens, file_names)
-
-    # add URL to the chunks
-    chunks_with_url = add_url_to_metadata(chunks_with_file_names)    
-
-    # save the chunks to ChromaDB
-    save_to_chroma(chunks_with_url, chroma_path)
+    # save the embeddings to ChromaDB
+    save_to_chroma(all_chunks, embedding_model, model_provider, chroma_path, logger)
 
 
-# MAIN PROGRAM
 if __name__ == "__main__":
     generate_data_store()

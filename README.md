@@ -32,54 +32,54 @@ git clone https://github.com/pierrepo/biopyassistant.git
 cd biopyassistant
 ```
 
-### Install [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
+### Activate the environment
 
-### Create a Conda environment
+We use [uv](https://docs.astral.sh/uv/getting-started/installation/)
+to manage dependencies and the project environment.
 
-```bash
-conda env create -f environment.yml
-```
-
-### Activate the Conda environment
+Sync dependencies:
 
 ```bash
-conda activate biopyassistantenv
+uv sync
 ```
 
 ### Copy the raw Markdown files of the Python [course](https://github.com/bioinfo-prog/cours-python):
 
 ```bash
 git clone --depth 1 https://github.com/bioinfo-prog/cours-python.git
-rm -f data/markdown_raw/*.md
-cp cours-python/cours/*.md data/markdown_raw/
+rm -f data/course_raw/*.md
+cp cours-python/cours/*.md data/course_raw/
 rm -rf cours-python
 ```
 
 ### Process raw Markdown files
 
 ```bash
-rm -f data/markdown_processed/*.md
-python src/parse_clean_markdown.py --in data/markdown_raw --out data/markdown_processed
+rm -f data/course_processed/*.md
+uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 ```
 
-In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/markdown_processed`
+In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/course_processed`
 
 
-### Add OpenAI API key
+### Add OpenAI and OpenRouter API key
 
-Create an `.env` file with a valid OpenAI API key:
+Create an .env file with a valid [OpenAI](https://platform.openai.com/docs/api-reference/authentication) and [OpenRouter](https://openrouter.ai/docs/api/reference/authentication) API key:
 
-```text
+```sh
 OPENAI_API_KEY=<your-openai-api-key>
+OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```
-
-> Remark: This `.env` file is ignored by git.
+> Remark: This .env file is ignored by git.
 
 
 ### Create the vector database
 
 ```bash
-python src/create_database.py --data-path data/markdown_processed --chroma-path chroma_db
+uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
+                              --chroma-path chroma_db \
+                              --embedding-model text-embedding-3-large \
+                              --model-provider openai
 ```
 
 This command will create a Chroma vector database from the processed Markdown files. All files will be split into chunks of 1000 characters with an overlap of 200 characters. 
@@ -91,21 +91,32 @@ This command will create a Chroma vector database from the processed Markdown fi
 
 
 ```bash
-python src/query_chatbot.py --query "Your question here" [--model "model_name"]  [--include-metadata]
+uv run python src/query_chatbot.py --query "Your question here" \
+                  --level "user_level" \
+                  --model "model_name" \
+                  --provider-llm "provider_name" \
+                  --include-metadata
 ```
 
 ### Options
 
-- 🤖 Model Selection. For instance: `gpt-4o`, `gpt-4-turbo`
-- 📝 Include Metadata: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
+- 📚 **User Level**: Specify the user's Python knowledge level to tailor the chatbot's responses.
+                     Choose between: `beginner`, `intermediate`, `advanced`.
+- 🤖 **Model Selection**: Choose the language model for the query. Examples: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
+- 🌐 **LLM Provider**: Specify the provider of the language model. Choose between: `openai`, `openrouter`.
+- 📝 **Include Metadata**: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
 
 Example:
 
 ```bash
-python src/query_chatbot.py --query "What is the difference between list and set ?" --model gpt-4-turbo --include-metadata
+uv run python src/query_chatbot.py --query "What is the difference between list and set ?" \
+                  --level "advanced" \
+                  --model "gpt-4o" \
+                  --provider-llm "openai" \
+                  --include-metadata
 ```
 
-This command will query the chatbot with the question "What is the difference between list and set ?" using the `gpt-4-turbo` model and include metadata in the response.
+This command will query the chatbot for a response to the question "What is the difference between list and set ?" for an intermediate user using the `gpt-4o` model from the `openai` provider. The response will include metadata about the sources of the answer.
 
 Output:
 
@@ -124,22 +135,12 @@ For more information, you can refer to the following sources:
 
 ## Usage (web interface)
 
-### Streamlit app
-
 
 ```bash
-streamlit run src/streamlit_app.py
+uv run streamlit run src/streamlit_app.py
 ```
 
 This will run the Streamlit app in your web browser.
 
 
-### Gradio App
-
-
-```bash
-python src/gradio_app.py
-```
-
-This will run the Gradio app in your web browser. A battle mode is available to compare the responses of different models.
 
