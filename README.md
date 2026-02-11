@@ -47,19 +47,19 @@ uv sync
 
 ```bash
 git clone --depth 1 https://github.com/bioinfo-prog/cours-python.git
-rm -f data/markdown_raw/*.md
-cp cours-python/cours/*.md data/markdown_raw/
+rm -f data/course_raw/*.md
+cp cours-python/cours/*.md data/course_raw/
 rm -rf cours-python
 ```
 
 ### Process raw Markdown files
 
 ```bash
-rm -f data/markdown_processed/*.md
+rm -f data/course_processed/*.md
 uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 ```
 
-In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/markdown_processed`
+In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/course_processed`
 
 
 ### Add OpenAI and OpenRouter API key
@@ -94,28 +94,29 @@ This command will create a Chroma vector database from the processed Markdown fi
 uv run python src/query_chatbot.py --query "Your question here" \
                   --level "user_level" \
                   --model "model_name" \
-                  --prompt_path "path_to_prompt_template" \
+                  --provider-llm "provider_name" \
                   --include-metadata
 ```
 
 ### Options
 
-- 📚 **User Level**: For instance: `debutant`, `intermediaire`, `avance`, etc. This helps the chatbot tailor its responses to the user's level of understanding.
-- 🤖 **Model Selection**: For instance: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
-- 📄 **Prompt Template**: The file path to the text file containing the instruction and format for the chatbot's response. 
+- 📚 **User Level**: Specify the user's Python knowledge level to tailor the chatbot's responses.
+                     Choose between: `beginner`, `intermediate`, `advanced`.
+- 🤖 **Model Selection**: Choose the language model for the query. Examples: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
+- 🌐 **LLM Provider**: Specify the provider of the language model. Choose between: `openai`, `openrouter`.
 - 📝 **Include Metadata**: Include metadata in the response, such as the sources of the answer. By default, metadata is excluded.
 
 Example:
 
 ```bash
 uv run python src/query_chatbot.py --query "What is the difference between list and set ?" \
-                  --level "intermediaire" \
-                  --model gpt-4o \
-                  --prompt_path "prompts/zero_shot.txt" \
+                  --level "advanced" \
+                  --model "gpt-4o" \
+                  --provider-llm "openai" \
                   --include-metadata
 ```
 
-This command will query the chatbot for a response to the question "What is the difference between list and set ?" for an intermediate user using the `gpt-4o` model. The response will be generated based on the prompt template located at [`prompts/zero_shot.txt`](prompts/zero_shot.txt) and will include metadata about the sources of the answer.
+This command will query the chatbot for a response to the question "What is the difference between list and set ?" for an intermediate user using the `gpt-4o` model from the `openai` provider. The response will include metadata about the sources of the answer.
 
 Output:
 
@@ -136,7 +137,7 @@ For more information, you can refer to the following sources:
 
 
 ```bash
-streamlit run src/streamlit_app.py
+uv run streamlit run src/streamlit_app.py
 ```
 
 This will run the Streamlit app in your web browser.
