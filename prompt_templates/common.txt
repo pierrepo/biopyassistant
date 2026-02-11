@@ -1,4 +1,4 @@
-# Python Programming for Biology - Contextual Q&A Task
+# Assistant conversationnel contextuel – Programmation Python en biologie
 
 ## Rôle
 
@@ -14,9 +14,7 @@ Tu es un tuteur pédagogique spécialisé en Bio-informatique. Ton objectif est 
 ## DOCUMENTS DE RÉFÉRENCE (CONTEXTE)
 
 Voici les seules ressources que tu es autorisé à utiliser pour répondre :
-<<<
 {contexte}
->>>
 
 ## TÂCHE
 
