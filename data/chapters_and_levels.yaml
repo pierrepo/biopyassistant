@@ -1,165 +1,144 @@
 # chapters_and_levels.yaml
 # Python course structure for the application.
 
+# Definition of Markdown file paths for the course content.
+# Base directory containing the original course files
+raw_course_base_path: "data/course_raw/"
+# Base directory to save the cleaned and processed course files
+processed_course_base_path: "data/course_processed/"
+
 chapters:
   # List of all available Python chapters and annexes.
   # These entries define which Markdown files are ingested into the vector database.
 
   - id: "01"
-    title: Introduction
-    source_file_path: data/markdown_raw/01_introduction.md
-    processed_file_path: data/markdown_processed/01_introduction.md
+    title: "Introduction"
+    file_name: "01_introduction.md"
 
   - id: "02"
-    title: Variables
-    source_file_path: data/markdown_raw/02_variables.md
-    processed_file_path: data/markdown_processed/02_variables.md
+    title: "Variables"
+    file_name: "02_variables.md"
 
   - id: "03"
-    title: Affichage
-    source_file_path: data/markdown_raw/03_affichage.md
-    processed_file_path: data/markdown_processed/03_affichage.md
+    title: "Affichage"
+    file_name: "03_affichage.md"
 
   - id: "04"
-    title: Listes
-    source_file_path: data/markdown_raw/04_listes.md
-    processed_file_path: data/markdown_processed/04_listes.md
+    title: "Listes"
+    file_name: "04_listes.md"
 
   - id: "05"
-    title: Boucles et comparaisons
-    source_file_path: data/markdown_raw/05_boucles_comparaisons.md
-    processed_file_path: data/markdown_processed/05_boucles_comparaisons.md
+    title: "Boucles et comparaisons"
+    file_name: "05_boucles_comparaisons.md"
 
   - id: "06"
-    title: Tests
-    source_file_path: data/markdown_raw/06_tests.md
-    processed_file_path: data/markdown_processed/06_tests.md
+    title: "Tests"
+    file_name: "06_tests.md"
 
   - id: "07"
-    title: Fichiers
-    source_file_path: data/markdown_raw/07_fichiers.md
-    processed_file_path: data/markdown_processed/07_fichiers.md
+    title: "Fichiers"
+    file_name: "07_fichiers.md"
 
   - id: "08"
-    title: Dictionnaires et tuples
-    source_file_path: data/markdown_raw/08_dictionnaires_tuples.md
-    processed_file_path: data/markdown_processed/08_dictionnaires_tuples.md
+    title: "Dictionnaires et tuples"
+    file_name: "08_dictionnaires_tuples.md"
 
   - id: "09"
-    title: Modules
-    source_file_path: data/markdown_raw/09_modules.md
-    processed_file_path: data/markdown_processed/09_modules.md
+    title: "Modules"
+    file_name: "09_modules.md"
 
   - id: "10"
-    title: Fonctions
-    source_file_path: data/markdown_raw/10_fonctions.md
-    processed_file_path: data/markdown_processed/10_fonctions.md
+    title: "Fonctions"
+    file_name: "10_fonctions.md"
 
   - id: "11"
-    title: Plus sur les chaînes de caractères
-    source_file_path: data/markdown_raw/11_plus_sur_les_chaines_de_caracteres.md
-    processed_file_path: data/markdown_processed/11_plus_sur_les_chaines_de_caracteres.md
+    title: "Plus sur les chaînes de caractères"
+    file_name: "11_plus_sur_les_chaines_de_caracteres.md"
 
   - id: "12"
-    title: Plus sur les listes
-    source_file_path: data/markdown_raw/12_plus_sur_les_listes.md
-    processed_file_path: data/markdown_processed/12_plus_sur_les_listes.md
+    title: "Plus sur les listes"
+    file_name: "12_plus_sur_les_listes.md"
 
   - id: "13"
-    title: Plus sur les fonctions
-    source_file_path: data/markdown_raw/13_plus_sur_les_fonctions.md
-    processed_file_path: data/markdown_processed/13_plus_sur_les_fonctions.md
+    title: "Plus sur les fonctions"
+    file_name: "13_plus_sur_les_fonctions.md"
 
   - id: "14"
-    title: Conteneurs
-    source_file_path: data/markdown_raw/14_conteneurs.md
-    processed_file_path: data/markdown_processed/14_conteneurs.md
+    title: "Conteneurs"
+    file_name: "14_conteneurs.md"
 
   - id: "15"
-    title: Création de modules
-    source_file_path: data/markdown_raw/15_creation_modules.md
-    processed_file_path: data/markdown_processed/15_creation_de_modules.md
+    title: "Création de modules"
+    file_name: "15_creation_modules.md"
 
   - id: "16"
-    title: Bonnes pratiques en programmation Python
-    source_file_path: data/markdown_raw/16_bonnes_pratiques.md
-    processed_file_path: data/markdown_processed/16_bonnes_pratiques.md
+    title: "Bonnes pratiques en programmation Python"
+    file_name: "16_bonnes_pratiques.md"
 
   - id: "17"
-    title: Expressions régulières et parsing
-    source_file_path: data/markdown_raw/17_expressions_regulieres.md
-    processed_file_path: data/markdown_processed/17_expressions_regulieres.md
+    title: "Expressions régulières et parsing"
+    file_name: "17_expressions_regulieres.md"
 
   - id: "18"
-    title: Jupyter et ses notebooks
-    source_file_path: data/markdown_raw/18_jupyter.md
-    processed_file_path: data/markdown_processed/18_jupyter.md
+    title: "Jupyter et ses notebooks"
+    file_name: "18_jupyter.md"
 
   - id: "19"
-    title: Module Biopython
-    source_file_path: data/markdown_raw/19_module_biopython.md
-    processed_file_path: data/markdown_processed/19_module_biopython.md
+    title: "Module Biopython"
+    file_name: "19_module_biopython.md"
 
   - id: "20"
-    title: Module Numpy
-    source_file_path: data/markdown_raw/20_module_numpy.md
-    processed_file_path: data/markdown_processed/20_module_numpy.md
+    title: "Module Numpy"
+    file_name: "20_module_numpy.md"
 
   - id: "21"
-    title: Module Matplotlib
-    source_file_path: data/markdown_raw/21_module_matplotlib.md
-    processed_file_path: data/markdown_processed/21_module_matplotlib.md
+    title: "Module Matplotlib"
+    file_name: "21_module_matplotlib.md"
 
   - id: "22"
-    title: Module Pandas
-    source_file_path: data/markdown_raw/22_module_pandas.md
-    processed_file_path: data/markdown_processed/22_module_pandas.md
+    title: "Module Pandas"
+    file_name: "22_module_pandas.md"
 
   - id: "23"
-    title: Avoir la classe avec les objets
-    source_file_path: data/markdown_raw/23_avoir_la_classe_avec_les_objets.md
-    processed_file_path: data/markdown_processed/23_avoir_la_classe_avec_les_objets.md
+    title: "Avoir la classe avec les objets"
+    file_name: "23_avoir_la_classe_avec_les_objets.md"
 
   - id: "24"
-    title: Avoir plus la classe avec les objets
-    source_file_path: data/markdown_raw/24_avoir_plus_la_classe_avec_les_objets.md
-    processed_file_path: data/markdown_processed/24_avoir_plus_la_classe_avec_les_objets.md
+    title: "Avoir plus la classe avec les objets"
+    file_name: "24_avoir_plus_la_classe_avec_les_objets.md"
 
   - id: "25"
-    title: Fenêtres graphiques et Tkinter
-    source_file_path: data/markdown_raw/25_tkinter.md
-    processed_file_path: data/markdown_processed/25_tkinter.md
+    title: "Fenêtres graphiques et Tkinter"
+    file_name: "25_tkinter.md"
 
   - id: "26"
-    title: Remarques complémentaires
-    source_file_path: data/markdown_raw/26_remarques_complementaires.md
-    processed_file_path: data/markdown_processed/26_remarques_complementaires.md
+    title: "Remarques complémentaires"
+    file_name: "26_remarques_complementaires.md"
 
   - id: "27"
-    title: Mini-projets
-    source_file_path: data/markdown_raw/27_mini_projets.md
-    processed_file_path: data/markdown_processed/27_mini_projets.md
+    title: "Mini-projets"
+    file_name: "27_mini_projets.md"
 
-  - id: A
-    title: Quelques formats de données en biologies
-    source_file_path: data/markdown_raw/annexe_A_formats_fichiers.md
-    processed_file_path: data/markdown_processed/annexe_A_formats_fichiers.md
+  - id: "A"
+    title: "Quelques formats de données en biologies"
+    file_name: "annexe_A_formats_fichiers.md"
 
-  - id: B
-    title: Installation de Python
-    source_file_path: data/markdown_raw/annexe_B_install_python.md
-    processed_file_path: data/markdown_processed/annexe_B_install_python.md
+  - id: "B"
+    title: "Installation de Python"
+    file_name: "annexe_B_install_python.md"
 
 levels:
   # Definition of student levels.
   # Each level references chapters by name to adapt responses to the student's level.
-  - name: debutant
+  - name: "beginner"
     display_name: "Débutant (L2 / L3)"
     comment: >
       This level is for students who have just started learning Python
       and have a basic understanding of programming concepts.
       They are likely in their second or third year of university (L2/L3)
       and are looking for guidance on fundamental Python topics.
+
+    prompt_file: "prompt_templates/common.txt"
 
     chapters:
       - "01"
@@ -172,12 +151,14 @@ levels:
       - "11"
       - "12"
 
-  - name: intermediaire
+  - name: "intermediate"
     display_name: "Intermédiaire (Python 1)"
     comment: >
       This level is for master`s students with an intermediate Python
       knowledge. They have some experience but may need to review
       certain fundamentals while deepening their understanding.
+
+    prompt_file: "prompt_templates/common.txt"
 
     chapters:
       - "01"
@@ -198,13 +179,15 @@ levels:
       - "16"
       - "B"
 
-  - name: avance
+  - name: "advanced"
     display_name: "Avancé (Python 2)"
     comment: >
       This level is for students who have a solid understanding of Python
       and are looking to deepen their knowledge with more advanced topics.
       They have completed a Python 1 course or have equivalent experience
       and are ready to explore more complex concepts.
+
+    prompt_file: "prompt_templates/common.txt"
 
     chapters:
       - "01"
