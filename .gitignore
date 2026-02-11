@@ -11,6 +11,9 @@ tmp/
 # course content
 data/course_raw/*
 data/course_processed/*
+# Keep the directories themselves
+!data/course_raw/.gitkeep
+!data/course_processed/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
