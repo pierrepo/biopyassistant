@@ -78,8 +78,8 @@ OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```bash
 uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
                               --chroma-path chroma_db \
-                              --model-name text-embedding-3-large \
-                              --provider-name openai
+                              --embedding-model text-embedding-3-large \
+                              --model-provider openai
 ```
 
 This command will create a Chroma vector database from the processed Markdown files. All files will be split into chunks of 1000 characters with an overlap of 200 characters. 

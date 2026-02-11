@@ -7,9 +7,10 @@ The resulting chunks are saved to a ChromaDB database.
 Usage:
 ======
     uv run src/create_database.py --course-yaml [course-yaml]
-                               --chroma-path [chroma-path]
-                               --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
-                               --model-name [model-name] --provider-name [provider-name]
+                            --chroma-path [chroma-path]
+                            --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
+                            --embedding-model [embedding-model]
+                            --model-provider [model-provider]
 
 Arguments:
 ==========
@@ -22,11 +23,11 @@ Arguments:
         The size of the text chunks to be created. Default is 1000.
     --chunk-overlap : int (optional)
         The overlap between text chunks. Default is 200.
-    --model-name : str (optional)
+    --embedding-model : str (optional)
         Name of the embedding model to use.
         Possible choices : https://openrouter.ai/models?fmt=cards&supported_parameters=structured_outputs&output_modalities=embeddings
         Default is "text-embedding-3-large".
-    --provider-name : str (optional)
+    --model-provider : str (optional)
         Name of the embedding provider to use.
         Possible choices are "openrouter" and "openai".
         Default is "openai".
@@ -36,8 +37,8 @@ Example:
 ========
     uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
                                     --chroma-path chroma_db \
-                                    --model-name text-embedding-3-large \
-                                    --provider-name openai
+                                    --embedding-model text-embedding-3-large \
+                                    --model-provider openai
 
 This command will create a Chroma vector database from the processed Markdown files
 located in the paths specified in the `data/chapters_and_levels.yaml` file.
@@ -592,14 +593,14 @@ def save_to_chroma(
     help="Overlap between text chunks.",
 )
 @click.option(
-    "--model-name",
+    "--embedding-model",
     default="text-embedding-3-large",
     type=str,
     help="Name of the embedding model,"
     "chosen from OpenAI and OpenRouter`s embedding models. ",
 )
 @click.option(
-    "--provider-name",
+    "--model-provider",
     default="openai",
     type=click.Choice(["openrouter", "openai"], case_sensitive=False),
     help="Name of the embedding provider to use.",
@@ -609,8 +610,8 @@ def generate_data_store(
     chroma_path: Path,
     chunk_size: int,
     chunk_overlap: int,
-    model_name: str,
-    provider_name: str,
+    embedding_model: str,
+    model_provider: str,
 ) -> None:
     """Build a ChromaDB store from chunked text with metadata."""
     # Set-up the logger
@@ -662,7 +663,7 @@ def generate_data_store(
     logger.info(f"Total number of tokens: {count_tokens:,}")
 
     # save the embeddings to ChromaDB
-    save_to_chroma(all_chunks, model_name, provider_name, chroma_path, logger)
+    save_to_chroma(all_chunks, embedding_model, model_provider, chroma_path, logger)
 
 
 if __name__ == "__main__":
