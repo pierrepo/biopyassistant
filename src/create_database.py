@@ -175,11 +175,11 @@ def load_documents(
     logger.info("Converting Markdown file to Document...")
     for chapter in chapters:
         # Get the processed Markdown file path
-        processed_path = chapter.get("processed_file_path")
+        processed_path = chapter.get("processed_path")
         # Check if the processed file path is defined for the chapter
         if not processed_path:
             logger.warning(
-                f"No processed_file_path defined for chapter id={chapter.get('id')} "
+                f"No processed_path defined for chapter id={chapter.get('id')} "
                 f"title={chapter.get('title')}"
             )
             continue
