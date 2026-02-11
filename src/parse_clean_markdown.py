@@ -111,7 +111,7 @@ def load_chapters_from_yaml(
     try:
         with yaml_path.open("r", encoding="utf-8") as file:
             # Load YAML data
-            data = yaml.safe_load(file)
+            data = yaml.safe_load(file) or {}
             # Get chapter information
             chapters = data.get("chapters", [])
             # Get base paths of raw and processed courses
@@ -150,7 +150,7 @@ def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger)
     ```
     will be converted to:
     ```python
-    # This is a comment.
+    #This is a comment.
     ```
 
     Parameters
@@ -285,7 +285,7 @@ def process_md_files(yaml_path: Path) -> None:
     logger.info("Starting Markdown processing...")
 
     # Load chapters from YAML file
-    chapters = load_chapters_from_yaml(yaml_path)
+    chapters = load_chapters_from_yaml(yaml_path, logger)
 
     # Process each chapter's Markdown file
     saved_count = 0

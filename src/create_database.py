@@ -661,7 +661,7 @@ def generate_data_store(
     logger.info("Summary:")
     logger.info(f"Total number of files processed: {len(documents)}")
     logger.info(f"Total number of chunks: {len(all_chunks)}")
-    total_characters = sum(len(chunk.page_content) for chunk in chunks)
+    total_characters = sum(len(chunk.page_content) for chunk in all_chunks)
     logger.info(f"Total number of characters: {total_characters:,}")
     count_tokens = sum(chunk.metadata["nb_tokens"] for chunk in all_chunks)
     logger.info(f"Total number of tokens: {count_tokens:,}")
