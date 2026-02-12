@@ -1,11 +1,10 @@
-"""Pydantic models used to validate the CLI argument of BioPyAssistant App."""
+"""Pydantic data models used to validate UI Streamlit application settings."""
 
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, DirectoryPath, Field, FilePath, SecretStr
 from pydantic_settings import (
     BaseSettings,
@@ -14,45 +13,9 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-
-class CourseChapter(BaseModel):
-    """Validated definition of a course chapter."""
-
-    id: str = Field(
-        ...,
-        description="Unique chapter identifier.",
-        min_length=1,
-    )
-    title: str = Field(
-        ...,
-        description="Human-readable chapter title.",
-    )
-    source_file_path: Path = Field(
-        ...,
-        description="Path to the raw Markdown source file.",
-    )
-    processed_file_path: Path = Field(
-        ...,
-        description="Path to the processed Markdown file.",
-    )
-
-
-class CourseLevel(BaseModel):
-    """Validated definition of a course level."""
-
-    display_name: str = Field(
-        ...,
-        description="Human-readable name of the level for UI display.",
-    )
-    comment: str = Field(
-        ...,
-        description="Description of the level.",
-    )
-    chapters: list[str] = Field(
-        ...,
-        description="List of chapter identifiers associated with the level.",
-        min_items=1,
-    )
+from models.course import CourseChapter, CourseLevel
+from parse_clean_markdown import load_chapters_from_yaml
+from query_chatbot import get_level_infos
 
 
 class LLMConfig(BaseModel):
@@ -75,10 +38,6 @@ class LLMConfig(BaseModel):
         ...,
         description="Name of the embeddings model provider,"
         "must be 'openai' or 'openrouter'.",
-    )
-    prompt_path: FilePath = Field(
-        ...,
-        description="Path to the prompt template file used for generating responses.",
     )
     api_key_openai: SecretStr | None = Field(
         None,
@@ -104,18 +63,23 @@ class LLMConfig(BaseModel):
         -------
         SecretStr
             The API key corresponding to the currently selected provider.
+
+        Raises
+        ------
+        ValueError
+            If the selected provider is "openai" but `api_key_openai` is not
+            set, or if the selected provider is "openrouter" but `api_key_openrouter`
+            is not set.
         """
         if self.provider_llm_name == "openai":
-            # if self.api_key_openai is None:
-            #     msg = "OPENAI_API_KEY not set"
-            #     raise ValueError(msg)
+            if self.api_key_openai is None:
+                msg = "OPENAI_API_KEY not set"
+                raise ValueError(msg)
             return self.api_key_openai or SecretStr(os.getenv("OPENAI_API_KEY"))
         elif self.provider_llm_name == "openrouter":
-            # print(self.api_key_openrouter)
-            # print(os.getenv("OPENROUTER_API_KEY"))
-            # if self.api_key_openrouter is None:
-            #     msg = "OPENROUTER_API_KEY not set"
-            #     raise ValueError(msg)
+            if self.api_key_openrouter is None:
+                msg = "OPENROUTER_API_KEY not set"
+                raise ValueError(msg)
             return self.api_key_openrouter or SecretStr(os.getenv("OPENROUTER_API_KEY"))
 
 
@@ -124,12 +88,12 @@ class Settings(BaseSettings, cli_parse_args=True):
 
     # Basic application info
     app_name: str = Field(
-        "BioPyAssistant", description="Application name displayed in the UI or logs."
+        ..., description="Application name displayed in the UI or logs."
     )
     app_description: str | None = Field(
         None, description="Short app description displayed in the logs."
     )
-    app_version: str = Field("2.0", description="Current version of the application.")
+    app_version: str = Field(..., description="Current version of the application.")
     # Styling and assets
     css_path: FilePath = Field(
         ..., description="Path to the CSS file for Streamlit styling."
@@ -171,43 +135,11 @@ class Settings(BaseSettings, cli_parse_args=True):
         dict[str, CourseChapter]
             A dictionary where keys are chapter IDs
             and values are `CourseChapter` objects.
-
-        Raises
-        ------
-        ValueError
-            If the YAML file is missing the "chapters" section, if any chapter is missing
-            required fields defined in the `CourseChapter` model, or if there are
-            duplicate chapter IDs.
         """
-        with self.course_yaml_path.open(encoding="utf-8") as f:
-            course_data = yaml.safe_load(f) or {}
-
-        raw_chapters = course_data.get("chapters")
-        if not raw_chapters:
-            msg = "No 'chapters' section found in course YAML file."
-            raise ValueError(msg)
-
-        chapters: dict[str, CourseChapter] = {}
-
-        for chapter in raw_chapters:
-            try:
-                chapter_model = CourseChapter(
-                    id=str(chapter["id"]),
-                    title=chapter["title"],
-                    source_file_path=Path(chapter["source_file_path"]),
-                    processed_file_path=Path(chapter["processed_file_path"]),
-                )
-            except KeyError as exc:
-                msg = f"Missing required field {exc!s} in chapter definition."
-                raise ValueError(msg) from exc
-
-            if chapter_model.id in chapters:
-                msg = f"Duplicate chapter id '{chapter_model.id}' detected."
-                raise ValueError(msg)
-
-            chapters[chapter_model.id] = chapter_model
-
-        return chapters
+        chapters = load_chapters_from_yaml(self.course_yaml_path)
+        # Convert list of CourseChapter objects to a dictionary keyed by chapter ID
+        chapters_dict = {chapter.id: chapter for chapter in chapters}
+        return chapters_dict
 
     @property
     def course_levels(self) -> dict[str, CourseLevel]:
@@ -227,59 +159,14 @@ class Settings(BaseSettings, cli_parse_args=True):
         Raises
         ------
         ValueError
-            If the YAML file is missing the "levels" section, if any level is missing
-            the required "name" field, or if any level is missing required fields
-            defined in the `CourseLevel` model.
-        """
-        with self.course_yaml_path.open(encoding="utf-8") as f:
-            course_data = yaml.safe_load(f) or {}
-
-        raw_levels = course_data.get("levels")
-        if not raw_levels:
-            msg = "No 'levels' section found in course YAML file."
-            raise ValueError(msg)
-
-        levels: dict[str, CourseLevel] = {}
-
-        for level in raw_levels:
-            level_name = level.get("name")
-            if not level_name:
-                msg = "Each level must define a non-empty 'name' field."
-                raise ValueError(msg)
-
-            try:
-                levels[level_name] = CourseLevel(
-                    display_name=level["display_name"],
-                    comment=level["comment"],
-                    chapters=[str(ch) for ch in level["chapters"]],
-                )
-            except KeyError as exc:
-                msg = f"Missing required field {exc!s} in level '{level_name}'."
-                raise ValueError(msg) from exc
-
-        return levels
-
-    @property
-    def validated_course_levels(self) -> dict[str, CourseLevel]:
-        """Return course levels after validating chapter references.
-
-        Returns
-        -------
-        dict[str, CourseLevel]
-            A dictionary where keys are level names and values are `CourseLevel` objects
-            that have been validated to ensure all referenced chapter IDs exist in the
-            course chapters.
-
-        Raises
-        ------
-        ValueError
             If any level references chapter IDs that are not defined in the
             course chapters.
         """
+        # The get_level_infos function internally calls load_chapters_from_yaml
+        course_levels = get_level_infos(self.course_yaml_path)
+        # Validate that all chapter references in levels exist in the course chapters
         chapters = self.course_chapters
-        levels = self.course_levels
-
-        for level_name, level in levels.items():
+        for level_name, level in course_levels.items():
             missing_chapters = sorted(
                 chapter_id
                 for chapter_id in level.chapters
@@ -293,7 +180,7 @@ class Settings(BaseSettings, cli_parse_args=True):
                 )
                 raise ValueError(msg)
 
-        return levels
+        return course_levels
 
     # Load settings from this TOML file
     model_config = SettingsConfigDict(toml_file=["config_app.toml"])
