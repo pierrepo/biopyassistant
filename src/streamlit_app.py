@@ -1,8 +1,12 @@
 """Streamlit app for chatbot testing."""
 
 import secrets
+import sys
 import time
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 
 import loguru
 import pyperclip
@@ -12,7 +16,8 @@ from langchain_community.vectorstores import Chroma
 from loguru import logger
 
 from logger import create_logger
-from model_config_app import Settings
+from models.app_settings import Settings
+from models.course import CourseLevel
 from query_chatbot import (
     MSGS_QUERY_NOT_RELATED,
     add_metadata_to_answer,
@@ -44,7 +49,7 @@ def apply_custom_css(css_file: Path) -> None:
 
 @st.cache_resource
 def get_vector_db(
-    vector_db: Path,
+    vector_db_path: Path,
     embeddings_model_name: str,
     provider_embeddings_name: str,
     _logger: "loguru.Logger" = loguru.logger,
@@ -56,7 +61,7 @@ def get_vector_db(
     Chroma: The vector database containing the embedded course.
     """
     vector_db = load_database(
-        vector_db, embeddings_model_name, provider_embeddings_name, _logger
+        vector_db_path, embeddings_model_name, provider_embeddings_name, _logger
     )
     return vector_db
 
@@ -84,19 +89,20 @@ def create_header(app_name: str) -> None:
     st.space(30)
 
 
-def create_sidebar() -> dict[str, str]:
-    """Render the Streamlit sidebar and collect user profile settings.
+def create_sidebar(
+    course_levels: dict[str, CourseLevel],
+) -> str:
+    """Render the Streamlit sidebar and collect the selected level.
+
+    Parameters
+    ----------
+    course_levels : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects.
 
     Returns
     -------
-    dict[str, str]
-        Dictionary containing the user-selected profile information with
-        the following keys:
-
-        - ``"cursus"`` : Academic track selected by the user
-          (e.g., "Licence", "Master").
-        - ``"level"`` : User's python level
-          (e.g., "Débutant", "Intermédiaire", "Avancé").
+    str
+       Internal level identifier selected by the user.
     """
     with st.sidebar:
         # Institutional logos
@@ -106,21 +112,25 @@ def create_sidebar() -> dict[str, str]:
             icon_image="https://lvts.fr/wp-content/uploads/2022/03/UniversiteParis_monogramme_couleur_RVB-e1712425218876.png",
         )
         st.space("large")
+
         # Student profile
         st.markdown(
             '<div class="sidebar-title">🎓 Profil étudiant</div>',
             unsafe_allow_html=True,
         )
-        cursus = st.pills("Cursus :material/school:", options=["Licence", "Master"])
-        level = st.pills(
-            "Niveau :material/sort:", options=["Débutant", "Intermédiaire", "Avancé"]
+        # Level selection pills from course_levels
+        selected_level = st.pills(
+            "Niveau :material/sort:",
+            # We use the internal level name as the option value
+            options=list(course_levels.keys()),
+            # But display the user-friendly name from the CourseLevel object
+            format_func=lambda key: course_levels[key].display_name,
+            key="selected_level",
         )
-        st.space(20)
-        st.info(
-            "Indiquez votre cursus et votre niveau pour des réponses adaptées.",
-            icon="🎯",
-        )
-        st.space(250)
+        if selected_level and not st.session_state.selected_level:
+            logger.info(f"User selected level: {selected_level}")
+        st.space(400)
+
         # About section
         st.markdown(
             """
@@ -153,7 +163,6 @@ def create_sidebar() -> dict[str, str]:
             """,
             unsafe_allow_html=True,
         )
-
         # Github and Python icons with links
         st.markdown(
             """
@@ -170,8 +179,7 @@ def create_sidebar() -> dict[str, str]:
             """,
             unsafe_allow_html=True,
         )
-
-    return {"cursus": cursus, "level": level}
+    return selected_level
 
 
 @st.dialog("💡 Guide d'utilisation responsable")
@@ -200,9 +208,11 @@ def create_footer() -> None:
         """
         <div class="app-footer">
             <p>
-                Cette application web n'utilise pas de cookie. Les résultats des votes sont collectés anonymement à des fins de recherche.
+                Cette application web n'utilise pas de cookie. Les résultats des votes
+                sont collectés anonymement à des fins de recherche.
                 <br>
-                <a href="https://u-paris.fr/politique-de-confidentialite/" target="_blank" rel="noopener noreferrer">
+                <a href="https://u-paris.fr/politique-de-confidentialite/"
+                target="_blank">
                     Mentions légales.
                 </a>
             </p>
@@ -259,11 +269,10 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
             "has_report_msg": ":material/report:",
         }
         selection = st.pills(
-            "assistant message",
+            "assistant message options",
             label_visibility="hidden",
             options=option_map.keys(),
             format_func=lambda option: option_map[option],
-            selection_mode="single",
         )
         relevant_history = st.session_state.messages[: message_index + 1]
         # Handle each feedback option accordingly
@@ -321,7 +330,6 @@ def display_welcome_chat() -> None:
         type="tertiary",
         on_click=show_disclaimer_dialog,
     )
-
     # Stop execution so the chat doesn't process until a question is asked
     st.stop()
 
@@ -356,6 +364,8 @@ def generate_response(
     model_name: str,
     provider_llm_name: str,
     prompt_path: str,
+    student_level: str | None,
+    course_levels: list[str],
 ) -> str:
     """Generate a response to the user question.
 
@@ -372,6 +382,12 @@ def generate_response(
         generating the response.
     prompt_path : str
         Path to the prompt template to use for generating the response.
+    student_level : str | None
+        The user's Python or academic proficiency level
+        (e.g., "beginner", "intermediate", "advanced").
+    course_levels :  list[str]
+        List of course levels available for filtering relevant context
+        based on the user's selected level.
 
     Returns
     -------
@@ -394,13 +410,16 @@ def generate_response(
         return response
     else:
         # Generate the answer
-        answer = generate_answer(
+        answer, input_tokens, output_tokens = generate_answer(
             query=user_query,
             provider_llm_name=provider_llm_name,
             chat_history=None,
             relevant_chunks=context,
             model_name=model_name,
             prompt_path=prompt_path,
+            user_level=student_level,
+            level_relevant_chapter_ids=course_levels,
+            logger=logger,
         )
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, context, iu=True)
@@ -431,6 +450,7 @@ def stream_text(text: str):
 
 def clear_conversation() -> None:
     """Clear the conversation history and reset session state."""
+    logger.info("User restarted the conversation.")
     st.session_state.messages = []
     st.session_state.initial_question = None
     st.session_state.selected_suggestion = None
@@ -438,10 +458,11 @@ def clear_conversation() -> None:
 
 def chat_with_bot(
     vector_db: Chroma,
-    student_infos: dict,
+    course_levels: list[str],
+    student_level: str | None,
     model_name: str,
     provider_llm_name: str,
-    prompt_path: str,
+    prompt_path: Path,
 ) -> None:
     """Handle the main chat interface with the user.
 
@@ -449,18 +470,26 @@ def chat_with_bot(
     ----------
     vector_db : Chroma
         Vector database used to retrieve context for the LLM responses.
-    student_infos : dict[str, str]
-        Dictionary containing the student's profile information:
-        - "cursus" : Academic track selected by the user (e.g., "Licence", "Master").
-        - "level" : User's Python or academic proficiency level
-          (e.g., "Débutant", "Intermédiaire", "Avancé").
+    course_levels : list[str]
+        List of course levels available for filtering relevant context
+        based on the user's selected level.
+    student_level : str | None
+        The user's Python or academic proficiency level
+        (e.g., "beginner", "intermediate", "advanced").
+    model_name : str
+        The name of the LLM to use for generating responses.
+    provider_llm_name : str
+        The name of the LLM provider (e.g., "openrouter") to use for
+        generating responses.
+    prompt_path : Path
+        Path to the prompt template to use for generating responses.
     """
-    # Check if the student has provided both cursus and level
-    has_student_infos = (student_infos["cursus"] and student_infos["level"]) is not None
+    # Check if the student has provided level information
+    has_student_infos = student_level is not None
+    # Determine if this is the first user interaction
     user_just_asked_initial_question = (
         "initial_question" in st.session_state and st.session_state.initial_question
     )
-    # Determine if this is the first user interaction
     user_just_clicked_suggestion = (
         "selected_suggestion" in st.session_state
         and st.session_state.selected_suggestion
@@ -470,14 +499,15 @@ def chat_with_bot(
     )
     # If first interaction but no student info, show a toast and block sending
     if user_first_interaction and not has_student_infos:
+        logger.warning("User tried to ask a question without providing level info.")
         st.toast(
-            "Veuillez renseigner votre cursus et votre niveau pour continuer.",
+            "Veuillez indiquez votre niveau pour des réponses adaptées.",
             icon="⚠️",
             duration="short",
         )
         user_first_interaction = False
 
-    # Check if there is already message histor
+    # Check if there is already message history
     has_message_history = (
         "messages" in st.session_state and len(st.session_state.messages) > 0
     )
@@ -491,25 +521,16 @@ def chat_with_bot(
     if not user_message:
         if user_just_asked_initial_question:
             user_message = st.session_state.initial_question
+            logger.info(f"User asked initial question: {user_message}")
         if user_just_clicked_suggestion:
             user_message = SUGGESTIONS[st.session_state.selected_suggestion]
+            logger.info(f"User clicked suggestion: {user_message}")
 
         st.button(
-            "Restart",
+            "Recommencer la conversation",
             icon=":material/refresh:",
             on_click=clear_conversation,
         )
-
-    # --- Active Chat History ---
-    # Display chat messages from history as speech bubbles.
-    for i, message in enumerate(st.session_state.messages):
-        with st.chat_message(message["role"]):
-            if message["role"] == "assistant":
-                st.container()  # Fix ghost message bug.
-
-            st.markdown(message["content"])
-            if message["role"] == "assistant":
-                show_feedback_controls(i, message["content"])
 
     # When the user posts a message...
     if user_message:
@@ -520,20 +541,26 @@ def chat_with_bot(
         # Display message as a speech bubble.
         with st.chat_message("user"):
             st.text(user_message)
-
         # Display assistant response as a speech bubble.
         with st.chat_message("assistant"):
             # Search for relevant context in the vector database.
             with st.spinner("En recherche de contexte..."):
+                # We filter the vector database search by the chapters relevant to the
+                # user's selected level to answer with level-appropriate context.
                 context = search_similarity_in_database(
                     vector_db=vector_db,
                     user_query=user_message,
-                    level_relevant_chapter_ids=["01", "02", "03", "04", "05", "06"],
                 )
 
             with st.spinner("En réflexion..."):
                 response = generate_response(
-                    user_message, context, model_name, provider_llm_name, prompt_path
+                    user_message,
+                    context,
+                    model_name,
+                    provider_llm_name,
+                    prompt_path,
+                    student_level,
+                    course_levels,
                 )
                 rep_stream = stream_text(response)
 
@@ -554,7 +581,6 @@ def chat_with_bot(
                 # Show feedback controls (copy, thumbs up/down, report)
                 show_feedback_controls(len(st.session_state.messages) - 1, response)
                 # Send telemetry data for logging and analysis
-                # (to be implemented in the future)
                 send_telemetry(question=user_message, response=response)
 
 
@@ -564,46 +590,48 @@ def main():
     load_dotenv()
     # Initialize settings from `config_app.toml`
     settings = Settings()
-    logger = create_logger(settings.log_path)
-    # Configure logger once
+    # Configure logger
+    logger = create_logger(settings.log_path, ui_logger=True)
+    # Display welcome message in logs only on the first run of the app
     if "welcome_logged" not in st.session_state:
-        logger = create_logger(settings.log_path)
         logger.info(f"👋 Welcome to BioPyAssistant v{settings.app_version}!")
         logger.info(f"{settings.app_description}\n")
         st.session_state["welcome_logged"] = True
-
     # Set the page configuration
     st.set_page_config(
         page_title=settings.app_name, page_icon="data/img/logo_round.webp"
     )
     # Apply the css style
     apply_custom_css(settings.css_path)
-
     # Create the header
     create_header(settings.app_name)
-
-    # Create a sidebar and get the user inputs
-    student_infos = create_sidebar()
-    print(settings.course_levels)
-
+    # Create a sidebar and get the student level infos
+    course_level_infos = settings.course_levels
+    student_level = create_sidebar(course_level_infos)
+    # Get the chapters relevant to the selected level
+    # to filter the vector database search
+    level_relevant_chapters = {}
+    prompt_path = None
+    if student_level:
+        level_relevant_chapters = course_level_infos[student_level].chapters
+        prompt_path = course_level_infos[student_level].prompt_path
     # Create footer
     create_footer()
-
-    # Load the vector database one
+    # Load the vector database once
     vector_db = get_vector_db(
-        settings.llm.vector_database_path,
-        settings.llm.embeddings_model_name,
-        settings.llm.provider_embeddings_name,
-        logger,
+        vector_db_path=settings.llm.vector_database_path,
+        embeddings_model_name=settings.llm.embeddings_model_name,
+        provider_embeddings_name=settings.llm.provider_embeddings_name,
+        _logger=logger,
     )
-
     # Chat with the bot
     chat_with_bot(
         vector_db=vector_db,
-        student_infos=student_infos,
+        course_levels=level_relevant_chapters,
+        student_level=student_level,
         model_name=settings.llm.llm_model_name,
         provider_llm_name=settings.llm.provider_llm_name,
-        prompt_path=settings.llm.prompt_path,
+        prompt_path=prompt_path,
     )
 
 
