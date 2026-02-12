@@ -424,9 +424,6 @@ def generate_response(
         # Add metadata to the answer
         final_answer = add_metadata_to_answer(answer, context, iu=True)
 
-        # logger.info(f"Response generated: {final_answer}")
-        # logger.success("Response generated successfully.\n")
-
         return final_answer
 
 
