@@ -68,7 +68,8 @@ Example:
         --level "beginner" --model "gpt-4o" \
         --course-yaml "data/chapters_and_levels.yaml" \
         --provider-llm "openai" --db-path "chroma_db" \
-        --provider-emb "openai" --embedding-model "text-embedding-3-large"
+        --provider-emb "openai" --embedding-model "text-embedding-3-large" \
+        --include-metadata
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
 beginner user in the Chroma database located at "data/chroma_db"
@@ -93,9 +94,11 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from pydantic import ValidationError
 
 from create_database import create_embeddings_function
 from logger import create_logger
+from models.course import CourseLevel
 
 MSGS_QUERY_NOT_RELATED = [
     (
@@ -159,33 +162,48 @@ def get_level_infos(
         with course_yaml.open("r", encoding="utf-8") as f:
             course_data = yaml.safe_load(f) or {}
 
-        levels = course_data.get("levels", [])
-        if not levels:
-            logger.warning("No levels defined in YAML file.")
-            return {}
-
-        level_infos = {}
-        for level in levels:
-            name = level.get("name")
-            if not name:
-                logger.warning("Level without a name found, skipping.")
-                continue
-
-            level_infos[name] = {
-                "name": name,
-                "display_name": level.get("display_name", ""),
-                "comment": level.get("comment", ""),
-                "prompt_path": Path(level.get("prompt_path", "")),
-                "chapters": [str(ch) for ch in level.get("chapters", [])],
-            }
-        return level_infos
-
     except FileNotFoundError:
         logger.error(f"YAML file not found: {course_yaml}")
         return {}
     except yaml.YAMLError as e:
         logger.error(f"Error parsing YAML file: {e}")
         return {}
+
+    levels = course_data.get("levels", [])
+    if not levels:
+        logger.warning("No levels defined in YAML file.")
+        return {}
+
+    level_infos = {}
+    for level in levels:
+        name = level.get("name")
+        if not name:
+            logger.warning("Level without a name found, skipping.")
+            continue
+        # Construct the level info dictionary
+        try:
+            level = {
+                "name": name,
+                "display_name": level.get("display_name"),
+                "comment": level.get("comment"),
+                "prompt_path": Path(level.get("prompt_path")),
+                "chapters": [str(ch) for ch in level.get("chapters")],
+            }
+        except KeyError as exc:
+            logger.warning(
+                f"Level '{name}' is missing required field {exc!s}, skipping."
+            )
+            continue
+        # Validate the level info using the CourseLevel Pydantic model
+        try:
+            validated_level = CourseLevel.model_validate(level)
+            level_infos[name] = validated_level
+        except ValidationError as exc:
+            logger.warning(
+                f"Level '{name}' has invalid field value: {exc!s}, skipping."
+            )
+            continue
+    return level_infos
 
 
 def get_user_level_data(
@@ -227,8 +245,8 @@ def get_user_level_data(
             f"Available levels: {available_levels}. Exiting."
         )
         raise SystemExit(1)
-    chapters = user_info["chapters"]
-    prompt_path = user_info["prompt_path"]
+    chapters = user_info.chapters
+    prompt_path = user_info.prompt_path
 
     return {"chapters": chapters, "prompt_path": prompt_path}
 
@@ -362,7 +380,7 @@ def generate_answer(
     level_relevant_chapter_ids: list[str],
     model_name: str,
     prompt_path: Path,
-    logger: "loguru.Logger",
+    logger: "loguru.Logger" = loguru.logger,
 ) -> tuple[str, int, int]:
     """Generate an answer to the user query.
 

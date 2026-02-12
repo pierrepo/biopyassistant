@@ -53,14 +53,19 @@ the cleaned and renumbered files to the paths specified in the YAML file.
 """
 
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import click
 import loguru
 import yaml
+from pydantic import ValidationError
 
 from logger import create_logger
+from models.course import CourseChapter
 
 
 def build_chapter_paths(
@@ -84,14 +89,14 @@ def build_chapter_paths(
     tuple[Path, Path]
         A tuple containing the source path and the processed path for the chapter.
     """
-    source_path = raw_base_path / file_name
-    processed_path = processed_base_path / file_name
-    return source_path, processed_path
+    source_file_path = raw_base_path / file_name
+    processed_file_path = processed_base_path / file_name
+    return source_file_path, processed_file_path
 
 
 def load_chapters_from_yaml(
     yaml_path: Path, logger: "loguru.Logger" = loguru.logger
-) -> list[dict]:
+) -> list[CourseChapter]:
     """Load chapters from a YAML file and construct paths.
 
     Parameters
@@ -103,42 +108,48 @@ def load_chapters_from_yaml(
 
     Returns
     -------
-    list[dict]
-        A list of dictionaries with chapter information, including constructed paths
-        for source and processed Markdown course files.
+    list[CourseChapter]
+        A list of CourseChapter objects with validated chapter information and paths.
     """
-    logger.info(f"Loading chapters and paths from YAML file: {yaml_path}...")
+    logger.debug(f"Loading chapters and paths from YAML file: {yaml_path}...")
     try:
+        # Load YAML data
         with yaml_path.open("r", encoding="utf-8") as file:
-            # Load YAML data
             data = yaml.safe_load(file) or {}
-            # Get chapter information
-            chapters = data.get("chapters", [])
-            # Get base paths of raw and processed courses
-            raw_base_path = Path(data.get("raw_course_base_path", ""))
-            processed_base_path = Path(data.get("processed_course_base_path", ""))
-            # Build source and processed paths for each chapter
-            for chapter in chapters:
-                file_name = chapter.get("file_name")
-                if file_name:
-                    chapter["source_path"], chapter["processed_path"] = (
-                        build_chapter_paths(
-                            file_name, raw_base_path, processed_base_path
-                        )
-                    )
-                else:
-                    logger.warning(
-                        f"No file name defined for chapter: {chapter.get('id')}"
-                    )
-
-            logger.success(f"Loaded {len(chapters)} chapters successfully.")
-            return chapters
+    # Handle file not found and YAML parsing errors
     except FileNotFoundError:
         logger.error(f"YAML file not found: {yaml_path}")
         return []
     except yaml.YAMLError as e:
         logger.error(f"Error parsing YAML file: {e}")
         return []
+
+    # Get chapter information
+    chapters_data = data.get("chapters", [])
+    # Get base paths of raw and processed courses
+    raw_base_path = Path(data.get("raw_course_base_path", ""))
+    processed_base_path = Path(data.get("processed_course_base_path", ""))
+
+    validated_chapters = []
+    # Iterate through chapters
+    for chapter in chapters_data:
+        file_name = chapter.get("file_name")
+        if file_name:
+            # Build source and processed paths
+            chapter["source_file_path"], chapter["processed_file_path"] = (
+                build_chapter_paths(file_name, raw_base_path, processed_base_path)
+            )
+        else:
+            logger.warning(f"No file name defined for chapter: {chapter.get('id')}")
+        try:
+            # Convert to CourseChapter pydantic model
+            validated_chapter = CourseChapter.model_validate(chapter)
+            validated_chapters.append(validated_chapter)
+        except ValidationError as exc:
+            logger.error(f"Validation error for chapter {chapter.get('id')}: {exc!s}")
+
+    logger.debug(f"Loaded {len(validated_chapters)} chapters successfully.")
+    return validated_chapters
 
 
 def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger) -> str:
@@ -290,26 +301,26 @@ def process_md_files(yaml_path: Path) -> None:
     # Process each chapter's Markdown file
     saved_count = 0
     for i, chapter in enumerate(chapters, start=1):
-        chapter_name = f"{chapter.get('id')}. {chapter.get('title')}"
+        chapter_name = f"{chapter.id}. {chapter.title}"
         logger.info(f"Chapter: {chapter_name} ({i}/{len(chapters)})")
 
         # Get source file path from YAML
-        source_path = chapter.get("source_path")
-        if not source_path:
+        source_file_path = chapter.source_file_path
+        if not source_file_path:
             logger.warning(f"No source file defined for chapter {chapter_name}")
             continue
         # Check if source file exists
-        if not source_path.exists():
-            logger.warning(f"Markdown file not found: {source_path}")
+        if not source_file_path.exists():
+            logger.warning(f"Markdown file not found: {source_file_path}")
             continue
-        logger.info(f"Processing file: {source_path.name}")
+        logger.info(f"Processing file: {source_file_path.name}")
         # Read content
-        content = source_path.read_text(encoding="utf-8")
+        content = source_file_path.read_text(encoding="utf-8")
         # Clean Python-style comments
         content = clean_python_comments(content, logger)
         # Renumber headers
         # Determine if it's an annex or a chapter based on filename
-        stem = source_path.stem.lower()
+        stem = source_file_path.stem.lower()
         # Annex files are named with "annexe" followed by an underscore + letter
         # For example: "annexe_a.md", "annexe_b.md", etc.
         if stem.startswith("annexe"):
@@ -317,12 +328,12 @@ def process_md_files(yaml_path: Path) -> None:
             content = renumber_headers(content, annex_character, logger)
         # Chapter files are named with a number followed by an underscore
         # For example: "01_introduction.md", "02_variables.md", etc.
-        elif re.match(r"\d{2}_", source_path.name):
+        elif re.match(r"\d{2}_", source_file_path.name):
             chapter_number = int(stem.split("_")[0])
             content = renumber_headers(content, chapter_number, logger)
 
         # Get destination file path from YAML
-        dest_path = chapter.get("processed_path")
+        dest_path = chapter.processed_file_path
         if not dest_path:
             logger.warning(f"No processed file path defined for chapter {chapter_name}")
             continue
