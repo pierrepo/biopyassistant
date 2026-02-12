@@ -1,4 +1,4 @@
-"""Define logger."""
+"""Define global logger configuration."""
 
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ from loguru import logger
 
 
 def create_logger(
-    logpath: str | Path | None = None, level: str = "INFO"
+    logpath: str | Path | None = None, level: str = "INFO", *, ui_logger: bool = False
 ) -> "loguru.Logger":
     """Create the logger with optional file logging.
 
@@ -32,12 +32,14 @@ def create_logger(
     )
     # Remove default logger.
     logger.remove()
+    # Configure file mode (append if UI logger, overwrite otherwise).
+    mode = "a" if ui_logger else "w"
     # Add logger to path (if path is provided).
     if logpath:
         # Create parent directories.
         Path(logpath).parent.mkdir(parents=True, exist_ok=True)
         # Add logger to file.
-        logger.add(logpath, format=logger_format, level="DEBUG", mode="w")
+        logger.add(logpath, format=logger_format, level="DEBUG", mode=mode)
     # Add logger to stdout.
     logger.add(sys.stdout, format=logger_format, level=level)
     return logger
