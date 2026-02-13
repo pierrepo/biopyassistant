@@ -11,13 +11,12 @@ class CourseChapter(BaseModel):
     id: str = Field(
         ...,
         description="Unique chapter identifier.",
-        min_length=1,
     )
     title: str = Field(
         ...,
-        description="Human-readable chapter title.",
+        description="Chapter title.",
     )
-    source_file_path: Path = Field(
+    source_file_path: FilePath = Field(
         ...,
         description="Path to the source markdown file for the chapter.",
     )
