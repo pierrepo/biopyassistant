@@ -7,7 +7,6 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-
 import loguru
 import pyperclip
 import streamlit as st
@@ -89,6 +88,23 @@ def create_header(app_name: str) -> None:
     st.space(30)
 
 
+def create_footer() -> None:
+    """Render the application footer with legal information."""
+    st.markdown(
+        """
+        <div class="app-footer">
+            Les résultats des votes sont collectés anonymement à des fins de recherche.
+            <br> Cette application web n'utilise pas de cookie.
+            <a href="https://u-paris.fr/politique-de-confidentialite/"
+            target="_blank">
+                Mentions légales.
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def create_sidebar(
     course_levels: dict[str, CourseLevel],
 ) -> str:
@@ -127,8 +143,6 @@ def create_sidebar(
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
         )
-        if selected_level and not st.session_state.selected_level:
-            logger.info(f"User selected level: {selected_level}")
         st.space(400)
 
         # About section
@@ -202,50 +216,162 @@ def show_disclaimer_dialog() -> None:
     """)
 
 
-def create_footer() -> None:
-    """Render the application footer with legal information."""
-    st.html(
-        """
-        <div class="app-footer">
-            <p>
-                Cette application web n'utilise pas de cookie. Les résultats des votes
-                sont collectés anonymement à des fins de recherche.
-                <br>
-                <a href="https://u-paris.fr/politique-de-confidentialite/"
-                target="_blank">
-                    Mentions légales.
-                </a>
-            </p>
-        </div>
-        """
+def clear_conversation() -> None:
+    """Clear the conversation history and reset session state."""
+    logger.info("User restarted the conversation.")
+    st.session_state.messages = []
+    st.session_state.initial_question = None
+    st.session_state.selected_suggestion = None
+
+
+def display_welcome_chat() -> None:
+    """Display the initial welcome chat message and suggestions."""
+    st.session_state.messages = []
+    st.session_state.token_usage = {"input_tokens": 0, "output_tokens": 0}
+
+    # Display welcome container with chat input and suggestions
+    with st.container():
+        st.chat_input("Pose moi une question sur le cours...", key="initial_question")
+        st.pills(
+            label="Examples",
+            label_visibility="collapsed",
+            options=SUGGESTIONS,
+            key="selected_suggestion",
+        )
+    # Show disclaimer for ethical use
+    st.button(
+        (
+            "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
+            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
+            " critique !]]"
+        ),
+        type="tertiary",
+        on_click=show_disclaimer_dialog,
     )
+    # Stop execution so the chat doesn't process until a question is asked
+    st.stop()
 
 
-def send_telemetry(
-    **kwargs,
-) -> None:  # TODO: ask pierre what telemetry to log and how to log it
+def transform_messages(messages: list[dict[str, str]]) -> str:
     """
-    Record telemetry data related to user interactions with the chatbot.
+    Convert Streamlit message history into a list of (User, Assistant) tuples.
 
-    This function collects and logs usage metrics to help monitor
-    application performance and user engagement. The telemetry may include,
-    but is not limited to:
+    Args:
+        messages: List of message dictionaries from st.session_state.
 
-    - Questions submitted by users.
-    - Number of requests per session.
-    - Response time of the LLM.
-    - Error rates or failed requests.
-    - Clicks on suggested prompts or examples.
-    - User feedback on responses (e.g., thumbs up / thumbs down).
+    Returns
+    -------
+    str
+        A formatted string representing the chat history, where each message
+        is prefixed by its role (user or assistant) for clarity in the prompt.
+    """
+    formatted_history = ""
+    for msg in messages:
+        formatted_history += f"{msg['role']}: {msg['content']}\n"
+
+    return formatted_history
+
+
+def generate_response(
+    user_query: str,
+    context: str,
+    model_name: str,
+    provider_llm_name: str,
+    prompt_path: str,
+    student_level: str | None,
+    course_levels: list[str],
+) -> tuple[str, int, int]:
+    """Generate a response to the user question.
 
     Parameters
     ----------
-    **kwargs : dict
-        Arbitrary keyword arguments containing additional context or metadata
-        for telemetry, such as the question text, response, timestamps, or
-        user identifiers.
+    user_query : str
+        The user question.
+    context : str
+        The relevant context retrieved from the vector database.
+    model_name : str
+        The name of the LLM to use for generating the response.
+    provider_llm_name : str
+        The name of the LLM provider (e.g., "openrouter") to use for
+        generating the response.
+    prompt_path : str
+        Path to the prompt template to use for generating the response.
+    student_level : str | None
+        The user's Python or academic proficiency level
+        (e.g., "beginner", "intermediate", "advanced").
+    course_levels :  list[str]
+        List of course levels available for filtering relevant context
+        based on the user's selected level.
+
+    Returns
+    -------
+    tuple[str, int, int]
+        The generated answer, the number of input tokens, and the number
+        of output tokens.
     """
-    pass
+    # Transform the chat history for the prompt
+    chat_history = transform_messages(st.session_state.messages)
+
+    # If no relevant document was found
+    if context == []:
+        logger.info("No relevant documents found in the database.")
+        logger.success("Returning an automatic response without calling the model.")
+        # random response betweet responses in MSGS_QUERY_NOT_RELATED
+        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
+        return response, 0, 0
+    else:
+        # Generate the answer
+        answer, input_tokens, output_tokens = generate_answer(
+            query=user_query,
+            provider_llm_name=provider_llm_name,
+            chat_history=chat_history,
+            relevant_chunks=context,
+            model_name=model_name,
+            prompt_path=prompt_path,
+            user_level=student_level,
+            level_relevant_chapter_ids=course_levels,
+            logger=logger,
+        )
+        # Add metadata to the answer
+        final_answer = add_metadata_to_answer(answer, context, iu=True)
+
+        return final_answer, input_tokens, output_tokens
+
+
+def stream_text(text: str):
+    """Simulate a typing effect in the UI.
+
+    Parameters
+    ----------
+    text : str
+        The text to be streamed.
+
+    Yields
+    ------
+    str
+        The full text after streaming.
+    """
+    for token in text:
+        yield token
+        time.sleep(0.01)
+
+
+def format_user_queries(messages: list[dict[str, str]]) -> str:
+    """
+    Concatenate all user questions into a single string.
+
+    Parameters
+    ----------
+    messages : list[dict[str, str]]
+        The chat history, where each message has a "role" and "content".
+
+    Returns
+    -------
+    str
+        A single string containing all user questions, separated by newlines.
+    """
+    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
+    return ", ".join(user_questions)
 
 
 def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
@@ -273,6 +399,7 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
             label_visibility="hidden",
             options=option_map.keys(),
             format_func=lambda option: option_map[option],
+            key=f"feedback_pills_{message_index}",
         )
         relevant_history = st.session_state.messages[: message_index + 1]
         # Handle each feedback option accordingly
@@ -307,150 +434,76 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
                         )
 
 
-def display_welcome_chat() -> None:
-    """Display the initial welcome chat message and suggestions."""
-    st.session_state.messages = []
+def avg_chars_in_responses(messages: list[dict[str, str]], role: str) -> int:
+    """
+    Calculate the average number of characters in all responses of a specific role.
 
-    # Display welcome container with chat input and suggestions
-    with st.container():
-        st.chat_input("Pose moi une question sur le cours...", key="initial_question")
-        st.pills(
-            label="Examples",
-            label_visibility="collapsed",
-            options=SUGGESTIONS,
-            key="selected_suggestion",
-        )
-    # Show disclaimer for ethical use
-    st.button(
-        (
-            "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
-            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
-            " critique !]]"
-        ),
-        type="tertiary",
-        on_click=show_disclaimer_dialog,
+    Parameters
+    ----------
+    messages : list[dict[str, str]]
+        The chat history, where each message has a "role" and "content".
+    role : str
+        The role of the messages to consider (e.g., "assistant").
+
+    Returns
+    -------
+    int
+        Average number of characters in messages of the specified role.
+    """
+    role_messages = [msg for msg in messages if msg["role"] == role]
+    if not role_messages:
+        return 0
+    total_chars = sum(len(msg["content"]) for msg in role_messages)
+    return total_chars // len(role_messages)
+
+
+def send_telemetry(
+    **kwargs,
+) -> None:  # TODO: ask pierre what telemetry to log and how to log it
+    """
+    Record telemetry data related to user interactions with the chatbot.
+
+    This function collects and logs usage metrics to help monitor
+    application performance and user engagement. The telemetry may include,
+    but is not limited to:
+
+    - Questions submitted by users.
+    - Number of requests per session.
+    - Response time of the LLM.
+    - Error rates or failed requests.
+    - Clicks on suggested prompts or examples.
+    - User feedback on responses (e.g., thumbs up / thumbs down).
+
+    Parameters
+    ----------
+    **kwargs : dict
+        Arbitrary keyword arguments containing additional context or metadata
+        for telemetry, such as the question text, response, timestamps, or
+        user identifiers.
+    """
+    messages = st.session_state.get("messages", [])
+    input_tokens = st.session_state.get("token_usage", {}).get("input_tokens", 0)
+    output_tokens = st.session_state.get("token_usage", {}).get("output_tokens", 0)
+    logger.debug("-----------------")
+    logger.debug("Session summary:")
+
+    # User questions
+    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
+    logger.debug(f"Total questions asked: {len(user_questions)}")
+    logger.debug(
+        "Average characters in user questions: "
+        f"{avg_chars_in_responses(messages, 'user')}"
     )
-    # Stop execution so the chat doesn't process until a question is asked
-    st.stop()
-
-
-def transform_messages(messages: list[dict[str, str]]) -> list[tuple[str, str]]:
-    """
-    Convert Streamlit message history into a list of (User, Assistant) tuples.
-
-    Args:
-        messages: List of message dictionaries from st.session_state.
-
-    Returns
-    -------
-        A list of tuples compatible with LangChain history formats.
-    """
-    history_tuples = []
-    temp_user_msg = None
-
-    for msg in messages:
-        if msg["role"] == "user":
-            temp_user_msg = msg["content"]
-        elif msg["role"] == "assistant" and temp_user_msg is not None:
-            history_tuples.append((temp_user_msg, msg["content"]))
-            temp_user_msg = None
-
-    return history_tuples
-
-
-def generate_response(
-    user_query: str,
-    context: str,
-    model_name: str,
-    provider_llm_name: str,
-    prompt_path: str,
-    student_level: str | None,
-    course_levels: list[str],
-) -> str:
-    """Generate a response to the user question.
-
-    Parameters
-    ----------
-    user_query : str
-        The user question.
-    context : str
-        The relevant context retrieved from the vector database.
-    model_name : str
-        The name of the LLM to use for generating the response.
-    provider_llm_name : str
-        The name of the LLM provider (e.g., "openrouter") to use for
-        generating the response.
-    prompt_path : str
-        Path to the prompt template to use for generating the response.
-    student_level : str | None
-        The user's Python or academic proficiency level
-        (e.g., "beginner", "intermediate", "advanced").
-    course_levels :  list[str]
-        List of course levels available for filtering relevant context
-        based on the user's selected level.
-
-    Returns
-    -------
-    response : str
-        The response predicted by the model.
-    """
-    # Transform the chat history into a list of tuples
-    chat_history = transform_messages(st.session_state.messages)
-    # Format the chat history for the model
-    # formatted_chat_history = format_chat_history(chat_history, len_history=10)
-    # Contextualize the user question with the chat history
-    # chat_context = contextualize_question(chat_history_formatted=formatted_chat_history)
-
-    # If no relevant document was found
-    if context == []:
-        logger.info("No relevant documents found in the database.")
-        logger.success("Returning an automatic response without calling the model.")
-        # random response betweet responses in MSGS_QUERY_NOT_RELATED
-        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
-        return response
-    else:
-        # Generate the answer
-        answer, input_tokens, output_tokens = generate_answer(
-            query=user_query,
-            provider_llm_name=provider_llm_name,
-            chat_history=None,
-            relevant_chunks=context,
-            model_name=model_name,
-            prompt_path=prompt_path,
-            user_level=student_level,
-            level_relevant_chapter_ids=course_levels,
-            logger=logger,
-        )
-        # Add metadata to the answer
-        final_answer = add_metadata_to_answer(answer, context, iu=True)
-
-        return final_answer
-
-
-def stream_text(text: str):
-    """Simulate a typing effect in the UI.
-
-    Parameters
-    ----------
-    text : str
-        The text to be streamed.
-
-    Yields
-    ------
-    str
-        The full text after streaming.
-    """
-    for token in text:
-        yield token
-        time.sleep(0.01)
-
-
-def clear_conversation() -> None:
-    """Clear the conversation history and reset session state."""
-    logger.info("User restarted the conversation.")
-    st.session_state.messages = []
-    st.session_state.initial_question = None
-    st.session_state.selected_suggestion = None
+    # Assistant responses
+    logger.debug(
+        "Average characters in assistant responses: "
+        f"{avg_chars_in_responses(messages, 'assistant')}"
+    )
+    # Total tokens
+    logger.debug(f"Total input tokens: {input_tokens}")
+    logger.debug(f"Total output tokens: {output_tokens}")
+    logger.debug(f"Total tokens: {input_tokens + output_tokens}")
+    logger.debug("-----------------")
 
 
 def chat_with_bot(
@@ -523,11 +576,22 @@ def chat_with_bot(
             user_message = SUGGESTIONS[st.session_state.selected_suggestion]
             logger.info(f"User clicked suggestion: {user_message}")
 
-        st.button(
-            "Recommencer la conversation",
-            icon=":material/refresh:",
-            on_click=clear_conversation,
-        )
+    # Show a button to restart the conversation and clear the history
+    st.button(
+        "Recommencer la conversation",
+        icon=":material/refresh:",
+        on_click=clear_conversation,
+        key="restart_button",
+    )
+
+    # Display chat messages from history as speech bubbles.
+    for index, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+            if message["role"] == "assistant":
+                # Show feedback controls (copy, thumbs up/down, report)
+                show_feedback_controls(index, message["content"])
 
     # When the user posts a message...
     if user_message:
@@ -538,19 +602,26 @@ def chat_with_bot(
         # Display message as a speech bubble.
         with st.chat_message("user"):
             st.text(user_message)
+            # Add messages to chat history.
+            st.session_state.messages.append({"role": "user", "content": user_message})
+
         # Display assistant response as a speech bubble.
         with st.chat_message("assistant"):
-            # Search for relevant context in the vector database.
             with st.spinner("En recherche de contexte..."):
-                # We filter the vector database search by the chapters relevant to the
-                # user's selected level to answer with level-appropriate context.
+                # Concatenate all user questions from the chat history
+                # to allow the model to retrieve relevant chunks based on
+                # the entire conversation, not just the last question.
+                user_queries = format_user_queries(st.session_state.messages)
+                # Search for relevant context in the vector database.
                 context = search_similarity_in_database(
                     vector_db=vector_db,
-                    user_query=user_message,
+                    user_query=user_queries,
                 )
 
             with st.spinner("En réflexion..."):
-                response = generate_response(
+                # Generate the LLM response based on the user question
+                # and retrieved context.
+                response, input_tokens, output_tokens = generate_response(
                     user_message,
                     context,
                     model_name,
@@ -559,26 +630,17 @@ def chat_with_bot(
                     student_level,
                     course_levels,
                 )
+                # Simulate streaming the response token by token for a typing effect.
                 rep_stream = stream_text(response)
 
-            # Put everything after the spinners in a container to fix the
-            # ghost message bug.
-            with st.container():
-                # Stream the LLM response.
-                response = st.write_stream(rep_stream)
-
-                # Add messages to chat history.
-                st.session_state.messages.append(
-                    {"role": "user", "content": user_message}
-                )
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": response}
-                )
-
-                # Show feedback controls (copy, thumbs up/down, report)
-                show_feedback_controls(len(st.session_state.messages) - 1, response)
-                # Send telemetry data for logging and analysis
-                send_telemetry(question=user_message, response=response)
+            # Stream the LLM response.
+            response = st.write_stream(rep_stream)
+            # Add the assistant response to the chat history.
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            # Add token usage for this interaction to the session state total
+            st.session_state.token_usage["input_tokens"] += input_tokens
+            st.session_state.token_usage["output_tokens"] += output_tokens
+            send_telemetry()
 
 
 def main():
@@ -602,9 +664,11 @@ def main():
     apply_custom_css(settings.css_path)
     # Create the header
     create_header(settings.app_name)
+    # Create footer
+    create_footer()
     # Create a sidebar and get the student level infos
     course_level_infos = settings.course_levels
-    student_level = create_sidebar(course_level_infos)
+    student_level = create_sidebar(settings.course_levels)
     # Get the chapters relevant to the selected level
     # to filter the vector database search
     level_relevant_chapters = {}
@@ -612,8 +676,6 @@ def main():
     if student_level:
         level_relevant_chapters = course_level_infos[student_level].chapters
         prompt_path = course_level_infos[student_level].prompt_path
-    # Create footer
-    create_footer()
     # Load the vector database once
     vector_db = get_vector_db(
         vector_db_path=settings.llm.vector_database_path,
