@@ -78,6 +78,7 @@ The answer will be generated using the "gpt-4o" model from the "openai" provider
 and the response will include metadata from the relevant documents.
 """
 
+import operator
 import os
 import secrets
 from datetime import datetime
@@ -298,7 +299,7 @@ def search_similarity_in_database(
     vector_db: Chroma,
     user_query: str,
     nb_chunks: int = 3,
-    score_threshold: float = 0.35,
+    score_threshold: float = 0.65,
     logger: "loguru.Logger" = loguru.logger,
 ) -> list[Document]:
     """Search for relevant documents in the database based on the query text.
@@ -322,20 +323,28 @@ def search_similarity_in_database(
         List of relevant documents found in the database.
     """
     logger.info("Searching for relevant documents in the database...")
-    # Define the retriever
-    retriever = vector_db.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={
-            "k": nb_chunks,
-            "score_threshold": score_threshold,
-        },
-    )
-    # Perform a similarity search
-    relevant_chunks = retriever.invoke(user_query)
+    # Perform a similarity search in the database
+    # To find most similar chunks based on the user query
+    similar_chunks = vector_db.similarity_search_with_score(query=user_query)
+    # Rank the similar chunks based on their distance scores
+    # The lower the distance score, the more similar the chunk is to the query
+    similar_chunks.sort(key=operator.itemgetter(1))
+
+    # Filter the results based on the score threshold and keep the top nb_chunks
+    relevant_chunks_with_scores = []
+    # While we have not reached the desired number of chunks
+    # and there are still similar chunks to evaluate
+    while len(relevant_chunks_with_scores) < nb_chunks and similar_chunks:
+        # Get the next chunk and its score
+        chunk, score = similar_chunks.pop(0)
+        # Add the chunk if its score is below the threshold
+        if score <= score_threshold:
+            relevant_chunks_with_scores.append((chunk, score))
 
     # Display information about the relevant chunks
-    for chunk in relevant_chunks:
+    for chunk, score in relevant_chunks_with_scores:
         logger.debug(f"Chunk ID: {chunk.id}")
+        logger.debug(f"Distance score: {score:.3f}")
         logger.debug(f"Chapter name: {chunk.metadata['chapter_name']}")
         logger.debug(f"URL: {chunk.metadata['url']}")
         logger.debug(f"Number of tokens: {chunk.metadata['nb_tokens']}")
@@ -346,9 +355,10 @@ def search_similarity_in_database(
                 logger.debug(f"{sentence}")
         logger.debug("--------------------------------------")
     logger.success(
-        f"Retrieval completed with {len(relevant_chunks)} relevant chunks found."
+        f"Retrieval completed with {len(relevant_chunks_with_scores)} "
+        f"relevant chunks found."
     )
-    return relevant_chunks
+    return [chunk for chunk, _score in relevant_chunks_with_scores]
 
 
 def calculate_nb_tokens(text: str) -> int:
