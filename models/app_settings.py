@@ -136,7 +136,7 @@ class Settings(BaseSettings, cli_parse_args=True):
             A dictionary where keys are chapter IDs
             and values are `CourseChapter` objects.
         """
-        chapters = load_chapters_from_yaml(self.course_yaml_path)
+        chapters = load_chapters_from_yaml(self.course_yaml_path, ui_logger=True)
         # Convert list of CourseChapter objects to a dictionary keyed by chapter ID
         chapters_dict = {chapter.id: chapter for chapter in chapters}
         return chapters_dict
