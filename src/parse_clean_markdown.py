@@ -28,10 +28,10 @@ Input:
 
 Output:
     ```python
-    # Votre premier commentaire en  Python.
+    #Votre premier commentaire en  Python.
     print("Hello world!")
 
-    # D'autres commandes plus utiles pourraient suivre.
+    #D'autres commandes plus utiles pourraient suivre.
     ```
 
 Usage:
@@ -95,7 +95,8 @@ def build_chapter_paths(
 
 
 def load_chapters_from_yaml(
-    yaml_path: Path, logger: "loguru.Logger" = loguru.logger, *, ui_logger: False
+    yaml_path: Path,
+    logger: "loguru.Logger" = loguru.logger,
 ) -> list[CourseChapter]:
     """Load chapters from a YAML file and construct paths.
 
@@ -105,17 +106,12 @@ def load_chapters_from_yaml(
         Path to the YAML file defining chapters and levels.
     logger: "loguru.Logger"
         Logger for logging messages.
-    ui_logger: bool
-        Flag indicating whether to use the UI logger.
-        If True, it will not log debug messages to avoid cluttering the UI.
 
     Returns
     -------
     list[CourseChapter]
         A list of CourseChapter objects with validated chapter information and paths.
     """
-    if not ui_logger:
-        logger.debug(f"Loading chapters and paths from YAML file: {yaml_path}...")
     try:
         # Load YAML data
         with yaml_path.open("r", encoding="utf-8") as file:
@@ -151,9 +147,6 @@ def load_chapters_from_yaml(
             validated_chapters.append(validated_chapter)
         except ValidationError as exc:
             logger.error(f"Validation error for chapter {chapter.get('id')}: {exc!s}")
-
-    if not ui_logger:
-        logger.debug(f"Loaded {len(validated_chapters)} chapters successfully.")
     return validated_chapters
 
 
@@ -166,7 +159,7 @@ def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger)
     ```
     will be converted to:
     ```python
-    # This is a comment.
+    #This is a comment.
     ```
 
     Parameters
@@ -301,7 +294,9 @@ def process_md_files(yaml_path: Path) -> None:
     logger.info("Starting Markdown processing...")
 
     # Load chapters from YAML file
+    logger.debug(f"Loading chapters and paths from YAML file: {yaml_path}...")
     chapters = load_chapters_from_yaml(yaml_path, logger)
+    logger.success(f"Loaded {len(chapters)} chapters successfully.")
 
     # Process each chapter's Markdown file
     saved_count = 0
