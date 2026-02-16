@@ -7,7 +7,7 @@ course_yaml_path = "data/chapters_and_levels.yaml"
 
 [llm]
 llm_model_name= "gpt-4o"
-provider_llm_name = "openrouter"
+provider_llm_name = "openai"
 vector_database_path = "chroma_db"
 embeddings_model_name = "text-embedding-3-large"
-provider_embeddings_name = "openrouter"
+provider_embeddings_name = "openai"
