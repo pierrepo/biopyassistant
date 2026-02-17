@@ -1,6 +1,5 @@
 """Pydantic data models used to validate UI Streamlit application settings."""
 
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -75,12 +74,12 @@ class LLMConfig(BaseModel):
             if self.api_key_openai is None:
                 msg = "OPENAI_API_KEY not set"
                 raise ValueError(msg)
-            return self.api_key_openai or SecretStr(os.getenv("OPENAI_API_KEY"))
+            return self.api_key_openai
         elif self.provider_llm_name == "openrouter":
             if self.api_key_openrouter is None:
                 msg = "OPENROUTER_API_KEY not set"
                 raise ValueError(msg)
-            return self.api_key_openrouter or SecretStr(os.getenv("OPENROUTER_API_KEY"))
+            return self.api_key_openrouter
 
 
 class Settings(BaseSettings, cli_parse_args=True):
