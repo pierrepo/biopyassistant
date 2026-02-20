@@ -13,7 +13,7 @@ dependencies = [
     "langchain",
     "langchain-openai",
     "langchain-chroma",
-    "langchain-core",
+    "langchain-core>=1.2.11",
     "langchain-community",
     "langchain-text-splitters",
     "loguru",
@@ -22,6 +22,8 @@ dependencies = [
     "htbuilder>=0.9.0",
     "pydantic-settings>=2.12.0",
     "pyperclip>=1.11.0",
+    "pillow>=12.1.1",
+    "protobuf>=6.33.5",
 ]
 
 [dependency-groups]

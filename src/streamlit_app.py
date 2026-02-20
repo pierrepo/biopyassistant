@@ -26,7 +26,9 @@ from query_chatbot import (
 )
 
 SUGGESTIONS = {
-    ":green[:material/loop:] Comment écrire une boucle ?": "Comment écrire une boucle ?",
+    ":green[:material/loop:] Comment écrire une boucle ?": (
+        "Comment écrire une boucle ?"
+    ),
     ":blue[:material/list_alt:] Quelle est la différence entre une liste et un set ?": (
         "Quelle est la différence entre une liste et un set ?"
     ),
@@ -40,7 +42,7 @@ SUGGESTIONS = {
 def apply_custom_css(css_file: Path) -> None:
     """Load and injects custom CSS into the Streamlit app."""
     if css_file.exists():
-        css = css_file.read_text()
+        css = css_file.read_text(encoding="utf-8")
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     else:
         logger.warning(f"CSS file not found at {css_file}")
@@ -75,7 +77,7 @@ def create_header(app_name: str) -> None:
     st.markdown(
         """
         <div class="app-subtitle">
-            BioPyAssistant est un assistant pédagogique pour le cours de
+            BioPyAssistant est un assistant pédagogique pour le course de
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
                 programmation Python
             </a>
@@ -107,6 +109,7 @@ def create_footer() -> None:
 
 def create_sidebar(
     course_levels: dict[str, CourseLevel],
+    logger: "loguru.Logger" = loguru.logger,
 ) -> str:
     """Render the Streamlit sidebar and collect the selected level.
 
@@ -114,6 +117,8 @@ def create_sidebar(
     ----------
     course_levels : dict[str, CourseLevel]
         Mapping from internal level name to CourseLevel objects.
+    logger : loguru.Logger
+        Logger instance for logging user interactions and application events.
 
     Returns
     -------
@@ -164,14 +169,14 @@ def create_sidebar(
                     </a>
                 </strong>
                 <br>
-                dans le cadre du projet pédagogique<br>
+                dans le cadre du project pédagogique<br>
                 <em>
                     <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
                     target="_blank">
                         LLM@UPCité
                     </a>
                 </em>.<br><br>
-                Code source disponible sur GitHub<br>
+                Code source disponible sure GitHub<br>
                 sous licence BSD 3-clause.
             </div>
             """,
@@ -196,12 +201,12 @@ def create_sidebar(
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsable")
+@st.dialog("💡 Guide d'utilisation responsible")
 def show_disclaimer_dialog() -> None:
     """Display a dialog outlining responsible usage guidelines for the application."""
     st.caption("""
-    ### 🧠 Gardez la main sur votre réflexion
-    L'IA est un assistant, pas un expert infaillible.
+    ### 🧠 Gardez la main sure votre réflexion
+    L'IA est un assistant, pas un expert infallible.
     Le **copier-coller direct est déconseillé** :
     utilisez les réponses comme une base de travail que vous devez valider et enrichir
                par votre esprit critique.
@@ -231,7 +236,7 @@ def display_welcome_chat() -> None:
 
     # Display welcome container with chat input and suggestions
     with st.container():
-        st.chat_input("Pose moi une question sur le cours...", key="initial_question")
+        st.chat_input("Pose moi une question sure le course...", key="initial_question")
         st.pills(
             label="Examples",
             label_visibility="collapsed",
@@ -508,11 +513,14 @@ def send_telemetry(
 
 def chat_with_bot(
     vector_db: Chroma,
+    embeddings_model_name: str,
+    provider_embeddings_name: str,
     course_levels: list[str],
     student_level: str | None,
     model_name: str,
     provider_llm_name: str,
     prompt_path: Path,
+    logger: "loguru.Logger" = loguru.logger,
 ) -> None:
     """Handle the main chat interface with the user.
 
@@ -520,6 +528,11 @@ def chat_with_bot(
     ----------
     vector_db : Chroma
         Vector database used to retrieve context for the LLM responses.
+    embeddings_model_name : str
+        The name of the embeddings model used for the vector database.
+    provider_embeddings_name : str
+        The name of the embeddings provider (e.g., "openai") used for the vector
+        database.
     course_levels : list[str]
         List of course levels available for filtering relevant context
         based on the user's selected level.
@@ -533,6 +546,8 @@ def chat_with_bot(
         generating responses.
     prompt_path : Path
         Path to the prompt template to use for generating responses.
+    logger : loguru.Logger
+        Logger instance for logging user interactions and application events.
     """
     # Check if the student has provided level information
     has_student_infos = student_level is not None
@@ -571,11 +586,10 @@ def chat_with_bot(
     if not user_message:
         if user_just_asked_initial_question:
             user_message = st.session_state.initial_question
-            logger.info(f"User asked initial question: {user_message}")
+            logger.info("User just asked the initial question")
         if user_just_clicked_suggestion:
             user_message = SUGGESTIONS[st.session_state.selected_suggestion]
-            logger.info(f"User clicked suggestion: {user_message}")
-
+            logger.info("User has clicked a suggestion question")
     # Show a button to restart the conversation and clear the history
     st.button(
         "Recommencer la conversation",
@@ -595,6 +609,7 @@ def chat_with_bot(
 
     # When the user posts a message...
     if user_message:
+        logger.info(f"User asked: {user_message}")
         # Streamlit's Markdown engine interprets "$" as LaTeX code (used to
         # display math). The line below fixes it.
         user_message = user_message.replace("$", r"\$")
@@ -616,6 +631,9 @@ def chat_with_bot(
                 context = search_similarity_in_database(
                     vector_db=vector_db,
                     user_query=user_queries,
+                    provider_embeddings_name=provider_embeddings_name,
+                    embedding_model=embeddings_model_name,
+                    logger=logger,
                 )
 
             with st.spinner("En réflexion..."):
@@ -668,7 +686,7 @@ def main():
     create_footer()
     # Create a sidebar and get the student level infos
     course_level_infos = settings.course_levels
-    student_level = create_sidebar(settings.course_levels)
+    student_level = create_sidebar(settings.course_levels, logger=logger)
     # Get the chapters relevant to the selected level
     # to filter the vector database search
     level_relevant_chapters = {}
@@ -686,11 +704,14 @@ def main():
     # Chat with the bot
     chat_with_bot(
         vector_db=vector_db,
+        embeddings_model_name=settings.llm.embeddings_model_name,
+        provider_embeddings_name=settings.llm.provider_embeddings_name,
         course_levels=level_relevant_chapters,
         student_level=student_level,
         model_name=settings.llm.llm_model_name,
         provider_llm_name=settings.llm.provider_llm_name,
         prompt_path=prompt_path,
+        logger=logger,
     )
 
 
