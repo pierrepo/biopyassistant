@@ -81,7 +81,7 @@ and the response will include metadata from the relevant documents.
 import operator
 import os
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
@@ -136,7 +136,7 @@ MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
 
 def get_level_infos(
     course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> dict[str, dict]:
+) -> dict[str, CourseLevel]:
     """
     Load all user level information from a YAML file.
 
@@ -149,7 +149,7 @@ def get_level_infos(
 
     Returns
     -------
-    dict[str, dict]
+    dict[str, CourseLevel]
         Dictionary mapping level name to its info:
         {
             "name": str,
@@ -209,9 +209,9 @@ def get_level_infos(
 
 def get_user_level_data(
     user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> dict:
+) -> dict[str, CourseLevel]:
     """
-    Retrieve user level information, including relevant chapters and prompt file.
+    Retrieve user level information from a YAML file based on the specified user level.
 
     Parameters
     ----------
@@ -224,10 +224,13 @@ def get_user_level_data(
 
     Returns
     -------
-    dict
+    dict[str, CourseLevel]
         Dictionary containing:
-            - "chapters": list[str] of chapter IDs relevant to the user level
-            - "prompt_file": str path to the prompt template
+        - "name": str, the internal name of the level
+        - "display_name": str, the human-readable name of the level
+        - "comment": str, the description of the level
+        - "prompt_path": Path, the path to the prompt template for the level
+        - "chapters": list[str], the list of chapter IDs relevant to the level
 
     Raises
     ------
@@ -246,10 +249,8 @@ def get_user_level_data(
             f"Available levels: {available_levels}. Exiting."
         )
         raise SystemExit(1)
-    chapters = user_info.chapters
-    prompt_path = user_info.prompt_path
 
-    return {"chapters": chapters, "prompt_path": prompt_path}
+    return level_infos
 
 
 def load_database(
@@ -393,9 +394,7 @@ def calculate_nb_tokens(text: str) -> int:
     """
     # Tokenize the text
     encoding = tiktoken.get_encoding("cl100k_base")
-    nb_tokens = len(encoding.encode(text))
-
-    return nb_tokens
+    return len(encoding.encode(text))
 
 
 def generate_answer(
@@ -405,6 +404,7 @@ def generate_answer(
     chat_history: str | None,
     relevant_chunks: list,
     level_relevant_chapter_ids: list[str],
+    course_level_infos: dict[str, CourseLevel],
     model_name: str,
     prompt_path: Path,
     logger: "loguru.Logger" = loguru.logger,
@@ -426,6 +426,9 @@ def generate_answer(
         List of relevant documents from the database.
     level_relevant_chapter_ids : list[str]
         List of chapter IDs relevant to the user level, used for logging purposes.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
     model_name : str
         The name of the OpenAI model to use for generating the answer.
     prompt_path : Path
@@ -471,6 +474,7 @@ def generate_answer(
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
     input_data = {
+        "user_level": course_level_infos[user_level].comment,
         "contexte": context,
         "question": query,
         "chat_history": chat_history,
@@ -487,6 +491,7 @@ def generate_answer(
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
+    print(filled_prompt)
     logger.info(f"Prompt tokens: {nb_tokens_prompt}")
     # Calculate the number of tokens in the answer
     nb_tokens_answer = calculate_nb_tokens(answer)
@@ -592,9 +597,7 @@ def add_metadata_to_answer(
     )
 
     # Add the sources to the response
-    response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
-
-    return response_with_metadata
+    return f"{answer_from_model}\n\n{sources_string}"
 
 
 def display_answer(
@@ -732,18 +735,16 @@ def interrogate_model(
     """Interrogate the AI model to search for answers in a vector database."""
     start_time = perf_counter()
     # Set-up the logger
+    now = datetime.now(UTC)
     log_path = (
-        f"logs/{datetime.now().strftime('%Y%m%d')}/"
-        f"query_chatbot_{datetime.now().strftime('%H:%M:%S')}.log"
+        f"logs/{now.strftime('%Y%m%d')}/query_chatbot_{now.strftime('%H:%M:%S')}.log"
     )
     logger = create_logger(log_path)
     logger.info("Starting the command line interface for querying the chatbot...")
 
     # USER LEVEL INFORMATION RETRIEVAL
     # Retrieve the user level information from the YAML file
-    user_infos = get_user_level_data(user_level, course_yaml, logger)
-    level_relevant_chapter_ids = user_infos["chapters"]
-    prompt_path = user_infos["prompt_path"]
+    user_level_infos = get_user_level_data(user_level, course_yaml, logger)
 
     # CONTEXT RETRIEVAL
     # Load the vector database
@@ -773,10 +774,11 @@ def interrogate_model(
             user_level=user_level,
             chat_history=None,
             relevant_chunks=relevant_chunks,
-            level_relevant_chapter_ids=level_relevant_chapter_ids,
+            level_relevant_chapter_ids=user_level_infos.chapters,
+            course_level_infos=user_level_infos,
             model_name=model_name,
             provider_llm_name=provider_llm_name,
-            prompt_path=prompt_path,
+            prompt_path=user_level_infos.prompt_path,
             logger=logger,
         )
 

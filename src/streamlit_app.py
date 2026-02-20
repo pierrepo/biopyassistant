@@ -61,10 +61,9 @@ def get_vector_db(
     -------
     Chroma: The vector database containing the embedded course.
     """
-    vector_db = load_database(
+    return load_database(
         vector_db_path, embeddings_model_name, provider_embeddings_name, _logger
     )
-    return vector_db
 
 
 def create_header(app_name: str) -> None:
@@ -77,7 +76,7 @@ def create_header(app_name: str) -> None:
     st.markdown(
         """
         <div class="app-subtitle">
-            BioPyAssistant est un assistant pédagogique pour le cours de
+            BioPyAssistant est un assistant pédagogique pour le course de
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
                 programmation Python
             </a>
@@ -147,6 +146,9 @@ def create_sidebar(
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
+            on_change=lambda: logger.info(
+                f"User selected level: {st.session_state.selected_level}"
+            ),
         )
         st.space(400)
 
@@ -175,7 +177,7 @@ def create_sidebar(
                     LLM@UPCité
                 </a>
                 <br><br>
-                Code source disponible sur GitHub<br>
+                Code source disponible sure GitHub<br>
                 sous licence BSD 3-clause.
             </div>
             """,
@@ -196,13 +198,13 @@ def create_sidebar(
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsable")
+@st.dialog("💡 Guide d'utilisation responsible")
 def show_disclaimer_dialog() -> (
     None
 ):  # TODO: add a link to the charte d'utilisation when it's ready
     """Display a dialog outlining responsible usage guidelines for the application."""
     st.caption("""
-    ### 🧠 Gardez la main sur votre réflexion
+    ### 🧠 Gardez la main sure votre réflexion
     L'IA est un assistant, pas un expert infallible.
     Le **copier-coller direct est déconseillé** :
     utilisez les réponses comme une base de travail que vous devez valider et enrichir
@@ -233,7 +235,7 @@ def display_welcome_chat() -> None:
 
     # Display welcome container with chat input and suggestions
     with st.container():
-        st.chat_input("Pose moi une question sur le cours...", key="initial_question")
+        st.chat_input("Pose moi une question sure le course...", key="initial_question")
         st.pills(
             label="Examples",
             label_visibility="collapsed",
@@ -281,7 +283,8 @@ def generate_response(
     provider_llm_name: str,
     prompt_path: str,
     student_level: str | None,
-    course_levels: list[str],
+    level_relevant_chapters: list[str],
+    course_level_infos: dict[str, CourseLevel],
 ) -> tuple[str, int, int]:
     """Generate a response to the user question.
 
@@ -301,9 +304,12 @@ def generate_response(
     student_level : str | None
         The user's Python or academic proficiency level
         (e.g., "beginner", "intermediate", "advanced").
-    course_levels :  list[str]
+    level_relevant_chapters : list[str]
         List of course levels available for filtering relevant context
         based on the user's selected level.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
 
     Returns
     -------
@@ -331,7 +337,8 @@ def generate_response(
             model_name=model_name,
             prompt_path=prompt_path,
             user_level=student_level,
-            level_relevant_chapter_ids=course_levels,
+            level_relevant_chapter_ids=level_relevant_chapters,
+            course_level_infos=course_level_infos,
             logger=logger,
         )
         # Add metadata to the answer
@@ -528,8 +535,9 @@ def chat_with_bot(
     vector_db: Chroma,
     embeddings_model_name: str,
     provider_embeddings_name: str,
-    course_levels: list[str],
     student_level: str | None,
+    level_relevant_chapters: list[str],
+    course_level_infos: dict[str, CourseLevel],
     model_name: str,
     provider_llm_name: str,
     prompt_path: Path,
@@ -546,9 +554,12 @@ def chat_with_bot(
     provider_embeddings_name : str
         The name of the embeddings provider (e.g., "openai") used for the vector
         database.
-    course_levels : list[str]
+    level_relevant_chapters : list[str]
         List of course levels available for filtering relevant context
         based on the user's selected level.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
     student_level : str | None
         The user's Python or academic proficiency level
         (e.g., "beginner", "intermediate", "advanced").
@@ -661,7 +672,8 @@ def chat_with_bot(
                     provider_llm_name,
                     prompt_path,
                     student_level,
-                    course_levels,
+                    level_relevant_chapters,
+                    course_level_infos,
                 )
                 # Simulate streaming the response token by token for a typing effect.
                 rep_stream = stream_text(response)
@@ -721,8 +733,9 @@ def main():
         vector_db=vector_db,
         embeddings_model_name=settings.llm.embeddings_model_name,
         provider_embeddings_name=settings.llm.provider_embeddings_name,
-        course_levels=level_relevant_chapters,
         student_level=student_level,
+        level_relevant_chapters=level_relevant_chapters,
+        course_level_infos=settings.course_levels,
         model_name=settings.llm.llm_model_name,
         provider_llm_name=settings.llm.provider_llm_name,
         prompt_path=prompt_path,
