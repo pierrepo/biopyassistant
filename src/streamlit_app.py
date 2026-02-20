@@ -190,10 +190,6 @@ def create_sidebar(
                     <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
                          alt="GitHub">
                 </a>
-                <a href="https://python.sdv.u-paris.fr/" target="_blank">
-                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
-                         alt="Python">
-                </a>
             </div>
             """,
             unsafe_allow_html=True,
