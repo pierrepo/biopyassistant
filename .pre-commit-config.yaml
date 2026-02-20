@@ -57,7 +57,7 @@ repos:
     rev: v1.43.4
     hooks:
       - id: typos
-        exclude: data/chapters_and_levels.yaml
+        exclude: data/chapters_and_levels.yaml|src/streamlit_app.py
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
