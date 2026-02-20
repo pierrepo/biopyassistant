@@ -434,8 +434,7 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
 
             # Log thumbs up/down feedback with message content and context for analysis
             elif selection == "has_voted_up" or selection == "has_voted_down":
-                vote_type = "👍" if selection == "has_voted_up" else "👎"
-                logger.warning(f"Feedback {vote_type}")
+                logger.warning(f"Feedback {selection}")
                 logger.warning(f"Message: {assistant_msg}")
                 logger.debug(f"Context: {relevant_history}")
                 st.toast("Merci pour votre vote !", icon="✅", duration="short")
@@ -448,8 +447,11 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
                         height=60,
                     )
                     if st.form_submit_button("Envoyer"):
-                        logger.critical("Report 🚨")
-                        logger.critical(f"Commentaire: {details or 'Aucun'}")
+                        logger.critical(
+                            "Report: User reported an issue with the "
+                            "assistant's response."
+                        )
+                        logger.critical(f"Comments: {details or 'Aucun'}")
                         logger.critical(f"Message: {assistant_msg}")
                         logger.debug(f"Context: {relevant_history}")
                         st.toast(
