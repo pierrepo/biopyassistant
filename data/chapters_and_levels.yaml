@@ -24,12 +24,12 @@ chapters:
     file_name: "03_affichage.md"
 
   - id: "04"
-    title: "Listes"
-    file_name: "04_listes.md"
+    title: "Listed"
+    file_name: "04_listed.md"
 
   - id: "05"
-    title: "Boucles et comparaisons"
-    file_name: "05_boucles_comparaisons.md"
+    title: "Boucles et comparisons"
+    file_name: "05_boucles_comparisons.md"
 
   - id: "06"
     title: "Tests"
@@ -48,24 +48,24 @@ chapters:
     file_name: "09_modules.md"
 
   - id: "10"
-    title: "Fonctions"
-    file_name: "10_fonctions.md"
+    title: "Functions"
+    file_name: "10_functions.md"
 
   - id: "11"
-    title: "Plus sur les chaînes de caractères"
-    file_name: "11_plus_sur_les_chaines_de_caracteres.md"
+    title: "Plus sure les chaînes de caractères"
+    file_name: "11_plus_sure_les_chaines_de_characters.md"
 
   - id: "12"
-    title: "Plus sur les listes"
-    file_name: "12_plus_sur_les_listes.md"
+    title: "Plus sure les listed"
+    file_name: "12_plus_sure_les_listed.md"
 
   - id: "13"
-    title: "Plus sur les fonctions"
-    file_name: "13_plus_sur_les_fonctions.md"
+    title: "Plus sure les functions"
+    file_name: "13_plus_sure_les_functions.md"
 
   - id: "14"
-    title: "Conteneurs"
-    file_name: "14_conteneurs.md"
+    title: "Contenders"
+    file_name: "14_contenders.md"
 
   - id: "15"
     title: "Création de modules"
@@ -100,12 +100,12 @@ chapters:
     file_name: "22_module_pandas.md"
 
   - id: "23"
-    title: "Avoir la classe avec les objets"
-    file_name: "23_avoir_la_classe_avec_les_objets.md"
+    title: "Avoir la classe avec les objects"
+    file_name: "23_avoir_la_classe_avec_les_objects.md"
 
   - id: "24"
-    title: "Avoir plus la classe avec les objets"
-    file_name: "24_avoir_plus_la_classe_avec_les_objets.md"
+    title: "Avoir plus la classe avec les objects"
+    file_name: "24_avoir_plus_la_classe_avec_les_objects.md"
 
   - id: "25"
     title: "Fenêtres graphiques et Tkinter"
@@ -116,8 +116,8 @@ chapters:
     file_name: "26_remarques_complementaires.md"
 
   - id: "27"
-    title: "Mini-projets"
-    file_name: "27_mini_projets.md"
+    title: "Mini-projects"
+    file_name: "27_mini_projects.md"
 
   - id: "A"
     title: "Quelques formats de données en biologies"
@@ -133,10 +133,9 @@ levels:
   - name: "beginner"
     display_name: "Débutant (L2 / L3)"
     comment: >
-      This level is for students who have just started learning Python
-      and have a basic understanding of programming concepts.
-      They are likely in their second or third year of university (L2/L3)
-      and are looking for guidance on fundamental Python topics.
+      Cet assistant est à destination d'étudiants en licence de biologie,
+      grands débutants en programmation Python. Ils s'intéressent particulièrement à des examples
+       concrets d'utilisation de la programmation en biologie.
 
     prompt_path: "prompt_templates/common.txt"
 
@@ -154,9 +153,9 @@ levels:
   - name: "intermediate"
     display_name: "Intermédiaire (Python 1)"
     comment: >
-      This level is for master`s students with an intermediate Python
-      knowledge. They have some experience but may need to review
-      certain fundamentals while deepening their understanding.
+      Cet assistant aide des étudiants avec des bases de programmation,
+       mais qui ne connaissent pas le language Python.
+      Tu dois les accompagner à bien comprendre les concepts liés à la programmation Python.
 
     prompt_path: "prompt_templates/common.txt"
 
@@ -182,10 +181,9 @@ levels:
   - name: "advanced"
     display_name: "Avancé (Python 2)"
     comment: >
-      This level is for students who have a solid understanding of Python
-      and are looking to deepen their knowledge with more advanced topics.
-      They have completed a Python 1 course or have equivalent experience
-      and are ready to explore more complex concepts.
+      Cet assistant aide des étudiants avec des connaissances ultérieures en programmation Python.
+      Sans être experts, ces étudiants maitrisent les concepts de base.
+      Tu dois les aider à devenir d'excellents programmers en Python.
 
     prompt_path: "prompt_templates/common.txt"
 

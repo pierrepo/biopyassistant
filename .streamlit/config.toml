@@ -1,0 +1,10 @@
+[theme]
+base = "light"
+primaryColor = "#8a1538"
+linkColor = "#8a1538"
+
+[theme.sidebar]
+baseRadius="full"
+buttonRadius ="full"
+primaryColor ="#8a1538"
+linkColor = "#8a1538"

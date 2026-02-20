@@ -1,190 +1,719 @@
-"""Streamlit app for chatbot testing.
+"""Streamlit app for chatbot testing."""
 
-Usage:
-======
-    streamlit run src/streamlit_app.py
+import secrets
+import sys
+import time
+from pathlib import Path
 
-"""
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-# METADATA
-__authors__ = ("Pierre Poulain", "Essmay Touami")
-__contact__ = "pierre.poulain@u-paris.fr"
-__copyright__ = "BSD-3 clause"
-__date__ = "2024"
-__version__ = "1.0.0"
-
-
-# LIBRAIRIES IMPORT
-import random
-
+import loguru
+import pyperclip
 import streamlit as st
-from loguru import logger
+from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
+from loguru import logger
+
+from logger import create_logger
+from models.app_settings import Settings
+from models.course import CourseLevel
+from query_chatbot import (
+    MSGS_QUERY_NOT_RELATED,
+    add_metadata_to_answer,
+    generate_answer,
+    load_database,
+    search_similarity_in_database,
+)
+
+SUGGESTIONS = {
+    ":green[:material/loop:] Comment écrire une boucle ?": (
+        "Comment écrire une boucle ?"
+    ),
+    ":blue[:material/list_alt:] Quelle est la différence entre une liste et un set ?": (
+        "Quelle est la différence entre une liste et un set ?"
+    ),
+    ":orange[:material/decimal_increase:] "
+    "Comment afficher un float avec 2 chiffres avec la virgule ?": (
+        "Comment afficher un float avec 2 chiffres avec la virgule ?"
+    ),
+}
 
 
-# MODULES IMPORT
-from query_chatbot import load_database, search_similarity_in_database, get_metadata, format_chat_history, contextualize_question,  generate_answer, add_metadata_to_answer, MSGS_QUERY_NOT_RELATED, OPENAI_MODEL_NAME, CHROMA_PATH
+def apply_custom_css(css_file: Path) -> None:
+    """Load and injects custom CSS into the Streamlit app."""
+    if css_file.exists():
+        css = css_file.read_text(encoding="utf-8")
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    else:
+        logger.warning(f"CSS file not found at {css_file}")
 
 
-# FUNCTIONS
-def create_header() -> None:
+@st.cache_resource
+def get_vector_db(
+    vector_db_path: Path,
+    embeddings_model_name: str,
+    provider_embeddings_name: str,
+    _logger: "loguru.Logger" = loguru.logger,
+) -> Chroma:
+    """Cache the vector database to prevent reloading on every rerun.
+
+    Returns
+    -------
+    Chroma: The vector database containing the embedded course.
+    """
+    vector_db = load_database(
+        vector_db_path, embeddings_model_name, provider_embeddings_name, _logger
+    )
+    return vector_db
+
+
+def create_header(app_name: str) -> None:
+    """Render the application header and subtitle."""
     st.markdown(
-        f"""
-        <div style="padding:20px;border-radius:10px;">
-            <h1 style="color:white;text-align:center;font-family:"Monoton", sans-serif;font-size:5em;">🐍 BioPyAssistant 🐍</h1>
+        f'<div class="app-title">{app_name}</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="app-subtitle">
+            BioPyAssistant est un assistant pédagogique pour le course de
+            <a href="https://python.sdv.u-paris.fr/" target="_blank">
+                programmation Python
+            </a>
+            <br>
+            pour les biologistes de Patrick Fuchs et Pierre Poulain.
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
-    st.markdown("---")
+    st.space(30)
 
 
-def insert_multiple_spaces(n: int = 1) -> None:
-    """Insert multiple spaces in the streamlit app."""
-    for _ in range(n):
-        st.sidebar.markdown("")
+def create_footer() -> None:
+    """Render the application footer with legal information."""
+    st.markdown(
+        """
+        <div class="app-footer">
+            Les résultats des votes sont collectés anonymement à des fins de recherche.
+            <br> Cette application web n'utilise pas de cookie.
+            <a href="https://u-paris.fr/politique-de-confidentialite/"
+            target="_blank">
+                Mentions légales.
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def create_sidebar():
-        """Create the sidebar."""
-        st.sidebar.title("Options avancées")
-
-        # Insert multiple spaces
-        insert_multiple_spaces(3)
-
-        # Initialize total cost if not already set
-        if 'total_cost' not in st.session_state:
-            st.session_state.total_cost = 0.0
-
-        # Insert multiple spaces
-        insert_multiple_spaces(3)
-
-        # Clear the conversation
-        if st.sidebar.button("Effacer la conversation"):
-            st.session_state.messages = [
-                {"role": "assistant", "content": "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"}
-            ]
-            st.session_state.total_cost = 0.0
-
-
-def transform_messages(messages: list[dict]) -> list[tuple]:
-    """Transform the messages into a list of tuples.
+def create_sidebar(
+    course_levels: dict[str, CourseLevel],
+    logger: "loguru.Logger" = loguru.logger,
+) -> str:
+    """Render the Streamlit sidebar and collect the selected level.
 
     Parameters
     ----------
-    messages : list[dict]
-        The chat history messages.
-    
+    course_levels : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects.
+    logger : loguru.Logger
+        Logger instance for logging user interactions and application events.
+
     Returns
     -------
-    list[tuple]
-        The chat history messages as a list of tuples.
+    str
+       Internal level identifier selected by the user.
     """
-    logger.info("Transforming the messages into a list of tuples.")
-    messages_tuples = []
-    user_message = None
+    with st.sidebar:
+        # Institutional logos
+        st.logo(
+            "https://u-paris.fr/wp-content/uploads/2022/03/UniversiteParisCite_logo_horizontal_couleur_RVB.png",
+            size="large",
+            icon_image="https://lvts.fr/wp-content/uploads/2022/03/UniversiteParis_monogramme_couleur_RVB-e1712425218876.png",
+        )
+        st.space("large")
 
-    # Ignorer le premier message automatique de l'assistant
-    start_index = 1 if messages[0]['role'] == 'assistant' else 0
-    
-    for message in messages[start_index:]:
-        if message['role'] == 'user':
-            user_message = message['content']
-        elif message['role'] == 'assistant' and user_message is not None:
-            messages_tuples.append((user_message, message['content']))
-            user_message = None  # Réinitialiser le message de l'utilisateur après avoir créé le tuple
-    
-    return messages_tuples
+        # Student profile
+        st.markdown(
+            '<div class="sidebar-title">🎓 Profil étudiant</div>',
+            unsafe_allow_html=True,
+        )
+        # Level selection pills from course_levels
+        selected_level = st.pills(
+            "Niveau :material/sort:",
+            # We use the internal level name as the option value
+            options=list(course_levels.keys()),
+            # But display the user-friendly name from the CourseLevel object
+            format_func=lambda key: course_levels[key].display_name,
+            key="selected_level",
+        )
+        st.space(400)
+
+        # About section
+        st.markdown(
+            """
+            <div class="sidebar-about">
+                <strong>BioPyAssistant</strong> a été développé par
+                <strong>
+                    <a href="https://www.linkedin.com/in/essmay-touami/"
+                    target="_blank">
+                        Essmay Touami
+                    </a>
+                </strong>
+                et
+                <strong>
+                    <a href="https://www.linkedin.com/in/pierrepo/"
+                    target="_blank">
+                        Pierre Poulain
+                    </a>
+                </strong>
+                <br>
+                dans le cadre du project pédagogique<br>
+                <em>
+                    <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
+                    target="_blank">
+                        LLM@UPCité
+                    </a>
+                </em>.<br><br>
+                Code source disponible sure GitHub<br>
+                sous licence BSD 3-clause.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        # Github and Python icons with links
+        st.markdown(
+            """
+            <div class="sidebar-icons">
+                <a href="https://github.com/pierrepo/biopyassistant" target="_blank">
+                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
+                         alt="GitHub">
+                </a>
+                <a href="https://python.sdv.u-paris.fr/" target="_blank">
+                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
+                         alt="Python">
+                </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    return selected_level
 
 
-def generate_response(user_query: str, vector_db: Chroma) -> str:
+@st.dialog("💡 Guide d'utilisation responsible")
+def show_disclaimer_dialog() -> None:
+    """Display a dialog outlining responsible usage guidelines for the application."""
+    st.caption("""
+    ### 🧠 Gardez la main sure votre réflexion
+    L'IA est un assistant, pas un expert infallible.
+    Le **copier-coller direct est déconseillé** :
+    utilisez les réponses comme une base de travail que vous devez valider et enrichir
+               par votre esprit critique.
+
+    ### 🛡️ Protégez votre vie privée
+    Ce service utilise des modèles externes.
+    **Ne partagez jamais de données personnelles**,
+    confidentielles ou sensibles dans vos échanges.
+
+    ### 📜 Aller plus loin
+    Pour adopter les bonnes pratiques, consultez la [Charte d'utilisation](#).
+    """)
+
+
+def clear_conversation() -> None:
+    """Clear the conversation history and reset session state."""
+    logger.info("User restarted the conversation.")
+    st.session_state.messages = []
+    st.session_state.initial_question = None
+    st.session_state.selected_suggestion = None
+
+
+def display_welcome_chat() -> None:
+    """Display the initial welcome chat message and suggestions."""
+    st.session_state.messages = []
+    st.session_state.token_usage = {"input_tokens": 0, "output_tokens": 0}
+
+    # Display welcome container with chat input and suggestions
+    with st.container():
+        st.chat_input("Pose moi une question sure le course...", key="initial_question")
+        st.pills(
+            label="Examples",
+            label_visibility="collapsed",
+            options=SUGGESTIONS,
+            key="selected_suggestion",
+        )
+    # Show disclaimer for ethical use
+    st.button(
+        (
+            "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
+            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
+            " critique !]]"
+        ),
+        type="tertiary",
+        on_click=show_disclaimer_dialog,
+    )
+    # Stop execution so the chat doesn't process until a question is asked
+    st.stop()
+
+
+def transform_messages(messages: list[dict[str, str]]) -> str:
+    """
+    Convert Streamlit message history into a list of (User, Assistant) tuples.
+
+    Args:
+        messages: List of message dictionaries from st.session_state.
+
+    Returns
+    -------
+    str
+        A formatted string representing the chat history, where each message
+        is prefixed by its role (user or assistant) for clarity in the prompt.
+    """
+    formatted_history = ""
+    for msg in messages:
+        formatted_history += f"{msg['role']}: {msg['content']}\n"
+
+    return formatted_history
+
+
+def generate_response(
+    user_query: str,
+    context: str,
+    model_name: str,
+    provider_llm_name: str,
+    prompt_path: str,
+    student_level: str | None,
+    course_levels: list[str],
+) -> tuple[str, int, int]:
     """Generate a response to the user question.
-    
+
     Parameters
     ----------
     user_query : str
         The user question.
+    context : str
+        The relevant context retrieved from the vector database.
+    model_name : str
+        The name of the LLM to use for generating the response.
+    provider_llm_name : str
+        The name of the LLM provider (e.g., "openrouter") to use for
+        generating the response.
+    prompt_path : str
+        Path to the prompt template to use for generating the response.
+    student_level : str | None
+        The user's Python or academic proficiency level
+        (e.g., "beginner", "intermediate", "advanced").
+    course_levels :  list[str]
+        List of course levels available for filtering relevant context
+        based on the user's selected level.
 
     Returns
     -------
-    response : str
-        The response predicted by the model.
+    tuple[str, int, int]
+        The generated answer, the number of input tokens, and the number
+        of output tokens.
     """
-    # Transform the chat history into a list of tuples
+    # Transform the chat history for the prompt
     chat_history = transform_messages(st.session_state.messages)
-    # Format the chat history for the model
-    formatted_chat_history = format_chat_history(chat_history, len_history=10)
-    # Contextualize the user question with the chat history
-    chat_context = contextualize_question(chat_history_formatted=formatted_chat_history)
-    # Search for relevant documents in the database
-    context = search_similarity_in_database(vector_db=vector_db, user_query=user_query)
-    
+
     # If no relevant document was found
     if context == []:
         logger.info("No relevant documents found in the database.")
         logger.success("Returning an automatic response without calling the model.")
         # random response betweet responses in MSGS_QUERY_NOT_RELATED
-        response = random.choice(MSGS_QUERY_NOT_RELATED)
-        return response
-    else :
-        # Get the metadata of the relevant documents
-        metadata = get_metadata(context)
+        response = secrets.choice(MSGS_QUERY_NOT_RELATED)
+        return response, 0, 0
+    else:
         # Generate the answer
-        answer = generate_answer(query=user_query, chat_context=chat_context, relevant_chunks=context, model_name=OPENAI_MODEL_NAME)
+        answer, input_tokens, output_tokens = generate_answer(
+            query=user_query,
+            provider_llm_name=provider_llm_name,
+            chat_history=chat_history,
+            relevant_chunks=context,
+            model_name=model_name,
+            prompt_path=prompt_path,
+            user_level=student_level,
+            level_relevant_chapter_ids=course_levels,
+            logger=logger,
+        )
         # Add metadata to the answer
-        final_answer = add_metadata_to_answer(answer, metadatas=metadata, iu=True)
+        final_answer = add_metadata_to_answer(answer, context, iu=True)
 
-        logger.info(f"Response generated: {final_answer}")
-        logger.success("Response generated successfully.\n")
-                    
-        return final_answer
+        return final_answer, input_tokens, output_tokens
 
 
-def chat_with_bot(vector_db: Chroma) -> None:
-    """Chat with the bot"""
-    # Initialize the chat with a welcome message
-    if "messages" not in st.session_state.keys(): # Initialize the chat message history
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Bonjour, je suis BioPyAssistant, ton assistant pour répondre à tes questions sur Python. Comment puis-je t'aider ?"}
-        ]
+def stream_text(text: str):
+    """Simulate a typing effect in the UI.
 
-    # Get the user question
-    if user_query := st.chat_input("Pose moi une question sur le cours !"): # Prompt for user input and save to chat history
-        st.session_state.messages.append({"role": "user", "content": user_query})
+    Parameters
+    ----------
+    text : str
+        The text to be streamed.
 
-    for message in st.session_state.messages: # Display the prior chat messages
+    Yields
+    ------
+    str
+        The full text after streaming.
+    """
+    for token in text:
+        yield token
+        time.sleep(0.01)
+
+
+def format_user_queries(messages: list[dict[str, str]]) -> str:
+    """
+    Concatenate all user questions into a single string.
+
+    Parameters
+    ----------
+    messages : list[dict[str, str]]
+        The chat history, where each message has a "role" and "content".
+
+    Returns
+    -------
+    str
+        A single string containing all user questions, separated by newlines.
+    """
+    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
+    return ", ".join(user_questions)
+
+
+def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
+    """Display compact feedback controls for an assistant message.
+
+    Parameters
+    ----------
+    message_index : int
+        Index of the message in `st.session_state.messages` for which
+        the feedback is being collected.
+    assistant_msg : str
+        The content of the assistant message to which the feedback controls
+        are attached.
+    """
+    with st.container():
+        # Define the feedback options with corresponding icons
+        option_map = {
+            "is_copied": ":material/content_copy:",
+            "has_voted_up": ":material/thumb_up:",
+            "has_voted_down": ":material/thumb_down:",
+            "has_report_msg": ":material/report:",
+        }
+        selection = st.pills(
+            "assistant message options",
+            label_visibility="hidden",
+            options=option_map.keys(),
+            format_func=lambda option: option_map[option],
+            key=f"feedback_pills_{message_index}",
+        )
+        relevant_history = st.session_state.messages[: message_index + 1]
+        # Handle each feedback option accordingly
+        if selection:
+            # Copy the assistant message to clipboard
+            if selection == "is_copied":
+                pyperclip.copy(assistant_msg)
+                st.toast("Réponse copiée !", icon="📋", duration="short")
+
+            # Log thumbs up/down feedback with message content and context for analysis
+            elif selection == "has_voted_up" or selection == "has_voted_down":
+                vote_type = "👍" if selection == "has_voted_up" else "👎"
+                logger.warning(f"Feedback {vote_type}")
+                logger.warning(f"Message: {assistant_msg}")
+                logger.debug(f"Context: {relevant_history}")
+                st.toast("Merci pour votre vote !", icon="✅", duration="short")
+
+            # Handle report message option with a form to collect additional details
+            elif selection == "has_report_msg":
+                with st.form(key=f"report-form-{message_index}", clear_on_submit=True):
+                    details = st.text_area(
+                        "Signaler / Ajouter un commentaire (optionnel)",
+                        height=60,
+                    )
+                    if st.form_submit_button("Envoyer"):
+                        logger.critical("Report 🚨")
+                        logger.critical(f"Commentaire: {details or 'Aucun'}")
+                        logger.critical(f"Message: {assistant_msg}")
+                        logger.debug(f"Context: {relevant_history}")
+                        st.toast(
+                            "Merci pour votre signalement !", icon="⚠️", duration="short"
+                        )
+
+
+def avg_chars_in_responses(messages: list[dict[str, str]], role: str) -> int:
+    """
+    Calculate the average number of characters in all responses of a specific role.
+
+    Parameters
+    ----------
+    messages : list[dict[str, str]]
+        The chat history, where each message has a "role" and "content".
+    role : str
+        The role of the messages to consider (e.g., "assistant").
+
+    Returns
+    -------
+    int
+        Average number of characters in messages of the specified role.
+    """
+    role_messages = [msg for msg in messages if msg["role"] == role]
+    if not role_messages:
+        return 0
+    total_chars = sum(len(msg["content"]) for msg in role_messages)
+    return total_chars // len(role_messages)
+
+
+def send_telemetry(
+    **kwargs,
+) -> None:  # TODO: ask pierre what telemetry to log and how to log it
+    """
+    Record telemetry data related to user interactions with the chatbot.
+
+    This function collects and logs usage metrics to help monitor
+    application performance and user engagement. The telemetry may include,
+    but is not limited to:
+
+    - Questions submitted by users.
+    - Number of requests per session.
+    - Response time of the LLM.
+    - Error rates or failed requests.
+    - Clicks on suggested prompts or examples.
+    - User feedback on responses (e.g., thumbs up / thumbs down).
+
+    Parameters
+    ----------
+    **kwargs : dict
+        Arbitrary keyword arguments containing additional context or metadata
+        for telemetry, such as the question text, response, timestamps, or
+        user identifiers.
+    """
+    messages = st.session_state.get("messages", [])
+    input_tokens = st.session_state.get("token_usage", {}).get("input_tokens", 0)
+    output_tokens = st.session_state.get("token_usage", {}).get("output_tokens", 0)
+    logger.debug("-----------------")
+    logger.debug("Session summary:")
+
+    # User questions
+    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
+    logger.debug(f"Total questions asked: {len(user_questions)}")
+    logger.debug(
+        "Average characters in user questions: "
+        f"{avg_chars_in_responses(messages, 'user')}"
+    )
+    # Assistant responses
+    logger.debug(
+        "Average characters in assistant responses: "
+        f"{avg_chars_in_responses(messages, 'assistant')}"
+    )
+    # Total tokens
+    logger.debug(f"Total input tokens: {input_tokens}")
+    logger.debug(f"Total output tokens: {output_tokens}")
+    logger.debug(f"Total tokens: {input_tokens + output_tokens}")
+    logger.debug("-----------------")
+
+
+def chat_with_bot(
+    vector_db: Chroma,
+    embeddings_model_name: str,
+    provider_embeddings_name: str,
+    course_levels: list[str],
+    student_level: str | None,
+    model_name: str,
+    provider_llm_name: str,
+    prompt_path: Path,
+    logger: "loguru.Logger" = loguru.logger,
+) -> None:
+    """Handle the main chat interface with the user.
+
+    Parameters
+    ----------
+    vector_db : Chroma
+        Vector database used to retrieve context for the LLM responses.
+    embeddings_model_name : str
+        The name of the embeddings model used for the vector database.
+    provider_embeddings_name : str
+        The name of the embeddings provider (e.g., "openai") used for the vector
+        database.
+    course_levels : list[str]
+        List of course levels available for filtering relevant context
+        based on the user's selected level.
+    student_level : str | None
+        The user's Python or academic proficiency level
+        (e.g., "beginner", "intermediate", "advanced").
+    model_name : str
+        The name of the LLM to use for generating responses.
+    provider_llm_name : str
+        The name of the LLM provider (e.g., "openrouter") to use for
+        generating responses.
+    prompt_path : Path
+        Path to the prompt template to use for generating responses.
+    logger : loguru.Logger
+        Logger instance for logging user interactions and application events.
+    """
+    # Check if the student has provided level information
+    has_student_infos = student_level is not None
+    # Determine if this is the first user interaction
+    user_just_asked_initial_question = (
+        "initial_question" in st.session_state and st.session_state.initial_question
+    )
+    user_just_clicked_suggestion = (
+        "selected_suggestion" in st.session_state
+        and st.session_state.selected_suggestion
+    )
+    user_first_interaction = (
+        user_just_asked_initial_question or user_just_clicked_suggestion
+    )
+    # If first interaction but no student info, show a toast and block sending
+    if user_first_interaction and not has_student_infos:
+        logger.warning("User tried to ask a question without providing level info.")
+        st.toast(
+            "Veuillez indiquez votre niveau pour des réponses adaptées.",
+            icon="⚠️",
+            duration="short",
+        )
+        user_first_interaction = False
+
+    # Check if there is already message history
+    has_message_history = (
+        "messages" in st.session_state and len(st.session_state.messages) > 0
+    )
+    # --- Initial State (No conversation yet) ---
+    if not user_first_interaction and not has_message_history:
+        display_welcome_chat()
+
+    # --- First step of the conversation ---
+    # Show chat input at the bottom when a question has been asked.
+    user_message = st.chat_input("Posez une question complémentaire...")
+    if not user_message:
+        if user_just_asked_initial_question:
+            user_message = st.session_state.initial_question
+            logger.info("User just asked the initial question")
+        if user_just_clicked_suggestion:
+            user_message = SUGGESTIONS[st.session_state.selected_suggestion]
+            logger.info("User has clicked a suggestion question")
+    # Show a button to restart the conversation and clear the history
+    st.button(
+        "Recommencer la conversation",
+        icon=":material/refresh:",
+        on_click=clear_conversation,
+        key="restart_button",
+    )
+
+    # Display chat messages from history as speech bubbles.
+    for index, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
-            st.write(message["content"])
-    
-    # If last message is not from assistant, generate a new response
-    if st.session_state.messages[-1]["role"] != "assistant":
-        with st.chat_message("assistant"):
-            with st.spinner("En réflexion..."):
-                response = generate_response(user_query, vector_db)
-                st.write(response)
+            st.markdown(message["content"])
 
-                # Add the response to the chat history
-                message = {"role": "assistant", "content": response}
-                st.session_state.messages.append(message)
+            if message["role"] == "assistant":
+                # Show feedback controls (copy, thumbs up/down, report)
+                show_feedback_controls(index, message["content"])
+
+    # When the user posts a message...
+    if user_message:
+        logger.info(f"User asked: {user_message}")
+        # Streamlit's Markdown engine interprets "$" as LaTeX code (used to
+        # display math). The line below fixes it.
+        user_message = user_message.replace("$", r"\$")
+
+        # Display message as a speech bubble.
+        with st.chat_message("user"):
+            st.text(user_message)
+            # Add messages to chat history.
+            st.session_state.messages.append({"role": "user", "content": user_message})
+
+        # Display assistant response as a speech bubble.
+        with st.chat_message("assistant"):
+            with st.spinner("En recherche de contexte..."):
+                # Concatenate all user questions from the chat history
+                # to allow the model to retrieve relevant chunks based on
+                # the entire conversation, not just the last question.
+                user_queries = format_user_queries(st.session_state.messages)
+                # Search for relevant context in the vector database.
+                context = search_similarity_in_database(
+                    vector_db=vector_db,
+                    user_query=user_queries,
+                    provider_embeddings_name=provider_embeddings_name,
+                    embedding_model=embeddings_model_name,
+                    logger=logger,
+                )
+
+            with st.spinner("En réflexion..."):
+                # Generate the LLM response based on the user question
+                # and retrieved context.
+                response, input_tokens, output_tokens = generate_response(
+                    user_message,
+                    context,
+                    model_name,
+                    provider_llm_name,
+                    prompt_path,
+                    student_level,
+                    course_levels,
+                )
+                # Simulate streaming the response token by token for a typing effect.
+                rep_stream = stream_text(response)
+
+            # Stream the LLM response.
+            response = st.write_stream(rep_stream)
+            # Add the assistant response to the chat history.
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            # Add token usage for this interaction to the session state total
+            st.session_state.token_usage["input_tokens"] += input_tokens
+            st.session_state.token_usage["output_tokens"] += output_tokens
+            send_telemetry()
 
 
 def main():
+    """Run the BioPyAssistant Streamlit app."""
+    # Load environment variables
+    load_dotenv()
+    # Initialize settings from `config_app.toml`
+    settings = Settings()
+    # Configure logger
+    logger = create_logger(settings.log_path, ui_logger=True)
+    # Display welcome message in logs only on the first run of the app
+    if "welcome_logged" not in st.session_state:
+        logger.info(f"👋 Welcome to BioPyAssistant v{settings.app_version}!")
+        logger.info(f"{settings.app_description}\n")
+        st.session_state["welcome_logged"] = True
     # Set the page configuration
-    st.set_page_config(page_title="BioPyAssistant", page_icon="data/logo_round.webp")
-
+    st.set_page_config(
+        page_title=settings.app_name, page_icon="data/img/logo_round.webp"
+    )
+    # Apply the css style
+    apply_custom_css(settings.css_path)
     # Create the header
-    create_header()
-    
-    # Create a sidebar and get the user inputs
-    create_sidebar()
-
-    # Load the vector database
-    vector_db = load_database(CHROMA_PATH)[0]
-
+    create_header(settings.app_name)
+    # Create footer
+    create_footer()
+    # Create a sidebar and get the student level infos
+    course_level_infos = settings.course_levels
+    student_level = create_sidebar(settings.course_levels, logger=logger)
+    # Get the chapters relevant to the selected level
+    # to filter the vector database search
+    level_relevant_chapters = {}
+    prompt_path = None
+    if student_level:
+        level_relevant_chapters = course_level_infos[student_level].chapters
+        prompt_path = course_level_infos[student_level].prompt_path
+    # Load the vector database once
+    vector_db = get_vector_db(
+        vector_db_path=settings.llm.vector_database_path,
+        embeddings_model_name=settings.llm.embeddings_model_name,
+        provider_embeddings_name=settings.llm.provider_embeddings_name,
+        _logger=logger,
+    )
     # Chat with the bot
-    chat_with_bot(vector_db)
+    chat_with_bot(
+        vector_db=vector_db,
+        embeddings_model_name=settings.llm.embeddings_model_name,
+        provider_embeddings_name=settings.llm.provider_embeddings_name,
+        course_levels=level_relevant_chapters,
+        student_level=student_level,
+        model_name=settings.llm.llm_model_name,
+        provider_llm_name=settings.llm.provider_llm_name,
+        prompt_path=prompt_path,
+        logger=logger,
+    )
 
 
-# MAIN PROGRAM
 if __name__ == "__main__":
     main()

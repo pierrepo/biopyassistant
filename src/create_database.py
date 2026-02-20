@@ -176,26 +176,14 @@ def load_documents(
     logger.info("Converting Markdown file to Document...")
     for chapter in chapters:
         # Get the processed Markdown file path
-        processed_path = chapter.get("processed_path")
-        # Check if the processed file path is defined for the chapter
-        if not processed_path:
-            logger.warning(
-                f"No processed_path defined for chapter id={chapter.get('id')} "
-                f"title={chapter.get('title')}"
-            )
-            continue
+        processed_file_path = chapter.processed_file_path
 
-        processed_path = Path(processed_path)
-        # Check if the processed Markdown file exists
-        if not processed_path.exists():
-            logger.warning(f"Processed Markdown file not found: {processed_path}")
-            continue
         # Load the processed Markdown file as a Document
-        loader = TextLoader(processed_path)
+        loader = TextLoader(processed_file_path)
         doc = loader.load()
         documents.extend(doc)
         logger.debug(
-            f"Converted {processed_path} to Document with "
+            f"Converted {processed_file_path} to Document with "
             f"{len(doc[0].page_content)} characters."
         )
 

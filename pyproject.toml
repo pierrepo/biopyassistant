@@ -13,7 +13,7 @@ dependencies = [
     "langchain",
     "langchain-openai",
     "langchain-chroma",
-    "langchain-core",
+    "langchain-core>=1.2.11",
     "langchain-community",
     "langchain-text-splitters",
     "loguru",
@@ -22,10 +22,21 @@ dependencies = [
     "htbuilder>=0.9.0",
     "pydantic-settings>=2.12.0",
     "pyperclip>=1.11.0",
+    "pillow>=12.1.1",
+    "protobuf>=6.33.5",
 ]
 
 [dependency-groups]
 dev = [
-    "prek>=0.3.0",
-    "ruff>=0.14.14",
+    "bandit>=1.9.3",
+    "jupyterlab>=4.4.9",
+    "matplotlib>=3.10.1",
+    "plotly>=6.0.0",
+    "pre-commit>=4.5.1",
+    "prek>=0.3.2",
+    "pysankeybeta>=1.4.2",
+    "pytest>=9.0.2",
+    "ruff>=0.15.1",
+    "upsetplot>=0.9.0",
+    "watermark>=2.5.0",
 ]

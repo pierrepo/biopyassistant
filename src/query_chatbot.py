@@ -68,7 +68,8 @@ Example:
         --level "beginner" --model "gpt-4o" \
         --course-yaml "data/chapters_and_levels.yaml" \
         --provider-llm "openai" --db-path "chroma_db" \
-        --provider-emb "openai" --embedding-model "text-embedding-3-large"
+        --provider-emb "openai" --embedding-model "text-embedding-3-large" \
+        --include-metadata
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
 beginner user in the Chroma database located at "data/chroma_db"
@@ -77,6 +78,7 @@ The answer will be generated using the "gpt-4o" model from the "openai" provider
 and the response will include metadata from the relevant documents.
 """
 
+import operator
 import os
 import secrets
 from datetime import datetime
@@ -93,9 +95,11 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from pydantic import ValidationError
 
 from create_database import create_embeddings_function
 from logger import create_logger
+from models.course import CourseLevel
 
 MSGS_QUERY_NOT_RELATED = [
     (
@@ -106,18 +110,18 @@ MSGS_QUERY_NOT_RELATED = [
     ),
     (
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
-        "Je ne suis pas en mesure de répondre à cette question."
+        "Je ne suis pas en measure de répondre à cette question."
     ),
     (
         "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
-        "pas être liée à la programmation Python. Si tu as des questions sur Python, "
+        "pas être liée à la programmation Python. Si tu as des questions sure Python, "
         "n'hésite pas à me les poser, je serai heureux de t'aider !"
     ),
 ]
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
         "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce cours."
+        "dans ce course."
     ),
     (
         "Cette notion n'est pas encore abordée à votre niveau actuel "
@@ -159,33 +163,48 @@ def get_level_infos(
         with course_yaml.open("r", encoding="utf-8") as f:
             course_data = yaml.safe_load(f) or {}
 
-        levels = course_data.get("levels", [])
-        if not levels:
-            logger.warning("No levels defined in YAML file.")
-            return {}
-
-        level_infos = {}
-        for level in levels:
-            name = level.get("name")
-            if not name:
-                logger.warning("Level without a name found, skipping.")
-                continue
-
-            level_infos[name] = {
-                "name": name,
-                "display_name": level.get("display_name", ""),
-                "comment": level.get("comment", ""),
-                "prompt_path": Path(level.get("prompt_path", "")),
-                "chapters": [str(ch) for ch in level.get("chapters", [])],
-            }
-        return level_infos
-
     except FileNotFoundError:
         logger.error(f"YAML file not found: {course_yaml}")
         return {}
     except yaml.YAMLError as e:
         logger.error(f"Error parsing YAML file: {e}")
         return {}
+
+    levels = course_data.get("levels", [])
+    if not levels:
+        logger.warning("No levels defined in YAML file.")
+        return {}
+
+    level_infos = {}
+    for level in levels:
+        name = level.get("name")
+        if not name:
+            logger.warning("Level without a name found, skipping.")
+            continue
+        # Construct the level info dictionary
+        try:
+            level_info = {
+                "name": name,
+                "display_name": level.get("display_name"),
+                "comment": level.get("comment"),
+                "prompt_path": Path(level.get("prompt_path")),
+                "chapters": [str(ch) for ch in level.get("chapters")],
+            }
+        except KeyError as exc:
+            logger.warning(
+                f"Level '{name}' is missing required field {exc!s}, skipping."
+            )
+            continue
+        # Validate the level info using the CourseLevel Pydantic model
+        try:
+            validated_level = CourseLevel.model_validate(level_info)
+            level_infos[name] = validated_level
+        except ValidationError as exc:
+            logger.warning(
+                f"Level '{name}' has invalid field value: {exc!s}, skipping."
+            )
+            continue
+    return level_infos
 
 
 def get_user_level_data(
@@ -227,8 +246,8 @@ def get_user_level_data(
             f"Available levels: {available_levels}. Exiting."
         )
         raise SystemExit(1)
-    chapters = user_info["chapters"]
-    prompt_path = user_info["prompt_path"]
+    chapters = user_info.chapters
+    prompt_path = user_info.prompt_path
 
     return {"chapters": chapters, "prompt_path": prompt_path}
 
@@ -279,8 +298,10 @@ def load_database(
 def search_similarity_in_database(
     vector_db: Chroma,
     user_query: str,
+    provider_embeddings_name: str,
+    embedding_model: str,
     nb_chunks: int = 3,
-    score_threshold: float = 0.35,
+    score_threshold: float = 0.65,
     logger: "loguru.Logger" = loguru.logger,
 ) -> list[Document]:
     """Search for relevant documents in the database based on the query text.
@@ -304,22 +325,45 @@ def search_similarity_in_database(
         List of relevant documents found in the database.
     """
     logger.info("Searching for relevant documents in the database...")
-    # Define the retriever
-    retriever = vector_db.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={
-            "k": nb_chunks,
-            "score_threshold": score_threshold,
-        },
+    # Embed the user query
+    logger.info("Computing embedding for user question with")
+    logger.info(f"provider: {provider_embeddings_name}, model: {embedding_model}")
+    query_embedding = vector_db.embeddings.embed_query(user_query)
+    logger.info(f"Got embedding with dimension: {len(query_embedding)}")
+    # Perform a similarity search in the database
+    # To find most similar chunks based on the user query
+    similar_chunks = vector_db.similarity_search_by_vector_with_relevance_scores(
+        query_embedding
     )
-    # Perform a similarity search
-    relevant_chunks = retriever.invoke(user_query)
+    # Rank the similar chunks based on their distance scores
+    # The lower the distance score, the more similar the chunk is to the query
+    similar_chunks.sort(key=operator.itemgetter(1))
+
+    # Filter the results based on the score threshold and keep the top nb_chunks
+    relevant_chunks_with_scores = []
+    # While we have not reached the desired number of chunks
+    # and there are still similar chunks to evaluate
+    while len(relevant_chunks_with_scores) < nb_chunks and similar_chunks:
+        # Get the next chunk and its score
+        chunk, score = similar_chunks.pop(0)
+        # Add the chunk if its score is below the threshold
+        if score <= score_threshold:
+            relevant_chunks_with_scores.append((chunk, score))
 
     # Display information about the relevant chunks
-    for chunk in relevant_chunks:
-        logger.debug(f"Chunk ID: {chunk.id}")
-        logger.debug(f"Chapter name: {chunk.metadata['chapter_name']}")
-        logger.debug(f"URL: {chunk.metadata['url']}")
+    for chunk, score in relevant_chunks_with_scores:
+        logger.info(f"Chunk ID: {chunk.id}")
+        logger.info(f"Distance score: {score:.3f}")
+        logger.info(f"Chapter name: {chunk.metadata['chapter_name']}")
+        if "section_name" in chunk.metadata:
+            logger.info(f"Section name: {chunk.metadata['section_name']}")
+            if "subsection_name" in chunk.metadata:
+                logger.info(f"Subsection name: {chunk.metadata['subsection_name']}")
+                if "subsubsection_name" in chunk.metadata:
+                    logger.info(
+                        f"Subsubsection name: {chunk.metadata['subsubsection_name']}"
+                    )
+        logger.info(f"URL: {chunk.metadata['url']}")
         logger.debug(f"Number of tokens: {chunk.metadata['nb_tokens']}")
         logger.debug("Chunk content:")
         for line in chunk.page_content.splitlines():
@@ -328,9 +372,10 @@ def search_similarity_in_database(
                 logger.debug(f"{sentence}")
         logger.debug("--------------------------------------")
     logger.success(
-        f"Retrieval completed with {len(relevant_chunks)} relevant chunks found."
+        f"Retrieval completed with {len(relevant_chunks_with_scores)} "
+        f"relevant chunks found."
     )
-    return relevant_chunks
+    return [chunk for chunk, _score in relevant_chunks_with_scores]
 
 
 def calculate_nb_tokens(text: str) -> int:
@@ -362,7 +407,7 @@ def generate_answer(
     level_relevant_chapter_ids: list[str],
     model_name: str,
     prompt_path: Path,
-    logger: "loguru.Logger",
+    logger: "loguru.Logger" = loguru.logger,
 ) -> tuple[str, int, int]:
     """Generate an answer to the user query.
 
@@ -401,7 +446,7 @@ def generate_answer(
     context = "\n\n".join(
         [
             f"Document {chunk.id} : {chunk.page_content}"
-            for i, chunk in enumerate(relevant_chunks)
+            for _index, chunk in enumerate(relevant_chunks)
         ]
     )
     # Load environment variables
@@ -431,21 +476,23 @@ def generate_answer(
         "chat_history": chat_history,
     }
     # Generate the answer
-    answer = answer_chain.invoke(input_data)
-    logger.debug(f"Question: {query}")
+    logger.info("Generating answer with")
+    logger.info(f"LLM model: {model_name} from {provider_llm_name}")
     logger.debug(f"Prompt path: {prompt_path}")
-    logger.debug(f"LLM model used: {model_name} from {provider_llm_name}")
-    logger.debug("Answer generated by the LLM:")
+    answer = answer_chain.invoke(input_data)
+    logger.success("Answer generated by the LLM")
     for line in answer.splitlines():
         for sentence in line.split(". "):
             logger.debug(f"{sentence}")
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
+    logger.info(f"Prompt tokens: {nb_tokens_prompt}")
     # Calculate the number of tokens in the answer
     nb_tokens_answer = calculate_nb_tokens(answer)
+    logger.info(f"Answer tokens: {nb_tokens_answer}")
 
-    # Formate the answer if relevant chunks are found but not relevant to the user level
+    # Format the answer if relevant chunks are found but not relevant to the user level
     for chunk in relevant_chunks:
         if chunk.metadata["chapter_id"] not in level_relevant_chapter_ids:
             logger.warning(
@@ -539,8 +586,8 @@ def add_metadata_to_answer(
     sources_list = list(sources_set)  # cast to join into a string
     sources_text = "\n- ".join(sources_list)
     sources_string = (
-        "Pour plus d'informations, je t'invite à consulter les rubriques "
-        "suivantes du [cours en ligne](https://python.sdv.u-paris.fr/) :\n"
+        "Pour plus d'information, je t'invite à consulter les rubriques "
+        "suivantes du [course en ligne](https://python.sdv.u-paris.fr/) :\n"
         f"- {sources_text}"
     )
 
@@ -703,7 +750,7 @@ def interrogate_model(
     vector_db = load_database(database_path, embedding_model, provider_embeddings_name)
     # Search for relevant documents in the database
     relevant_chunks = search_similarity_in_database(
-        vector_db, user_query, logger=logger
+        vector_db, user_query, provider_embeddings_name, embedding_model, logger=logger
     )
 
     # ANSWER GENERATION
