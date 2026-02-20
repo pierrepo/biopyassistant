@@ -646,21 +646,20 @@ def chat_with_bot(
 
         # Display assistant response as a speech bubble.
         with st.chat_message("assistant"):
-            with st.spinner("En recherche de contexte..."):
-                # Concatenate all user questions from the chat history
-                # to allow the model to retrieve relevant chunks based on
-                # the recent conversation, not just the last question.
-                user_queries = format_recent_user_queries(
-                    st.session_state.messages, nb_questions=3, logger=logger
-                )
-                # Search for relevant context in the vector database.
-                context = search_similarity_in_database(
-                    vector_db=vector_db,
-                    user_query=user_queries,
-                    provider_embeddings_name=provider_embeddings_name,
-                    embedding_model=embeddings_model_name,
-                    logger=logger,
-                )
+            # Concatenate all user questions from the chat history
+            # to allow the model to retrieve relevant chunks based on
+            # the recent conversation, not just the last question.
+            user_queries = format_recent_user_queries(
+                st.session_state.messages, nb_questions=3, logger=logger
+            )
+            # Search for relevant context in the vector database.
+            context = search_similarity_in_database(
+                vector_db=vector_db,
+                user_query=user_queries,
+                provider_embeddings_name=provider_embeddings_name,
+                embedding_model=embeddings_model_name,
+                logger=logger,
+            )
 
             with st.spinner("En réflexion..."):
                 # Generate the LLM response based on the user question
