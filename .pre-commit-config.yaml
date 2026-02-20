@@ -53,11 +53,14 @@ repos:
         args: ["--exclude", "tests"]
 
   - repo: https://github.com/crate-ci/typos
-    #  Source code spell checker
+    # Source code spell checker
     rev: v1.43.4
     hooks:
       - id: typos
-        exclude: data/chapters_and_levels.yaml|src/streamlit_app.py
+        exclude: >
+          data/chapters_and_levels.yaml|
+          src/streamlit_app.py|
+          prompt_templates/common.txt
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
