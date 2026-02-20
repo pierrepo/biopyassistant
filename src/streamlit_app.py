@@ -94,6 +94,12 @@ def create_footer() -> None:
     )
 
 
+def on_level_change() -> None:
+    """Handle level selection change: log and reset conversation."""
+    logger.info(f"User selected level: {st.session_state.selected_level}")
+    clear_conversation()
+
+
 def create_sidebar(
     course_levels: dict[str, CourseLevel],
     logger: "loguru.Logger" = loguru.logger,
@@ -134,9 +140,7 @@ def create_sidebar(
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
-            on_change=lambda: logger.info(
-                f"User selected level: {st.session_state.selected_level}"
-            ),
+            on_change=on_level_change,
         )
         st.space(400)
 
