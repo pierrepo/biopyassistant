@@ -94,10 +94,10 @@ def create_footer() -> None:
     )
 
 
-def on_level_change() -> None:
+def on_level_change(logger: "loguru.Logger" = loguru.logger) -> None:
     """Handle level selection change: log and reset conversation."""
-    logger.info(f"User selected level: {st.session_state.selected_level}")
     clear_conversation()
+    logger.info(f"User selected level: {st.session_state.selected_level}")
 
 
 def create_sidebar(
@@ -121,11 +121,16 @@ def create_sidebar(
     with st.sidebar:
         # Institutional logos
         st.logo(
-            "https://u-paris.fr/wp-content/uploads/2022/03/UniversiteParisCite_logo_horizontal_couleur_RVB.png",
+            # Transparent image to preserve spacing
+            "https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png",
             size="large",
+            # Display the University of Paris logo when sidebar is collapsed
             icon_image="https://lvts.fr/wp-content/uploads/2022/03/UniversiteParis_monogramme_couleur_RVB-e1712425218876.png",
         )
-        st.space("large")
+        # Display the University of Paris logo in the sidebar when expanded
+        st.image(
+            "https://u-paris.fr/wp-content/uploads/2022/03/UniversiteParisCite_logo_horizontal_couleur_RVB.png"
+        )
 
         # Student profile
         st.markdown(
@@ -141,8 +146,9 @@ def create_sidebar(
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
             on_change=on_level_change,
+            args=(logger,),
         )
-        st.space(400)
+        st.space(300)
 
         # About section
         st.markdown(
