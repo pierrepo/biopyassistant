@@ -57,6 +57,7 @@ repos:
     rev: v1.43.4
     hooks:
       - id: typos
+        exclude: data/chapters_and_levels.yaml
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
@@ -69,6 +70,7 @@ repos:
     rev: v1.38.0
     hooks:
       - id: yamllint
+        exclude: data/chapters_and_levels.yaml
 
   # Markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli
