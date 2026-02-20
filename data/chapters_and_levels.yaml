@@ -24,12 +24,12 @@ chapters:
     file_name: "03_affichage.md"
 
   - id: "04"
-    title: "Listed"
-    file_name: "04_listed.md"
+    title: "Listes"
+    file_name: "04_listes.md"
 
   - id: "05"
-    title: "Boucles et comparisons"
-    file_name: "05_boucles_comparisons.md"
+    title: "Boucles et comparaisons"
+    file_name: "05_boucles_comparaisons.md"
 
   - id: "06"
     title: "Tests"
@@ -48,24 +48,24 @@ chapters:
     file_name: "09_modules.md"
 
   - id: "10"
-    title: "Functions"
-    file_name: "10_functions.md"
+    title: "Fonctions"
+    file_name: "10_fonctions.md"
 
   - id: "11"
-    title: "Plus sure les chaînes de caractères"
-    file_name: "11_plus_sure_les_chaines_de_characters.md"
+    title: "Plus sur les chaînes de caractères"
+    file_name: "11_plus_sur_les_chaines_de_caracteres.md"
 
   - id: "12"
-    title: "Plus sure les listed"
-    file_name: "12_plus_sure_les_listed.md"
+    title: "Plus sur les listes"
+    file_name: "12_plus_sur_les_listes.md"
 
   - id: "13"
-    title: "Plus sure les functions"
-    file_name: "13_plus_sure_les_functions.md"
+    title: "Plus sur les fonctions"
+    file_name: "13_plus_sur_les_fonctions.md"
 
   - id: "14"
-    title: "Contenders"
-    file_name: "14_contenders.md"
+    title: "Conteneurs"
+    file_name: "14_conteneurs.md"
 
   - id: "15"
     title: "Création de modules"
@@ -100,12 +100,12 @@ chapters:
     file_name: "22_module_pandas.md"
 
   - id: "23"
-    title: "Avoir la classe avec les objects"
-    file_name: "23_avoir_la_classe_avec_les_objects.md"
+    title: "Avoir la classe avec les objets"
+    file_name: "23_avoir_la_classe_avec_les_objets.md"
 
   - id: "24"
-    title: "Avoir plus la classe avec les objects"
-    file_name: "24_avoir_plus_la_classe_avec_les_objects.md"
+    title: "Avoir plus la classe avec les objets"
+    file_name: "24_avoir_plus_la_classe_avec_les_objets.md"
 
   - id: "25"
     title: "Fenêtres graphiques et Tkinter"
@@ -116,11 +116,11 @@ chapters:
     file_name: "26_remarques_complementaires.md"
 
   - id: "27"
-    title: "Mini-projects"
-    file_name: "27_mini_projects.md"
+    title: "Mini-projets"
+    file_name: "27_mini_projets.md"
 
   - id: "A"
-    title: "Quelques formats de données en biologies"
+    title: "Quelques formats de données en biologie"
     file_name: "annexe_A_formats_fichiers.md"
 
   - id: "B"
