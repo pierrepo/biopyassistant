@@ -361,7 +361,11 @@ def stream_text(text: str):
         time.sleep(0.01)
 
 
-def format_user_queries(messages: list[dict[str, str]]) -> str:
+def format_recent_user_queries(
+    messages: list[dict[str, str]],
+    nb_questions: int,
+    logger: "loguru.Logger" = loguru.logger,
+) -> str:
     """
     Concatenate all user questions into a single string.
 
@@ -369,14 +373,26 @@ def format_user_queries(messages: list[dict[str, str]]) -> str:
     ----------
     messages : list[dict[str, str]]
         The chat history, where each message has a "role" and "content".
+    nb_questions : int
+        The number of most recent user questions to include in the concatenated string.
+    logger : loguru.Logger
+        Logger instance for logging the formatted user queries.
 
     Returns
     -------
     str
         A single string containing all user questions, separated by newlines.
     """
-    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
-    return ", ".join(user_questions)
+    user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
+    # Keep only the last nb_questions questions
+    # This allows the model to retrieve relevant chunks
+    # based on the recent conversation, not just the last question.
+    recent_user_messages = user_messages[-nb_questions:]
+    queries = "\n".join(recent_user_messages)
+    logger.debug("Most recent user queries for vector search:")
+    for query in recent_user_messages:
+        logger.debug(f"- {query}")
+    return queries
 
 
 def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
@@ -625,8 +641,10 @@ def chat_with_bot(
             with st.spinner("En recherche de contexte..."):
                 # Concatenate all user questions from the chat history
                 # to allow the model to retrieve relevant chunks based on
-                # the entire conversation, not just the last question.
-                user_queries = format_user_queries(st.session_state.messages)
+                # the recent conversation, not just the last question.
+                user_queries = format_recent_user_queries(
+                    st.session_state.messages, nb_questions=3, logger=logger
+                )
                 # Search for relevant context in the vector database.
                 context = search_similarity_in_database(
                     vector_db=vector_db,
