@@ -15,6 +15,7 @@ from langchain_community.vectorstores import Chroma
 from loguru import logger
 
 from logger import create_logger
+from messages import SUGGESTIONS
 from models.app_settings import Settings
 from models.course import CourseLevel
 from query_chatbot import (
@@ -24,19 +25,6 @@ from query_chatbot import (
     load_database,
     search_similarity_in_database,
 )
-
-SUGGESTIONS = {
-    ":green[:material/loop:] Comment écrire une boucle ?": (
-        "Comment écrire une boucle ?"
-    ),
-    ":blue[:material/list_alt:] Quelle est la différence entre une liste et un set ?": (
-        "Quelle est la différence entre une liste et un set ?"
-    ),
-    ":orange[:material/decimal_increase:] "
-    "Comment afficher un float avec 2 chiffres avec la virgule ?": (
-        "Comment afficher un float avec 2 chiffres avec la virgule ?"
-    ),
-}
 
 
 def apply_custom_css(css_file: Path) -> None:
