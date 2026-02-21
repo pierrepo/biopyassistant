@@ -20,7 +20,6 @@ This conversationnal agent (chatbot) is designed to help biology students learn 
 
 The chatbot uses the Retrieval-Augmented Generation (RAG) methodology to build its responses from this [Python course](https://python.sdv.u-paris.fr/) (Markdown files available [here](https://github.com/bioinfo-prog/cours-python)).
 
-
 ## Setup
 
 To install BioPyAssistant and its dependencies, you need to perform the following steps:
@@ -61,7 +60,6 @@ uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
 
 In this step, Python comments (`#`) are slighty changed to avoid confusion with Markdown headers (`#`, `##`...) and headers are numbered (from `## Title` to `## 1.1 Title`). Processed Markdown files are stored in `data/course_processed`
 
-
 ### Add OpenAI and OpenRouter API key
 
 Create an .env file with a valid [OpenAI](https://platform.openai.com/docs/api-reference/authentication) and [OpenRouter](https://openrouter.ai/docs/api/reference/authentication) API key:
@@ -70,8 +68,8 @@ Create an .env file with a valid [OpenAI](https://platform.openai.com/docs/api-r
 OPENAI_API_KEY=<your-openai-api-key>
 OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```
-> Remark: This .env file is ignored by git.
 
+> Remark: This .env file is ignored by git.
 
 ### Create the vector database
 
@@ -86,9 +84,7 @@ This command will create a Chroma vector database from the processed Markdown fi
 
 > Remark: The vector database is saved on disk.
 
-
 ## Usage (command line interface)
-
 
 ```bash
 uv run python src/query_chatbot.py --query "Your question here" \
@@ -132,15 +128,10 @@ For more information, you can refer to the following sources:
 - Chapter ... (Link to the source : ...)
 ```
 
-
 ## Usage (web interface)
-
 
 ```bash
 uv run streamlit run src/streamlit_app.py
 ```
 
 This will run the Streamlit app in your web browser.
-
-
-
