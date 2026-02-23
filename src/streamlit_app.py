@@ -146,6 +146,8 @@ def create_sidebar(
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
+            # Select the first level by default
+            default=next(iter(course_levels.keys())),
             on_change=on_level_change,
             args=(logger,),
         )
