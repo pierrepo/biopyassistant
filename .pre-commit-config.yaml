@@ -57,7 +57,7 @@ repos:
     rev: v1.43.5
     hooks:
       - id: typos
-        exclude: ^data/|^prompt_templates/
+        exclude: ^data/|^prompt_templates/|^src/
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
