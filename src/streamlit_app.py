@@ -5,6 +5,8 @@ import sys
 import time
 from pathlib import Path
 
+from langchain_core.documents import Document
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import loguru
@@ -20,7 +22,6 @@ from models.app_settings import Settings
 from models.course import CourseLevel
 from query_chatbot import (
     MSGS_QUERY_NOT_RELATED,
-    add_metadata_to_answer,
     generate_answer,
     load_database,
     search_similarity_in_database,
@@ -64,7 +65,7 @@ def create_header(app_name: str) -> None:
     st.markdown(
         """
         <div class="app-subtitle">
-            BioPyAssistant est un assistant pédagogique pour le course de
+            BioPyAssistant est un assistant pédagogique pour le cours de
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
                 programmation Python
             </a>
@@ -276,6 +277,55 @@ def transform_messages(messages: list[dict[str, str]]) -> str:
     return formatted_history
 
 
+def extract_sources(
+    relevant_chunks: list[Document],
+) -> list[dict[str, str]]:
+    """Extract unique source labels and URLs from retrieved document chunks.
+
+    Parameters
+    ----------
+    relevant_chunks : list[Document]
+        Retrieved document chunks containing metadata.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        Unique sources formatted as dictionaries with "label" and "url".
+    """
+    # Map each unique label to its corresponding URL
+    unique_sources = {}
+
+    for document in relevant_chunks:
+        # Extract metadata fields
+        metadata = document.metadata
+        file_name = metadata["file_name"]
+        chapter_name = metadata["chapter_name"]
+        section_name = metadata.get("section_name", "")
+        subsection_name = metadata.get("subsection_name", "")
+        subsubsection_name = metadata.get("subsubsection_name", "")
+        section_url = metadata.get("url", "")
+        # Select the most specific available section level
+        detailed_section = subsubsection_name or subsection_name or section_name
+        # Skip entries without a valid URL
+        if not section_url:
+            continue
+        # Remove anchor to obtain the base chapter URL if needed
+        chapter_url = section_url.split("#", maxsplit=1)[0]
+        # Build the display label depending on file type
+        if file_name.startswith("annexe"):
+            source_label = f"Annexe **{chapter_name}**"
+        else:
+            source_label = f"Chapitre **{chapter_name}**"
+        # Append section detail if available
+        if detailed_section:
+            source_label += f", rubrique **{detailed_section}**"
+        # Store unique label → URL mapping
+        unique_sources[source_label] = section_url or chapter_url
+
+    # Convert mapping into a list of dictionaries
+    return [{"label": label, "url": url} for label, url in unique_sources.items()]
+
+
 def generate_response(
     user_query: str,
     context: str,
@@ -341,10 +391,8 @@ def generate_response(
             course_level_infos=course_level_infos,
             logger=logger,
         )
-        # Add metadata to the answer
-        final_answer = add_metadata_to_answer(answer, context, iu=True)
 
-        return final_answer, input_tokens, output_tokens
+        return answer, input_tokens, output_tokens
 
 
 def stream_text(text: str):
@@ -533,6 +581,33 @@ def send_telemetry(
     logger.debug("-----------------")
 
 
+def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
+    """Display clickable source buttons."""
+    st.markdown("Pour plus d'information, consultez les rubriques du cours :")
+
+    for source in sources:
+        st.link_button(
+            label=source["label"],
+            url=source["url"],
+            type="secondary",
+            icon=":material/open_in_new:",
+        )
+
+
+def _render_previous_messages() -> None:
+    """Render existing chat history."""
+    for index, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+            if message["role"] == "assistant":
+                # Add buttons for sources if they exist in the message
+                if message.get("sources"):
+                    _render_sources_buttons(message["sources"])
+                # Show feedback controls (copy, thumbs up/down, report)
+                show_feedback_controls(index, message["content"])
+
+
 def chat_with_bot(
     vector_db: Chroma,
     embeddings_model_name: str,
@@ -625,13 +700,7 @@ def chat_with_bot(
     )
 
     # Display chat messages from history as speech bubbles.
-    for index, message in enumerate(st.session_state.messages):
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-            if message["role"] == "assistant":
-                # Show feedback controls (copy, thumbs up/down, report)
-                show_feedback_controls(index, message["content"])
+    _render_previous_messages()
 
     # When the user posts a message...
     if user_message:
@@ -681,8 +750,17 @@ def chat_with_bot(
 
             # Stream the LLM response.
             response = st.write_stream(rep_stream)
+            # Extract the sources from the retrieved context
+            sources = extract_sources(context)
+            # To display them as buttons
+            if response and sources:
+                _render_sources_buttons(sources)
             # Add the assistant response to the chat history.
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append(
+                {"role": "assistant", "content": response, "sources": sources}
+            )
+            # Show feedback controls for the new assistant message
+            show_feedback_controls(len(st.session_state.messages) - 1, response)
             # Add token usage for this interaction to the session state total
             st.session_state.token_usage["input_tokens"] += input_tokens
             st.session_state.token_usage["output_tokens"] += output_tokens
