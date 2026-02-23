@@ -95,6 +95,7 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 from pydantic import ValidationError
 
 from create_database import create_embeddings_function
@@ -424,8 +425,9 @@ def generate_answer(
     # Doc: https://openrouter.ai/docs/guides/community/langchain
     elif provider_llm_name == "openrouter":
         api_key = os.getenv("OPENROUTER_API_KEY")
-        chat_model = ChatOpenAI(
-            model=model_name, api_key=api_key, base_url="https://openrouter.ai/api/v1"
+        chat_model = ChatOpenRouter(
+            model=model_name,
+            api_key=api_key,
         )
     # Retrieve the prompt template
     prompt_template_content = Path(prompt_path).read_text(encoding="utf-8")
