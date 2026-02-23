@@ -175,7 +175,7 @@ def create_sidebar(
                     LLM@UPCité
                 </a>
                 <br><br>
-                Code source disponible sure GitHub<br>
+                Code source disponible sur GitHub<br>
                 sous licence BSD 3-clause.
             </div>
             """,
@@ -196,13 +196,15 @@ def create_sidebar(
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsible")
-def show_disclaimer_dialog() -> (
-    None
-):  # TODO: add a link to the charte d'utilisation when it's ready
-    """Display a dialog outlining responsible usage guidelines for the application."""
+@st.dialog("💡 Guide d'utilisation responsable")
+def show_disclaimer_dialog() -> None:
+    """Display a dialog outlining responsible usage guidelines for the application.
+
+    # TODO: add a link to the charte d'utilisation when it's ready
+
+    """
     st.caption("""
-    ### 🧠 Gardez la main sure votre réflexion
+    ### 🧠 Gardez la main sur votre réflexion
     L'IA est un assistant, pas un expert infallible.
     Le **copier-coller direct est déconseillé** :
     utilisez les réponses comme une base de travail que vous devez valider et enrichir
@@ -233,7 +235,7 @@ def display_welcome_chat() -> None:
 
     # Display welcome container with chat input and suggestions
     with st.container():
-        st.chat_input("Pose moi une question sure le course...", key="initial_question")
+        st.chat_input("Pose moi une question le cours...", key="initial_question")
         st.pills(
             label="Examples",
             label_visibility="collapsed",

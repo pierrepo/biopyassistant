@@ -177,8 +177,10 @@ def get_level_infos(
 
 
 def get_user_level_data(
-    user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> dict[str, CourseLevel]:
+    user_level: str,
+    level_infos: dict[str, CourseLevel],
+    logger: "loguru.Logger" = loguru.logger,
+) -> CourseLevel:
     """
     Retrieve user level information from a YAML file based on the specified user level.
 
@@ -186,40 +188,30 @@ def get_user_level_data(
     ----------
     user_level : str
         The identifier of the user's level (e.g., 'beginner').
-    course_yaml : Path
-        Path to the YAML file defining course levels.
+    level_infos : dict[str, CourseLevel]
+        Dictionary mapping level name to CourseLevel objects.
     logger : loguru.Logger
         Logger for messages.
 
     Returns
     -------
-    dict[str, CourseLevel]
-        Dictionary containing:
-        - "name": str, the internal name of the level
-        - "display_name": str, the human-readable name of the level
-        - "comment": str, the description of the level
-        - "prompt_path": Path, the path to the prompt template for the level
-        - "chapters": list[str], the list of chapter IDs relevant to the level
+    CourseLevel
+        The CourseLevel object containing information about the specified user level.
 
     Raises
     ------
     SystemExit
         Exits with code 1 if the specified user level is not found in the YAML file.
     """
-    # Load all levels
-    level_infos = get_level_infos(course_yaml, logger)
-
     # Retrieve the specific user level info
     user_info = level_infos.get(user_level)
     if not user_info:
         available_levels = ", ".join(level_infos.keys()) or "None"
-        logger.error(
-            f"Failed to retrieve user level '{user_level}' from YAML. "
-            f"Available levels: {available_levels}. Exiting."
-        )
+        logger.error(f"Failed to retrieve user level '{user_level}' from YAML.")
+        logger.error(f"Available levels: {available_levels}. Exiting.")
         raise SystemExit(1)
 
-    return level_infos
+    return user_info
 
 
 def load_database(
@@ -460,7 +452,6 @@ def generate_answer(
     # Fill the prompt with the input data
     filled_prompt = answer_prompt.format(**input_data)
     nb_tokens_prompt = calculate_nb_tokens(filled_prompt)
-    print(filled_prompt)
     logger.info(f"Prompt tokens: {nb_tokens_prompt}")
     # Calculate the number of tokens in the answer
     nb_tokens_answer = calculate_nb_tokens(answer)
@@ -713,7 +704,9 @@ def interrogate_model(
 
     # USER LEVEL INFORMATION RETRIEVAL
     # Retrieve the user level information from the YAML file
-    user_level_infos = get_user_level_data(user_level, course_yaml, logger)
+    # Load all levels
+    level_infos = get_level_infos(course_yaml, logger)
+    user_level_infos = get_user_level_data(user_level, level_infos, logger)
 
     # CONTEXT RETRIEVAL
     # Load the vector database
@@ -744,7 +737,7 @@ def interrogate_model(
             chat_history=None,
             relevant_chunks=relevant_chunks,
             level_relevant_chapter_ids=user_level_infos.chapters,
-            course_level_infos=user_level_infos,
+            course_level_infos=level_infos,
             model_name=model_name,
             provider_llm_name=provider_llm_name,
             prompt_path=user_level_infos.prompt_path,

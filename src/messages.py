@@ -9,11 +9,11 @@ MSGS_QUERY_NOT_RELATED = [
     ),
     (
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
-        "Je ne suis pas en measure de répondre à cette question."
+        "Je ne suis pas en mesure de répondre à cette question."
     ),
     (
         "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
-        "pas être liée à la programmation Python. Si tu as des questions sure Python, "
+        "pas être liée à la programmation Python. Si tu as des questions sur Python, "
         "n'hésite pas à me les poser, je serai heureux de t'aider !"
     ),
 ]
@@ -21,7 +21,7 @@ MSGS_QUERY_NOT_RELATED = [
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
         "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce course."
+        "dans ce cours."
     ),
     (
         "Cette notion n'est pas encore abordée à votre niveau actuel "
