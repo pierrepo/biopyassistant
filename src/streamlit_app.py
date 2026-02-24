@@ -5,6 +5,8 @@ import sys
 import time
 from pathlib import Path
 
+from langchain_core.documents import Document
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import loguru
@@ -15,28 +17,15 @@ from langchain_community.vectorstores import Chroma
 from loguru import logger
 
 from logger import create_logger
+from messages import SUGGESTIONS
 from models.app_settings import Settings
 from models.course import CourseLevel
 from query_chatbot import (
     MSGS_QUERY_NOT_RELATED,
-    add_metadata_to_answer,
     generate_answer,
     load_database,
     search_similarity_in_database,
 )
-
-SUGGESTIONS = {
-    ":green[:material/loop:] Comment écrire une boucle ?": (
-        "Comment écrire une boucle ?"
-    ),
-    ":blue[:material/list_alt:] Quelle est la différence entre une liste et un set ?": (
-        "Quelle est la différence entre une liste et un set ?"
-    ),
-    ":orange[:material/decimal_increase:] "
-    "Comment afficher un float avec 2 chiffres avec la virgule ?": (
-        "Comment afficher un float avec 2 chiffres avec la virgule ?"
-    ),
-}
 
 
 def apply_custom_css(css_file: Path) -> None:
@@ -61,10 +50,9 @@ def get_vector_db(
     -------
     Chroma: The vector database containing the embedded course.
     """
-    vector_db = load_database(
+    return load_database(
         vector_db_path, embeddings_model_name, provider_embeddings_name, _logger
     )
-    return vector_db
 
 
 def create_header(app_name: str) -> None:
@@ -77,7 +65,7 @@ def create_header(app_name: str) -> None:
     st.markdown(
         """
         <div class="app-subtitle">
-            BioPyAssistant est un assistant pédagogique pour le course de
+            BioPyAssistant est un assistant pédagogique pour le cours de
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
                 programmation Python
             </a>
@@ -107,6 +95,12 @@ def create_footer() -> None:
     )
 
 
+def on_level_change(logger: "loguru.Logger" = loguru.logger) -> None:
+    """Handle level selection change: log and reset conversation."""
+    clear_conversation(logger)
+    logger.info(f"User selected level: {st.session_state.selected_level}")
+
+
 def create_sidebar(
     course_levels: dict[str, CourseLevel],
     logger: "loguru.Logger" = loguru.logger,
@@ -128,11 +122,14 @@ def create_sidebar(
     with st.sidebar:
         # Institutional logos
         st.logo(
-            "https://u-paris.fr/wp-content/uploads/2022/03/UniversiteParisCite_logo_horizontal_couleur_RVB.png",
+            # Transparent image to preserve spacing
+            "assets/1x1.png",
             size="large",
-            icon_image="https://lvts.fr/wp-content/uploads/2022/03/UniversiteParis_monogramme_couleur_RVB-e1712425218876.png",
+            # Display the University of Paris logo when sidebar is collapsed
+            icon_image="assets/UniversiteParis_monogramme_couleur_RVB.png",
         )
-        st.space("large")
+        # Display the University of Paris logo in the sidebar when expanded
+        st.image("assets/UniversiteParisCite_logo_horizontal_couleur_RVB.png")
 
         # Student profile
         st.markdown(
@@ -147,8 +144,12 @@ def create_sidebar(
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
+            # Select the first level by default
+            default=next(iter(course_levels.keys())),
+            on_change=on_level_change,
+            args=(logger,),
         )
-        st.space(400)
+        st.space(300)
 
         # About section
         st.markdown(
@@ -169,14 +170,13 @@ def create_sidebar(
                     </a>
                 </strong>
                 <br>
-                dans le cadre du project pédagogique<br>
-                <em>
-                    <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
-                    target="_blank">
-                        LLM@UPCité
-                    </a>
-                </em>.<br><br>
-                Code source disponible sure GitHub<br>
+                dans le cadre du projet pédagogique
+                <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
+                target="_blank">
+                    LLM@UPCité
+                </a>
+                <br><br>
+                Code source disponible sur GitHub<br>
                 sous licence BSD 3-clause.
             </div>
             """,
@@ -190,10 +190,6 @@ def create_sidebar(
                     <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
                          alt="GitHub">
                 </a>
-                <a href="https://python.sdv.u-paris.fr/" target="_blank">
-                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
-                         alt="Python">
-                </a>
             </div>
             """,
             unsafe_allow_html=True,
@@ -201,11 +197,15 @@ def create_sidebar(
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsible")
+@st.dialog("💡 Guide d'utilisation responsable")
 def show_disclaimer_dialog() -> None:
-    """Display a dialog outlining responsible usage guidelines for the application."""
+    """Display a dialog outlining responsible usage guidelines for the application.
+
+    # TODO: add a link to the charte d'utilisation when it's ready
+
+    """
     st.caption("""
-    ### 🧠 Gardez la main sure votre réflexion
+    ### 🧠 Gardez la main sur votre réflexion
     L'IA est un assistant, pas un expert infallible.
     Le **copier-coller direct est déconseillé** :
     utilisez les réponses comme une base de travail que vous devez valider et enrichir
@@ -221,7 +221,7 @@ def show_disclaimer_dialog() -> None:
     """)
 
 
-def clear_conversation() -> None:
+def clear_conversation(logger: "loguru.Logger" = loguru.logger) -> None:
     """Clear the conversation history and reset session state."""
     logger.info("User restarted the conversation.")
     st.session_state.messages = []
@@ -236,7 +236,7 @@ def display_welcome_chat() -> None:
 
     # Display welcome container with chat input and suggestions
     with st.container():
-        st.chat_input("Pose moi une question sure le course...", key="initial_question")
+        st.chat_input("Posez-moi une question sur le cours...", key="initial_question")
         st.pills(
             label="Examples",
             label_visibility="collapsed",
@@ -277,6 +277,53 @@ def transform_messages(messages: list[dict[str, str]]) -> str:
     return formatted_history
 
 
+def extract_sources(
+    relevant_chunks: list[Document],
+) -> list[dict[str, str]]:
+    """Extract unique source labels and URLs from retrieved document chunks.
+
+    Parameters
+    ----------
+    relevant_chunks : list[Document]
+        Retrieved document chunks containing metadata.
+
+    Returns
+    -------
+    list[dict[str, str]]
+        Unique sources formatted as dictionaries with "label" and "url".
+    """
+    # Map each unique label to its corresponding URL
+    unique_sources = {}
+
+    for document in relevant_chunks:
+        # Extract metadata fields
+        metadata = document.metadata
+        file_name = metadata["file_name"]
+        chapter_name = metadata["chapter_name"]
+        section_name = metadata.get("section_name", "")
+        subsection_name = metadata.get("subsection_name", "")
+        subsubsection_name = metadata.get("subsubsection_name", "")
+        section_url = metadata.get("url", "")
+        # Select the most specific available section level
+        detailed_section = subsubsection_name or subsection_name or section_name
+        # Skip entries without a valid URL
+        if not section_url:
+            continue
+        # Build the display label depending on file type
+        if file_name.startswith("annexe"):
+            source_label = f"Annexe **{chapter_name}**"
+        else:
+            source_label = f"Chapitre **{chapter_name}**"
+        # Append section detail if available
+        if detailed_section:
+            source_label += f", rubrique **{detailed_section}**"
+        # Store unique label → URL mapping
+        unique_sources[source_label] = section_url
+
+    # Convert mapping into a list of dictionaries
+    return [{"label": label, "url": url} for label, url in unique_sources.items()]
+
+
 def generate_response(
     user_query: str,
     context: str,
@@ -284,7 +331,8 @@ def generate_response(
     provider_llm_name: str,
     prompt_path: str,
     student_level: str | None,
-    course_levels: list[str],
+    level_relevant_chapters: list[str],
+    course_level_infos: dict[str, CourseLevel],
 ) -> tuple[str, int, int]:
     """Generate a response to the user question.
 
@@ -304,9 +352,12 @@ def generate_response(
     student_level : str | None
         The user's Python or academic proficiency level
         (e.g., "beginner", "intermediate", "advanced").
-    course_levels :  list[str]
+    level_relevant_chapters : list[str]
         List of course levels available for filtering relevant context
         based on the user's selected level.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
 
     Returns
     -------
@@ -334,13 +385,12 @@ def generate_response(
             model_name=model_name,
             prompt_path=prompt_path,
             user_level=student_level,
-            level_relevant_chapter_ids=course_levels,
+            level_relevant_chapter_ids=level_relevant_chapters,
+            course_level_infos=course_level_infos,
             logger=logger,
         )
-        # Add metadata to the answer
-        final_answer = add_metadata_to_answer(answer, context, iu=True)
 
-        return final_answer, input_tokens, output_tokens
+        return answer, input_tokens, output_tokens
 
 
 def stream_text(text: str):
@@ -361,7 +411,11 @@ def stream_text(text: str):
         time.sleep(0.01)
 
 
-def format_user_queries(messages: list[dict[str, str]]) -> str:
+def format_recent_user_queries(
+    messages: list[dict[str, str]],
+    nb_questions: int,
+    logger: "loguru.Logger" = loguru.logger,
+) -> str:
     """
     Concatenate all user questions into a single string.
 
@@ -369,14 +423,26 @@ def format_user_queries(messages: list[dict[str, str]]) -> str:
     ----------
     messages : list[dict[str, str]]
         The chat history, where each message has a "role" and "content".
+    nb_questions : int
+        The number of most recent user questions to include in the concatenated string.
+    logger : loguru.Logger
+        Logger instance for logging the formatted user queries.
 
     Returns
     -------
     str
         A single string containing all user questions, separated by newlines.
     """
-    user_questions = [msg["content"] for msg in messages if msg["role"] == "user"]
-    return ", ".join(user_questions)
+    user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
+    # Keep only the last nb_questions questions
+    # This allows the model to retrieve relevant chunks
+    # based on the recent conversation, not just the last question.
+    recent_user_messages = user_messages[-nb_questions:]
+    queries = "\n".join(recent_user_messages)
+    logger.debug("Most recent user queries for vector search:")
+    for query in recent_user_messages:
+        logger.debug(f"- {query}")
+    return queries
 
 
 def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
@@ -416,8 +482,7 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
 
             # Log thumbs up/down feedback with message content and context for analysis
             elif selection == "has_voted_up" or selection == "has_voted_down":
-                vote_type = "👍" if selection == "has_voted_up" else "👎"
-                logger.warning(f"Feedback {vote_type}")
+                logger.warning(f"Feedback {selection}")
                 logger.warning(f"Message: {assistant_msg}")
                 logger.debug(f"Context: {relevant_history}")
                 st.toast("Merci pour votre vote !", icon="✅", duration="short")
@@ -430,8 +495,11 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
                         height=60,
                     )
                     if st.form_submit_button("Envoyer"):
-                        logger.critical("Report 🚨")
-                        logger.critical(f"Commentaire: {details or 'Aucun'}")
+                        logger.critical(
+                            "Report: User reported an issue with the "
+                            "assistant's response."
+                        )
+                        logger.critical(f"Comments: {details or 'Aucun'}")
                         logger.critical(f"Message: {assistant_msg}")
                         logger.debug(f"Context: {relevant_history}")
                         st.toast(
@@ -511,12 +579,40 @@ def send_telemetry(
     logger.debug("-----------------")
 
 
+def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
+    """Display clickable source buttons."""
+    st.markdown("Pour plus d'informations, consultez les rubriques du cours :")
+
+    for source in sources:
+        st.link_button(
+            label=source["label"],
+            url=source["url"],
+            type="secondary",
+            icon=":material/open_in_new:",
+        )
+
+
+def _render_previous_messages() -> None:
+    """Render existing chat history."""
+    for index, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+            if message["role"] == "assistant":
+                # Add buttons for sources if they exist in the message
+                if message.get("sources"):
+                    _render_sources_buttons(message["sources"])
+                # Show feedback controls (copy, thumbs up/down, report)
+                show_feedback_controls(index, message["content"])
+
+
 def chat_with_bot(
     vector_db: Chroma,
     embeddings_model_name: str,
     provider_embeddings_name: str,
-    course_levels: list[str],
     student_level: str | None,
+    level_relevant_chapters: list[str],
+    course_level_infos: dict[str, CourseLevel],
     model_name: str,
     provider_llm_name: str,
     prompt_path: Path,
@@ -533,9 +629,12 @@ def chat_with_bot(
     provider_embeddings_name : str
         The name of the embeddings provider (e.g., "openai") used for the vector
         database.
-    course_levels : list[str]
+    level_relevant_chapters : list[str]
         List of course levels available for filtering relevant context
         based on the user's selected level.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
     student_level : str | None
         The user's Python or academic proficiency level
         (e.g., "beginner", "intermediate", "advanced").
@@ -594,18 +693,12 @@ def chat_with_bot(
     st.button(
         "Recommencer la conversation",
         icon=":material/refresh:",
-        on_click=clear_conversation,
+        on_click=lambda: clear_conversation(logger),
         key="restart_button",
     )
 
     # Display chat messages from history as speech bubbles.
-    for index, message in enumerate(st.session_state.messages):
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-            if message["role"] == "assistant":
-                # Show feedback controls (copy, thumbs up/down, report)
-                show_feedback_controls(index, message["content"])
+    _render_previous_messages()
 
     # When the user posts a message...
     if user_message:
@@ -622,19 +715,20 @@ def chat_with_bot(
 
         # Display assistant response as a speech bubble.
         with st.chat_message("assistant"):
-            with st.spinner("En recherche de contexte..."):
-                # Concatenate all user questions from the chat history
-                # to allow the model to retrieve relevant chunks based on
-                # the entire conversation, not just the last question.
-                user_queries = format_user_queries(st.session_state.messages)
-                # Search for relevant context in the vector database.
-                context = search_similarity_in_database(
-                    vector_db=vector_db,
-                    user_query=user_queries,
-                    provider_embeddings_name=provider_embeddings_name,
-                    embedding_model=embeddings_model_name,
-                    logger=logger,
-                )
+            # Concatenate all user questions from the chat history
+            # to allow the model to retrieve relevant chunks based on
+            # the recent conversation, not just the last question.
+            user_queries = format_recent_user_queries(
+                st.session_state.messages, nb_questions=3, logger=logger
+            )
+            # Search for relevant context in the vector database.
+            context = search_similarity_in_database(
+                vector_db=vector_db,
+                user_query=user_queries,
+                provider_embeddings_name=provider_embeddings_name,
+                embedding_model=embeddings_model_name,
+                logger=logger,
+            )
 
             with st.spinner("En réflexion..."):
                 # Generate the LLM response based on the user question
@@ -646,15 +740,25 @@ def chat_with_bot(
                     provider_llm_name,
                     prompt_path,
                     student_level,
-                    course_levels,
+                    level_relevant_chapters,
+                    course_level_infos,
                 )
                 # Simulate streaming the response token by token for a typing effect.
                 rep_stream = stream_text(response)
 
             # Stream the LLM response.
             response = st.write_stream(rep_stream)
+            # Extract the sources from the retrieved context
+            sources = extract_sources(context)
+            # To display them as buttons
+            if response and sources:
+                _render_sources_buttons(sources)
             # Add the assistant response to the chat history.
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append(
+                {"role": "assistant", "content": response, "sources": sources}
+            )
+            # Show feedback controls for the new assistant message
+            show_feedback_controls(len(st.session_state.messages) - 1, response)
             # Add token usage for this interaction to the session state total
             st.session_state.token_usage["input_tokens"] += input_tokens
             st.session_state.token_usage["output_tokens"] += output_tokens
@@ -706,8 +810,9 @@ def main():
         vector_db=vector_db,
         embeddings_model_name=settings.llm.embeddings_model_name,
         provider_embeddings_name=settings.llm.provider_embeddings_name,
-        course_levels=level_relevant_chapters,
         student_level=student_level,
+        level_relevant_chapters=level_relevant_chapters,
+        course_level_infos=settings.course_levels,
         model_name=settings.llm.llm_model_name,
         provider_llm_name=settings.llm.provider_llm_name,
         prompt_path=prompt_path,

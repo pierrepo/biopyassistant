@@ -81,7 +81,7 @@ and the response will include metadata from the relevant documents.
 import operator
 import os
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
 
@@ -95,48 +95,18 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 from pydantic import ValidationError
 
 from create_database import create_embeddings_function
 from logger import create_logger
+from messages import MSGS_QUERY_NOT_RELATED, MSGS_QUERY_OUT_OF_SCOPE_LEVEL
 from models.course import CourseLevel
-
-MSGS_QUERY_NOT_RELATED = [
-    (
-        "Je suis désolé, je ne peux pas répondre à cette question. "
-        "Mon domaine d'expertise est la programmation Python. "
-        "N'hésite pas à me poser des questions liées à ce sujet,"
-        "je serai ravi de t'aider."
-    ),
-    (
-        "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
-        "Je ne suis pas en measure de répondre à cette question."
-    ),
-    (
-        "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
-        "pas être liée à la programmation Python. Si tu as des questions sure Python, "
-        "n'hésite pas à me les poser, je serai heureux de t'aider !"
-    ),
-]
-MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
-    (
-        "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce course."
-    ),
-    (
-        "Cette notion n'est pas encore abordée à votre niveau actuel "
-        "et fait partie de la suite du programme."
-    ),
-    (
-        "Cette question fait référence à des notions qui dépassent "
-        "le cadre du niveau actuel de votre formation."
-    ),
-]
 
 
 def get_level_infos(
     course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> dict[str, dict]:
+) -> dict[str, CourseLevel]:
     """
     Load all user level information from a YAML file.
 
@@ -149,7 +119,7 @@ def get_level_infos(
 
     Returns
     -------
-    dict[str, dict]
+    dict[str, CourseLevel]
         Dictionary mapping level name to its info:
         {
             "name": str,
@@ -208,48 +178,41 @@ def get_level_infos(
 
 
 def get_user_level_data(
-    user_level: str, course_yaml: Path, logger: "loguru.Logger" = loguru.logger
-) -> dict:
+    user_level: str,
+    level_infos: dict[str, CourseLevel],
+    logger: "loguru.Logger" = loguru.logger,
+) -> CourseLevel:
     """
-    Retrieve user level information, including relevant chapters and prompt file.
+    Retrieve user level information from a YAML file based on the specified user level.
 
     Parameters
     ----------
     user_level : str
         The identifier of the user's level (e.g., 'beginner').
-    course_yaml : Path
-        Path to the YAML file defining course levels.
+    level_infos : dict[str, CourseLevel]
+        Dictionary mapping level name to CourseLevel objects.
     logger : loguru.Logger
         Logger for messages.
 
     Returns
     -------
-    dict
-        Dictionary containing:
-            - "chapters": list[str] of chapter IDs relevant to the user level
-            - "prompt_file": str path to the prompt template
+    CourseLevel
+        The CourseLevel object containing information about the specified user level.
 
     Raises
     ------
     SystemExit
         Exits with code 1 if the specified user level is not found in the YAML file.
     """
-    # Load all levels
-    level_infos = get_level_infos(course_yaml, logger)
-
     # Retrieve the specific user level info
     user_info = level_infos.get(user_level)
     if not user_info:
         available_levels = ", ".join(level_infos.keys()) or "None"
-        logger.error(
-            f"Failed to retrieve user level '{user_level}' from YAML. "
-            f"Available levels: {available_levels}. Exiting."
-        )
+        logger.error(f"Failed to retrieve user level '{user_level}' from YAML file.")
+        logger.error(f"Available levels: {available_levels}. Exiting.")
         raise SystemExit(1)
-    chapters = user_info.chapters
-    prompt_path = user_info.prompt_path
 
-    return {"chapters": chapters, "prompt_path": prompt_path}
+    return user_info
 
 
 def load_database(
@@ -393,9 +356,7 @@ def calculate_nb_tokens(text: str) -> int:
     """
     # Tokenize the text
     encoding = tiktoken.get_encoding("cl100k_base")
-    nb_tokens = len(encoding.encode(text))
-
-    return nb_tokens
+    return len(encoding.encode(text))
 
 
 def generate_answer(
@@ -405,6 +366,7 @@ def generate_answer(
     chat_history: str | None,
     relevant_chunks: list,
     level_relevant_chapter_ids: list[str],
+    course_level_infos: dict[str, CourseLevel],
     model_name: str,
     prompt_path: Path,
     logger: "loguru.Logger" = loguru.logger,
@@ -426,6 +388,9 @@ def generate_answer(
         List of relevant documents from the database.
     level_relevant_chapter_ids : list[str]
         List of chapter IDs relevant to the user level, used for logging purposes.
+    course_level_infos : dict[str, CourseLevel]
+        Mapping from internal level name to CourseLevel objects, used to get
+        the prompt path for the selected student level.
     model_name : str
         The name of the OpenAI model to use for generating the answer.
     prompt_path : Path
@@ -460,8 +425,9 @@ def generate_answer(
     # Doc: https://openrouter.ai/docs/guides/community/langchain
     elif provider_llm_name == "openrouter":
         api_key = os.getenv("OPENROUTER_API_KEY")
-        chat_model = ChatOpenAI(
-            model=model_name, api_key=api_key, base_url="https://openrouter.ai/api/v1"
+        chat_model = ChatOpenRouter(
+            model=model_name,
+            api_key=api_key,
         )
     # Retrieve the prompt template
     prompt_template_content = Path(prompt_path).read_text(encoding="utf-8")
@@ -471,6 +437,7 @@ def generate_answer(
     answer_chain = answer_prompt | chat_model | StrOutputParser()
     # Input data for the prompt
     input_data = {
+        "user_level": course_level_infos[user_level].comment,
         "contexte": context,
         "question": query,
         "chat_history": chat_history,
@@ -592,9 +559,7 @@ def add_metadata_to_answer(
     )
 
     # Add the sources to the response
-    response_with_metadata = f"{answer_from_model}\n\n{sources_string}"
-
-    return response_with_metadata
+    return f"{answer_from_model}\n\n{sources_string}"
 
 
 def display_answer(
@@ -732,18 +697,18 @@ def interrogate_model(
     """Interrogate the AI model to search for answers in a vector database."""
     start_time = perf_counter()
     # Set-up the logger
+    now = datetime.now(UTC)
     log_path = (
-        f"logs/{datetime.now().strftime('%Y%m%d')}/"
-        f"query_chatbot_{datetime.now().strftime('%H:%M:%S')}.log"
+        f"logs/{now.strftime('%Y%m%d')}/query_chatbot_{now.strftime('%H:%M:%S')}.log"
     )
     logger = create_logger(log_path)
     logger.info("Starting the command line interface for querying the chatbot...")
 
     # USER LEVEL INFORMATION RETRIEVAL
     # Retrieve the user level information from the YAML file
-    user_infos = get_user_level_data(user_level, course_yaml, logger)
-    level_relevant_chapter_ids = user_infos["chapters"]
-    prompt_path = user_infos["prompt_path"]
+    # Load all levels
+    level_infos = get_level_infos(course_yaml, logger)
+    user_level_infos = get_user_level_data(user_level, level_infos, logger)
 
     # CONTEXT RETRIEVAL
     # Load the vector database
@@ -773,10 +738,11 @@ def interrogate_model(
             user_level=user_level,
             chat_history=None,
             relevant_chunks=relevant_chunks,
-            level_relevant_chapter_ids=level_relevant_chapter_ids,
+            level_relevant_chapter_ids=user_level_infos.chapters,
+            course_level_infos=level_infos,
             model_name=model_name,
             provider_llm_name=provider_llm_name,
-            prompt_path=prompt_path,
+            prompt_path=user_level_infos.prompt_path,
             logger=logger,
         )
 
