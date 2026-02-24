@@ -123,15 +123,13 @@ def create_sidebar(
         # Institutional logos
         st.logo(
             # Transparent image to preserve spacing
-            "https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png",
+            "assets/1x1.png",
             size="large",
             # Display the University of Paris logo when sidebar is collapsed
-            icon_image="https://lvts.fr/wp-content/uploads/2022/03/UniversiteParis_monogramme_couleur_RVB-e1712425218876.png",
+            icon_image="assets/UniversiteParis_monogramme_couleur_RVB.png",
         )
         # Display the University of Paris logo in the sidebar when expanded
-        st.image(
-            "https://u-paris.fr/wp-content/uploads/2022/03/UniversiteParisCite_logo_horizontal_couleur_RVB.png"
-        )
+        st.image("assets/UniversiteParisCite_logo_horizontal_couleur_RVB.png")
 
         # Student profile
         st.markdown(
