@@ -56,4 +56,3 @@ biopyassistant = ["prompt_templates/*.txt"]
 parse-clean-markdown = "biopyassistant.core.parse_clean_markdown:main"
 create-database = "biopyassistant.core.create_database:main"
 query-chatbot = "biopyassistant.core.query_chatbot:main"
-streamlit-app = "biopyassistant.ui.streamlit_app:main"
