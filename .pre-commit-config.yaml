@@ -3,7 +3,7 @@
 # uv run prek install
 # Update hooks:
 # uv run prek auto-update
-exclude: "scripts/*|tmp/*"
+exclude: "tmp/*"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     # Out-of-the-box hooks for pre-commit.
@@ -34,7 +34,7 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Linter and formatter for Python code.
-    rev: v0.15.1
+    rev: v0.15.2
     hooks:
       # Run the linter.
       # Automatically fix issues where possible.
@@ -53,15 +53,15 @@ repos:
         args: ["--exclude", "tests"]
 
   - repo: https://github.com/crate-ci/typos
-    #  Source code spell checker
-    rev: v1.43.4
+    # Source code spell checker
+    rev: v1.43.5
     hooks:
       - id: typos
-        exclude: data/chapters_and_levels.yaml
+        exclude: ^data/|^prompt_templates/|^src/
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
-    rev: 0.15.4
+    rev: 0.16.0
     hooks:
       - id: uv-secure
 

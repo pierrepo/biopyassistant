@@ -27,6 +27,7 @@ dependencies = [
     "pyperclip>=1.11.0",
     "pillow>=12.1.1",
     "protobuf>=6.33.5",
+    "langchain-openrouter>=0.0.2",
 ]
 
 [dependency-groups]
