@@ -208,7 +208,7 @@ def get_user_level_data(
     user_info = level_infos.get(user_level)
     if not user_info:
         available_levels = ", ".join(level_infos.keys()) or "None"
-        logger.error(f"Failed to retrieve user level '{user_level}' from YAML.")
+        logger.error(f"Failed to retrieve user level '{user_level}' from YAML file.")
         logger.error(f"Available levels: {available_levels}. Exiting.")
         raise SystemExit(1)
 

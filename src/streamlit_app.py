@@ -97,7 +97,7 @@ def create_footer() -> None:
 
 def on_level_change(logger: "loguru.Logger" = loguru.logger) -> None:
     """Handle level selection change: log and reset conversation."""
-    clear_conversation()
+    clear_conversation(logger)
     logger.info(f"User selected level: {st.session_state.selected_level}")
 
 
@@ -172,7 +172,7 @@ def create_sidebar(
                     </a>
                 </strong>
                 <br>
-                dans le cadre du project pédagogique
+                dans le cadre du projet pédagogique
                 <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
                 target="_blank">
                     LLM@UPCité
@@ -223,7 +223,7 @@ def show_disclaimer_dialog() -> None:
     """)
 
 
-def clear_conversation() -> None:
+def clear_conversation(logger: "loguru.Logger" = loguru.logger) -> None:
     """Clear the conversation history and reset session state."""
     logger.info("User restarted the conversation.")
     st.session_state.messages = []
@@ -238,7 +238,7 @@ def display_welcome_chat() -> None:
 
     # Display welcome container with chat input and suggestions
     with st.container():
-        st.chat_input("Pose moi une question le cours...", key="initial_question")
+        st.chat_input("Posez-moi une question sur le cours...", key="initial_question")
         st.pills(
             label="Examples",
             label_visibility="collapsed",
@@ -311,8 +311,6 @@ def extract_sources(
         # Skip entries without a valid URL
         if not section_url:
             continue
-        # Remove anchor to obtain the base chapter URL if needed
-        chapter_url = section_url.split("#", maxsplit=1)[0]
         # Build the display label depending on file type
         if file_name.startswith("annexe"):
             source_label = f"Annexe **{chapter_name}**"
@@ -322,7 +320,7 @@ def extract_sources(
         if detailed_section:
             source_label += f", rubrique **{detailed_section}**"
         # Store unique label → URL mapping
-        unique_sources[source_label] = section_url or chapter_url
+        unique_sources[source_label] = section_url
 
     # Convert mapping into a list of dictionaries
     return [{"label": label, "url": url} for label, url in unique_sources.items()]
@@ -585,7 +583,7 @@ def send_telemetry(
 
 def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
     """Display clickable source buttons."""
-    st.markdown("Pour plus d'information, consultez les rubriques du cours :")
+    st.markdown("Pour plus d'informations, consultez les rubriques du cours :")
 
     for source in sources:
         st.link_button(
@@ -697,7 +695,7 @@ def chat_with_bot(
     st.button(
         "Recommencer la conversation",
         icon=":material/refresh:",
-        on_click=clear_conversation,
+        on_click=lambda: clear_conversation(logger),
         key="restart_button",
     )
 
