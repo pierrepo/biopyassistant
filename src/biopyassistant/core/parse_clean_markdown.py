@@ -28,44 +28,24 @@ Input:
 
 Output:
     ```python
-    #Votre premier commentaire en  Python.
+    # Votre premier commentaire en  Python.
     print("Hello world!")
 
-    #D'autres commandes plus utiles pourraient suivre.
+    # D'autres commandes plus utiles pourraient suivre.
     ```
-
-Usage:
-======
-    uv run src/parse_clean_markdown.py --config path/to/chapters_and_levels.yaml
-
-Where:
-    config : Path
-        Path to the YAML file defining all chapters and levels.
-        This YAML file should include the chapter names, titles, and the paths to the
-        source Markdown files and the destination paths for the processed files.
-
-Example:
-========
-    uv run src/parse_clean_markdown.py --config data/chapters_and_levels.yaml
-
-This command processes Markdown files listed in the YAML file and saves
-the cleaned and renumbered files to the paths specified in the YAML file.
 """
 
 import re
-import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import click
 import loguru
 import yaml
 from pydantic import ValidationError
 
-from logger import create_logger
-from models.course import CourseChapter
+from biopyassistant.logger import create_logger
+from biopyassistant.models.course import CourseChapter
 
 
 def build_chapter_paths(
@@ -159,7 +139,7 @@ def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger)
     ```
     will be converted to:
     ```python
-    #This is a comment.
+    # This is a comment.
     ```
 
     Parameters
@@ -244,6 +224,7 @@ def renumber_headers(
     # Stores the file content with renumbered headers
     processed_content = []
     for line in content.split("\n"):
+        new_line = line
         match = re.match(header_pattern, line)
         if match:
             header_level = len(match.group(1))
@@ -264,8 +245,8 @@ def renumber_headers(
             # Create the header with numbers
             header_numbers = list(headers.values())[:header_level]
             header_numbers_as_str = ".".join([str(level) for level in header_numbers])
-            line = f"{'#' * header_level} {header_numbers_as_str} {header_text}"
-        processed_content.append(line)
+            new_line = f"{'#' * header_level} {header_numbers_as_str} {header_text}"
+        processed_content.append(new_line)
     logger.success("Headers renumbered successfully.")
     return "\n".join(processed_content)
 
@@ -274,13 +255,13 @@ def renumber_headers(
 @click.option(
     "--config",
     "yaml_path",
-    required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default="src/biopyassistant/data/chapters_and_levels.yaml",
     help="Path to the YAML file defining chapters and levels."
     " This YAML file should include the chapter names, titles, and the paths to the "
     "source Markdown files and the destination paths for the processed files.",
 )
-def process_md_files(yaml_path: Path) -> None:
+def main(yaml_path: Path) -> None:
     """Process Markdown files listed in a YAML file and save them.
 
     Parameters
@@ -289,7 +270,7 @@ def process_md_files(yaml_path: Path) -> None:
         Path to the YAML file defining chapters and their Markdown filenames.
     """
     # Set up logging
-    log_path = f"logs/{datetime.now().strftime('%Y%m%d')}/parse_clean_markdown.log"
+    log_path = f"logs/{datetime.now(UTC).strftime('%Y%m%d')}/parse_clean_markdown.log"
     logger = create_logger(log_path)
     logger.info("Starting Markdown processing...")
 
@@ -356,4 +337,4 @@ def process_md_files(yaml_path: Path) -> None:
 
 # MAIN PROGRAM
 if __name__ == "__main__":
-    process_md_files()
+    main()

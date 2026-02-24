@@ -1,31 +1,27 @@
 """Streamlit app for chatbot testing."""
 
 import secrets
-import sys
 import time
 from pathlib import Path
-
-from langchain_core.documents import Document
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import loguru
 import pyperclip
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
 from loguru import logger
 
-from logger import create_logger
-from messages import SUGGESTIONS
-from models.app_settings import Settings
-from models.course import CourseLevel
-from query_chatbot import (
+from biopyassistant.core.messages import SUGGESTIONS
+from biopyassistant.core.query_chatbot import (
     MSGS_QUERY_NOT_RELATED,
     generate_answer,
     load_database,
     search_similarity_in_database,
 )
+from biopyassistant.logger import create_logger
+from biopyassistant.models.app_settings import Settings
+from biopyassistant.models.course import CourseLevel
 
 
 def apply_custom_css(css_file: Path) -> None:

@@ -1,6 +1,6 @@
 """Pydantic data models used to validate UI Streamlit application settings."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -12,9 +12,9 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-from models.course import CourseChapter, CourseLevel
-from parse_clean_markdown import load_chapters_from_yaml
-from query_chatbot import get_level_infos
+from biopyassistant.core.parse_clean_markdown import load_chapters_from_yaml
+from biopyassistant.core.query_chatbot import get_level_infos
+from biopyassistant.models.course import CourseChapter, CourseLevel
 
 
 class LLMConfig(BaseModel):
@@ -113,7 +113,7 @@ class Settings(BaseSettings, cli_parse_args=True):
         """Return the full path for today's log file."""
         log_file = (
             Path("logs")
-            / f"{datetime.now().strftime('%Y%m%d')}"
+            / f"{datetime.now(UTC).strftime('%Y%m%d')}"
             / "biopyassistant_app.log"
         )
         log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -137,8 +137,7 @@ class Settings(BaseSettings, cli_parse_args=True):
         """
         chapters = load_chapters_from_yaml(self.course_yaml_path)
         # Convert list of CourseChapter objects to a dictionary keyed by chapter ID
-        chapters_dict = {chapter.id: chapter for chapter in chapters}
-        return chapters_dict
+        return {chapter.id: chapter for chapter in chapters}
 
     @property
     def course_levels(self) -> dict[str, CourseLevel]:
@@ -182,7 +181,7 @@ class Settings(BaseSettings, cli_parse_args=True):
         return course_levels
 
     # Load settings from this TOML file
-    model_config = SettingsConfigDict(toml_file=["config_app.toml"])
+    model_config = SettingsConfigDict(toml_file="src/biopyassistant/ui/config_app.toml")
 
     # Reorder the priority of different settings sources
     @classmethod

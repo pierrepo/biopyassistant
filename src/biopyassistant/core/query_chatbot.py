@@ -7,15 +7,15 @@ as context.
 
 Usage:
 ======
-    uv run src/query_chatbot.py --query "Your question here"
-                                --level "user_level"
-                                [--course-yaml "path_to_yaml_file"]
-                                [--model "model_name"]
-                                [--provider-llm "provider_llm_name"]
-                                [--db-path "database_path"]
-                                [--embedding-model "embedding_model"]
-                                [--provider-emb "provider_embeddings_name"]
-                                [--include-metadata]
+    uv run query-chatbot --query "Your question here" \
+                         --level "user_level" \
+                        [--course-yaml "path_to_yaml_file"] \
+                        [--model "model_name"] \
+                        [--provider-llm "provider_llm_name"] \
+                        [--db-path "database_path"] \
+                        [--embedding-model "embedding_model"] \
+                        [--provider-emb "provider_embeddings_name"] \
+                        [--include-metadata]
 
 Arguments:
 ==========
@@ -44,7 +44,7 @@ Arguments:
 
     --db-path (str):
             File path to the Chroma database containing the context embeddings.
-            Default: "chroma_db"
+            Default: "vectorstores/chroma_db"
 
     --embedding-model (str):
             Name of the embedding model to use.
@@ -64,15 +64,16 @@ Arguments:
 
 Example:
 ========
-    uv run src/query_chatbot.py --query "D'où vient le nom Python ?" \
-        --level "beginner" --model "gpt-4o" \
-        --course-yaml "data/chapters_and_levels.yaml" \
-        --provider-llm "openai" --db-path "chroma_db" \
-        --provider-emb "openai" --embedding-model "text-embedding-3-large" \
-        --include-metadata
+    uv run query-chatbot  --query "D'où vient le nom Python ?" \
+                          --level "beginner" --model "gpt-4o" \
+                          --course-yaml "data/chapters_and_levels.yaml" \
+                          --provider-llm "openai" --db-path "vectorstores/chroma_db" \
+                          --provider-emb "openai" \
+                          --embedding-model "text-embedding-3-large" \
+                          --include-metadata
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
-beginner user in the Chroma database located at "data/chroma_db"
+beginner user in the Chroma database located at "vectorstores/chroma_db",
 using the "text-embedding-3-large" embedding model from the "openai" provider,
 The answer will be generated using the "gpt-4o" model from the "openai" provider,
 and the response will include metadata from the relevant documents.
@@ -98,10 +99,13 @@ from langchain_openai import ChatOpenAI
 from langchain_openrouter import ChatOpenRouter
 from pydantic import ValidationError
 
-from create_database import create_embeddings_function
-from logger import create_logger
-from messages import MSGS_QUERY_NOT_RELATED, MSGS_QUERY_OUT_OF_SCOPE_LEVEL
-from models.course import CourseLevel
+from biopyassistant.core.create_database import create_embeddings_function
+from biopyassistant.core.messages import (
+    MSGS_QUERY_NOT_RELATED,
+    MSGS_QUERY_OUT_OF_SCOPE_LEVEL,
+)
+from biopyassistant.logger import create_logger
+from biopyassistant.models.course import CourseLevel
 
 
 def get_level_infos(
@@ -654,7 +658,7 @@ def display_answer(
     "--db-path",
     "database_path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
-    default="chroma_db",
+    default="vectorstores/chroma_db",
     show_default=True,
     help="File path to the Chroma database containing the context embeddings.",
 )
@@ -682,7 +686,7 @@ def display_answer(
     default=False,
     help="Include metadata in the response if this flag is provided.",
 )
-def interrogate_model(
+def main(
     user_query: str,
     user_level: str,
     course_yaml: Path,
@@ -759,4 +763,4 @@ def interrogate_model(
 
 # MAIN PROGRAM
 if __name__ == "__main__":
-    interrogate_model()
+    main()
