@@ -8,9 +8,10 @@ biology students learn the Python programming language.*
 
 ## Introduction
 
-This conversationnal agent (chatbot) is designed to help biology students learn
-the Python programming language.It is based on the OpenAI models and provides
- answers to questions related to Python programming.
+This conversationnal agent (chatbot) is designed to help biology students
+learn the Python programming language.
+It is based on the OpenAI models and provides
+answers to questions related to Python programming.
 
 The chatbot uses the Retrieval-Augmented Generation (RAG) methodology to build its
 responses from this [Python course](https://python.sdv.u-paris.fr/)
@@ -133,11 +134,11 @@ Query:
 What is the difference between list and set ?
 
 Response:
-A list is an ordered collection of elements, while a set is an unordered collection
-of unique elements.In a list, the order of elements is preserved, and duplicate
-elements are allowed. In contrast, a set does not preserve the order of elements,
-and duplicate elements are not allowed. Additionally, a set is optimized for
-membership testing and eliminating duplicate elements,
+A list is an ordered collection of elements, while a set is an unordered
+collection of unique elements. In a list, the order of elements is preserved,
+and duplicate elements are allowed. In contrast, a set does not preserve the
+order of elements, and duplicate elements are not allowed. Additionally,
+a set is optimized for membership testing and eliminating duplicate elements,
 making it more efficient for certain operations than a list.
 
 For more information, you can refer to the following sources:
@@ -146,6 +147,8 @@ For more information, you can refer to the following sources:
 ```
 
 ## Usage (web interface)
+
+²²²
 
 ```bash
 uv run streamlit run src/biopyassistant/ui/streamlit_app.py
