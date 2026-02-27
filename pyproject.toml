@@ -49,6 +49,9 @@ dev = [
 requires = ["uv_build>=0.9.22,<0.10.0"]
 build-backend = "uv_build"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.setuptools.package-data]
 biopyassistant = ["prompt_templates/*.txt"]
 
