@@ -7,11 +7,11 @@ from pathlib import Path
 import loguru
 import pyperclip
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from loguru import logger
-from st_click_detector import click_detector
 
 from biopyassistant.core.messages import SUGGESTIONS
 from biopyassistant.core.query_chatbot import (
@@ -576,33 +576,33 @@ def send_telemetry(
     logger.debug("-----------------")
 
 
+def _open_link_in_new_tab(url: str) -> None:
+    """Open a URL in a new browser tab."""
+    logger.info(f"User clicked on link: {url}")
+    components.html(
+        f"""
+        <script type="text/javascript">
+            window.open('{url}', '_blank').focus();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
     """Display clickable source buttons."""
     st.markdown(
         "Pour plus d'informations, consultez les rubriques suivantes du cours :"
     )
-
-    button_html = (
-        """<ul style='list-style-type:"🔗 "; top:-20px; position: relative;'>"""
-    )
     for source in sources:
-        # st.link_button(
-        #     label=source["label"],
-        #     url=source["url"],
-        #     type="secondary",
-        #     icon=":material/open_in_new:",
-        # )
-        button_html += f"""
-        <li>
-            <a href="{source["url"]}" target="_blank" id="{source["label"]}">
-                {source["label"]}
-            </a>
-        </li>
-        """
-    button_html += "</ul>"
-    clicked = click_detector(button_html, key="sources_buttons")
-    if clicked:
-        logger.info(f"User clicked on: {clicked}")
+        st.button(
+            label=source["label"],
+            icon=":material/open_in_new:",
+            type="secondary",
+            on_click=_open_link_in_new_tab,
+            args=(source["url"],),
+        )
 
 
 def _render_previous_messages() -> None:

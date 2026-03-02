@@ -297,7 +297,6 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyperclip" },
     { name = "python-dotenv" },
-    { name = "st-click-detector" },
     { name = "streamlit" },
     { name = "tiktoken" },
 ]
@@ -336,7 +335,6 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pyperclip", specifier = ">=1.11.0" },
     { name = "python-dotenv" },
-    { name = "st-click-detector", specifier = ">=0.1.3" },
     { name = "streamlit" },
     { name = "tiktoken" },
 ]
@@ -3105,18 +3103,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a1/d8/41e0bdfc0f930ff236f86fccd12962d8fa03713f17ed57332d38af6a3782/sqlalchemy-2.0.46-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:b2a9f9aee38039cf4755891a1e50e1effcc42ea6ba053743f452c372c3152b1b", size = 3464292, upload-time = "2026-01-21T18:33:08.208Z" },
     { url = "https://files.pythonhosted.org/packages/f0/8b/9dcbec62d95bea85f5ecad9b8d65b78cc30fb0ffceeb3597961f3712549b/sqlalchemy-2.0.46-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:db23b1bf8cfe1f7fda19018e7207b20cdb5168f83c437ff7e95d19e39289c447", size = 3473497, upload-time = "2026-01-21T18:45:10.552Z" },
     { url = "https://files.pythonhosted.org/packages/fc/a1/9c4efa03300926601c19c18582531b45aededfb961ab3c3585f1e24f120b/sqlalchemy-2.0.46-py3-none-any.whl", hash = "sha256:f9c11766e7e7c0a2767dda5acb006a118640c9fc0a4104214b96269bfb78399e", size = 1937882, upload-time = "2026-01-21T18:22:10.456Z" },
-]
-
-[[package]]
-name = "st-click-detector"
-version = "0.1.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "streamlit" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/b2/566954631d8513d944c7eb322a639e2ebea3b2a96bd4ce3bbb812a3204b5/st-click-detector-0.1.3.tar.gz", hash = "sha256:984fccb56364af5c51dc01c1fbc46d55a14dcc5de6d18668a01461da5f2aca15", size = 386011, upload-time = "2022-03-21T18:18:22.468Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/4f/43c8931a0eb118cb74ad231a63cd0a04d3c59f1b458e78599fe8c99a9bcb/st_click_detector-0.1.3-py3-none-any.whl", hash = "sha256:10ab24a2167fe7c8abca3db6c9f149af2d0cadc0014091eaa8f1b045079199f2", size = 1084679, upload-time = "2022-03-21T18:18:15.051Z" },
 ]
 
 [[package]]

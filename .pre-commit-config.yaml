@@ -34,7 +34,7 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Linter and formatter for Python code.
-    rev: v0.15.2
+    rev: v0.15.4
     hooks:
       # Run the linter.
       # Automatically fix issues where possible.
@@ -47,21 +47,21 @@ repos:
 
   - repo: https://github.com/PyCQA/bandit
     # Security linter for Python code.
-    rev: 1.9.3
+    rev: 1.9.4
     hooks:
       - id: bandit
         args: ["--exclude", "tests"]
 
   - repo: https://github.com/crate-ci/typos
     # Source code spell checker
-    rev: v1.43.5
+    rev: v1.44.0
     hooks:
       - id: typos
         exclude: ^data/|^prompt_templates/|^src/
 
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
-    rev: 0.16.0
+    rev: 0.17.0
     hooks:
       - id: uv-secure
 
