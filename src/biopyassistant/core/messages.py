@@ -4,8 +4,8 @@ MSGS_QUERY_NOT_RELATED = [
     (
         "Je suis désolé, je ne peux pas répondre à cette question. "
         "Mon domaine d'expertise est la programmation Python. "
-        "N'hésite pas à me poser des questions liées à ce sujet,"
-        "je serai ravi de t'aider."
+        "N'hésitez pas à me poser des questions liées à ce sujet,"
+        "je serai ravi de vous aider."
     ),
     (
         "Désolé, je suis un assistant pour l'apprentissage de la programmation Python. "
@@ -13,23 +13,23 @@ MSGS_QUERY_NOT_RELATED = [
     ),
     (
         "Je ne suis pas sûr de pouvoir répondre à cette question, car elle ne semble "
-        "pas être liée à la programmation Python. Si tu as des questions sur Python, "
-        "n'hésite pas à me les poser, je serai heureux de t'aider !"
+        "pas être liée à la programmation. Si vous avez des questions sur Python, "
+        "n'hésitez pas à me les poser, je serai heureux de vous aider !"
     ),
 ]
 
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
-        "Cette question fait référence à des notions qui ne sont pas encore abordées "
-        "dans ce cours."
+        "Cette question fait référence à des notions qui ne sont pas "
+        "dans le cadre de ce cours. Voici néanmoins quelques élements de réponse :"
     ),
     (
-        "Cette notion n'est pas encore abordée à votre niveau actuel "
-        "et fait partie de la suite du programme."
+        "Cette notion n'a pas encore abordée en cours. "
+        "Voici quelques éléments de réponse pour vous aider à comprendre :"
     ),
     (
         "Cette question fait référence à des notions qui dépassent "
-        "le cadre du niveau actuel de votre formation."
+        "le cadre de ce cours, mais voici quelques pistes de réponse :"
     ),
 ]
 
