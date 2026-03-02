@@ -148,8 +148,6 @@ For more information, you can refer to the following sources:
 
 ## Usage (web interface)
 
-²²²
-
 ```bash
 uv run streamlit run src/biopyassistant/ui/streamlit_app.py
 ```

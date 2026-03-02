@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from loguru import logger
+from st_click_detector import click_detector
 
 from biopyassistant.core.messages import SUGGESTIONS
 from biopyassistant.core.query_chatbot import (
@@ -577,15 +578,31 @@ def send_telemetry(
 
 def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
     """Display clickable source buttons."""
-    st.markdown("Pour plus d'informations, consultez les rubriques du cours :")
+    st.markdown(
+        "Pour plus d'informations, consultez les rubriques suivantes du cours :"
+    )
 
+    button_html = (
+        """<ul style='list-style-type:"🔗 "; top:-20px; position: relative;'>"""
+    )
     for source in sources:
-        st.link_button(
-            label=source["label"],
-            url=source["url"],
-            type="secondary",
-            icon=":material/open_in_new:",
-        )
+        # st.link_button(
+        #     label=source["label"],
+        #     url=source["url"],
+        #     type="secondary",
+        #     icon=":material/open_in_new:",
+        # )
+        button_html += f"""
+        <li>
+            <a href="{source["url"]}" target="_blank" id="{source["label"]}">
+                {source["label"]}
+            </a>
+        </li>
+        """
+    button_html += "</ul>"
+    clicked = click_detector(button_html, key="sources_buttons")
+    if clicked:
+        logger.info(f"User clicked on: {clicked}")
 
 
 def _render_previous_messages() -> None:
