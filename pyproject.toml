@@ -1,10 +1,13 @@
 [project]
-name = "biopyassistantenv"
+name = "biopyassistant"
 version = "0.1.0"
-description = "BioPyAssistant environment"
+description = "BioPyAssistant is a teaching assistant for Patrick Fuchs and Pierre Poulain's Python programming course for biologists."
 readme = "README.md"
+authors = [
+    { name = "Essmay Touami", email = "essmay.touami@etu.u-paris.fr" },
+    { name = "Pierre Poulain", email = "pierre.poulain@cupnet.net" },
+]
 requires-python = "==3.13.*"
-
 dependencies = [
     "python-dotenv",
     "chromadb",
@@ -41,3 +44,18 @@ dev = [
     "upsetplot>=0.9.0",
     "watermark>=2.5.0",
 ]
+
+[build-system]
+requires = ["uv_build>=0.9.22,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+biopyassistant = ["prompt_templates/*.txt"]
+
+[project.scripts]
+parse-clean-markdown = "biopyassistant.core.parse_clean_markdown:main"
+create-database = "biopyassistant.core.create_database:main"
+query-chatbot = "biopyassistant.core.query_chatbot:main"

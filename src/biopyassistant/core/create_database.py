@@ -1,58 +1,11 @@
-"""Creates the vectorial Chroma database from Markdown files in the specified directory.
-
-This script loads Markdown files from the specified directory, concatenates their
-content, and splits the content into chunks based on headers and word limits.
-The resulting chunks are saved to a ChromaDB database.
-
-Usage:
-======
-    uv run src/create_database.py --course-yaml [course-yaml]
-                            --chroma-path [chroma-path]
-                            --chunk-size [chunk-size] --chunk-overlap [chunk-overlap]
-                            --embedding-model [embedding-model]
-                            --model-provider [model-provider]
-
-Arguments:
-==========
-    --course-yaml : str
-        The YAML file containing the course structure, including chapter names, titles,
-        source Markdown paths, and processed file paths.
-    --chroma-path : str
-        The name of the output path to save the ChromaDB database.
-    --chunk-size : int (optional)
-        The size of the text chunks to be created. Default is 1000.
-    --chunk-overlap : int (optional)
-        The overlap between text chunks. Default is 200.
-    --embedding-model : str (optional)
-        Name of the embedding model to use.
-        Possible choices : https://openrouter.ai/models?fmt=cards&supported_parameters=structured_outputs&output_modalities=embeddings
-        Default is "text-embedding-3-large".
-    --model-provider : str (optional)
-        Name of the embedding provider to use.
-        Possible choices are "openrouter" and "openai".
-        Default is "openai".
-
-
-Example:
-========
-    uv run src/create_database.py --course-yaml data/chapters_and_levels.yaml \
-                                    --chroma-path chroma_db \
-                                    --embedding-model text-embedding-3-large \
-                                    --model-provider openai
-
-This command will create a Chroma vector database from the processed Markdown files
-located in the paths specified in the `data/chapters_and_levels.yaml` file.
-The text will be split into chunks of 1000 characters with an overlap of 200 characters
-and will be embedded with the model `text-embedding-3-large`.
-And finally the vector database will be saved to the `chroma_db` directory.
-"""
+"""Creates the vectorial Chroma database from Markdown files."""
 
 import os
 import re
 import shutil
 import sys
 import unicodedata
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click
@@ -70,8 +23,8 @@ from langchain_text_splitters import (
 )
 from openai import OpenAI
 
-from logger import create_logger
-from parse_clean_markdown import load_chapters_from_yaml
+from biopyassistant.core.parse_clean_markdown import load_chapters_from_yaml
+from biopyassistant.logger import create_logger
 
 
 class OpenRouterEmbeddings(Embeddings):
@@ -414,9 +367,7 @@ def preprocess_for_url(text: str, *, is_subsubsection_name: bool = False) -> str
         processed_text = re.sub(r"^[a-zA-Z]?\d+-?", "", processed_text)
 
     # Add a '#' at the beginning
-    processed_text = "#" + processed_text
-
-    return processed_text
+    return "#" + processed_text
 
 
 def add_url_to_metadata(
@@ -554,8 +505,8 @@ def save_to_chroma(
 @click.command()
 @click.option(
     "--course-yaml",
-    required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default="data/chapters_and_levels.yaml",
     help=(
         "Path to the YAML file defining the course chapters and student levels. "
         "The YAML should include chapter names, titles, source Markdown paths, "
@@ -564,8 +515,8 @@ def save_to_chroma(
 )
 @click.option(
     "--chroma-path",
-    required=True,
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default="vectorstores/chroma_db",
     help="Output path to save the ChromaDB database.",
 )
 @click.option(
@@ -593,7 +544,7 @@ def save_to_chroma(
     type=click.Choice(["openrouter", "openai"], case_sensitive=False),
     help="Name of the embedding provider to use.",
 )
-def generate_data_store(
+def main(
     course_yaml: Path,
     chroma_path: Path,
     chunk_size: int,
@@ -603,7 +554,7 @@ def generate_data_store(
 ) -> None:
     """Build a ChromaDB store from chunked text with metadata."""
     # Set-up the logger
-    log_path = f"logs/{datetime.now().strftime('%Y%m%d')}/create_database.log"
+    log_path = f"logs/{datetime.now(UTC).strftime('%Y%m%d')}/create_database.log"
     logger = create_logger(log_path)
     logger.info("Creating Chroma database...")
 
@@ -655,4 +606,4 @@ def generate_data_store(
 
 
 if __name__ == "__main__":
-    generate_data_store()
+    main()

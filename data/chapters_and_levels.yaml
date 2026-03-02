@@ -137,7 +137,7 @@ levels:
       grands débutants en programmation Python. Ils s'intéressent particulièrement à des examples
        concrets d'utilisation de la programmation en biologie.
 
-    prompt_path: "prompt_templates/common.txt"
+    prompt_file: "common.txt"
 
     chapters:
       - "01"
@@ -157,7 +157,7 @@ levels:
        mais qui ne connaissent pas le language Python.
       Tu dois les accompagner à bien comprendre les concepts liés à la programmation Python.
 
-    prompt_path: "prompt_templates/common.txt"
+    prompt_file: "common.txt"
 
     chapters:
       - "01"
@@ -185,7 +185,7 @@ levels:
       Sans être experts, ces étudiants maitrisent les concepts de base.
       Tu dois les aider à devenir d'excellents programmers en Python.
 
-    prompt_path: "prompt_templates/common.txt"
+    prompt_file: "common.txt"
 
     chapters:
       - "01"

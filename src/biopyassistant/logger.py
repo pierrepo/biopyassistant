@@ -18,9 +18,6 @@ def create_logger(
         Path to the log file. If None, no file logging is done.
     level : str, optional
         Logging level. Default is "INFO".
-    ui_logger : bool, optional
-        Whether this logger is for the UI. If True, file logging will be in append mode
-        to preserve existing logs. Default is False.
 
     Returns
     -------
