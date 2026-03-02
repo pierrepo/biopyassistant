@@ -379,7 +379,7 @@ def generate_response(
             chat_history=chat_history,
             relevant_chunks=context,
             model_name=model_name,
-            prompt_path=prompt_path,
+            prompt_file=prompt_path,
             user_level=student_level,
             level_relevant_chapter_ids=level_relevant_chapters,
             course_level_infos=course_level_infos,
@@ -793,7 +793,7 @@ def main():
     prompt_path = None
     if student_level:
         level_relevant_chapters = course_level_infos[student_level].chapters
-        prompt_path = course_level_infos[student_level].prompt_path
+        prompt_path = course_level_infos[student_level].prompt_file
     # Load the vector database once
     vector_db = get_vector_db(
         vector_db_path=settings.llm.vector_database_path,
