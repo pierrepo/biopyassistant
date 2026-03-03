@@ -3,8 +3,8 @@
 
 ![Banner](/assets/img/banner.png)
 
-*AI-powered conversational agent designed to help
-biology students learn the Python programming language.*
+> AI-powered conversational agent designed to help
+biology students learn the Python programming language.
 
 ## Introduction
 
@@ -67,7 +67,7 @@ Processed Markdown files are stored in `data/course_processed`
 Create an .env file with a valid [OpenAI](https://platform.openai.com/docs/api-reference/authentication)
 and [OpenRouter](https://openrouter.ai/docs/api/reference/authentication) API key:
 
-```sh
+```none
 OPENAI_API_KEY=<your-openai-api-key>
 OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```
@@ -102,15 +102,14 @@ uv run query-chatbot  --query "Your question here" \
 ### Options
 
 - 📚 **User Level**: Specify the user's Python knowledge level to tailor
-                     the chatbot's responses.
-                     Choose between: `beginner`, `intermediate`, `advanced`.
+    the chatbot's responses.
+    Choose between: `beginner`, `intermediate`, `advanced`.
 - 🤖 **Model Selection**: Choose the language model for the query.
-                          Examples: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
+    Examples: `gpt-4o`, `deepseek/deepseek-v3.2`, etc.
 - 🌐 **LLM Provider**: Specify the provider of the language model.
-                       Choose between: `openai`, `openrouter`.
+    Choose between: `openai`, `openrouter`.
 - 📝 **Include Metadata**: Include metadata in the response,
-                          such as the sources of the answer.
-                          By default, metadata is excluded.
+    such as the sources of the answer. By default, metadata is excluded.
 
 Example:
 
@@ -147,8 +146,6 @@ For more information, you can refer to the following sources:
 ```
 
 ## Usage (web interface)
-
-²²²
 
 ```bash
 uv run streamlit run src/biopyassistant/ui/streamlit_app.py

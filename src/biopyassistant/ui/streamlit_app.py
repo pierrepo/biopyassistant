@@ -1,4 +1,4 @@
-"""Streamlit app for chatbot testing."""
+"""Streamlit app for chatbot."""
 
 import secrets
 import time
@@ -160,11 +160,7 @@ def create_sidebar(
     "💡 Guide d'utilisation responsable d'un assistant conversationnel pédagogique"
 )
 def show_disclaimer_dialog() -> None:
-    """Display a dialog outlining responsible usage guidelines for the application.
-
-    # TODO: add a link to the charte d'utilisation when it's ready
-
-    """
+    """Display a dialog outlining responsible AI usage guidelines."""
     st.caption("""
     ### 🧠 Conservez votre esprit critique
     Cet assistant n'est pas infallible.
@@ -176,7 +172,7 @@ def show_disclaimer_dialog() -> None:
     À la fin de chaque réponse, des liens vous emmenent directement
     vers les rubriques du cours pertinentes.
 
-    ### 🛡️ Ne partagez pas d'informations sensibles
+    ### 🛡️ Ne partagez pas d'information sensible
     Ce assistant utilise des modèles externes.
     Ne partagez jamais de données personnelles,
     confidentielles ou sensibles dans vos échanges avec cet assistant.
