@@ -131,11 +131,11 @@ levels:
   # Definition of student levels.
   # Each level references chapters by name to adapt responses to the student's level.
   - name: "beginner"
-    display_name: "Débutant (L2 / L3)"
+    display_name: "Simulation en biologie (L2 / L3)"
     comment: >
-      Cet assistant est à destination d'étudiants en licence de biologie,
-      grands débutants en programmation Python. Ils s'intéressent particulièrement à des examples
-       concrets d'utilisation de la programmation en biologie.
+      Les érudiants concernés sont en licence de biologie.
+      Ils sont grands débutants en programmation Python.
+      Ils ont besoin d'exemples concrets d'utilisation de la programmation en biologie.
 
     prompt_file: "common.txt"
 
@@ -151,11 +151,12 @@ levels:
       - "12"
 
   - name: "intermediate"
-    display_name: "Intermédiaire (Python 1)"
+    display_name: "Python 1 (L3 BI / M1 BI / M1 ISDD)"
     comment: >
-      Cet assistant aide des étudiants avec des bases de programmation,
-       mais qui ne connaissent pas le language Python.
-      Tu dois les accompagner à bien comprendre les concepts liés à la programmation Python.
+      Les étudiants concernés ont quelques connaissances en programmation,
+      mais ils ne connaissent pas le langage Python.
+      Ils ont besoin de bien comprendre les concepts liés à la programmation Python
+      et à leur application en biologie.
 
     prompt_file: "common.txt"
 
@@ -179,11 +180,11 @@ levels:
       - "B"
 
   - name: "advanced"
-    display_name: "Avancé (Python 2)"
+    display_name: "Python 2 (M1 BI / M1 ISDD)"
     comment: >
-      Cet assistant aide des étudiants avec des connaissances ultérieures en programmation Python.
+      Les étudiants concernés ont des connaissances ultérieures en programmation Python.
       Sans être experts, ces étudiants maitrisent les concepts de base.
-      Tu dois les aider à devenir d'excellents programmers en Python.
+      Ils ont besoin de devenir d'excellents programmeurs en Python, notamment pour la biologie.
 
     prompt_file: "common.txt"
 

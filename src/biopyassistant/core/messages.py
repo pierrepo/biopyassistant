@@ -25,7 +25,7 @@ MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     ),
     (
         "Cette notion n'a pas encore abordée en cours. "
-        "Voici quelques éléments de réponse pour vous aider à comprendre :"
+        "Voici cependant quelques éléments de réponse pour vous aider à comprendre :"
     ),
     (
         "Cette question fait référence à des notions qui dépassent "

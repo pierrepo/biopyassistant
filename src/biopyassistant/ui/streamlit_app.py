@@ -79,10 +79,13 @@ def create_footer() -> None:
         st.markdown(
             """
             Les interactions avec cet assistant sont collectées anonymement
-            à des fins de recherche.
+            à des fins de recherche.<br />
             Ce site web n'utilise pas de cookie.
-            [Mentions légales](https://u-paris.fr/politique-de-confidentialite/).
-            """
+            <a href="https://u-paris.fr/politique-de-confidentialite/" target="_blank">
+            Mentions légales
+            </a>.
+            """,
+            unsafe_allow_html=True,
         )
 
 
@@ -123,15 +126,15 @@ def create_sidebar(
         st.image("assets/UniversiteParisCite_logo_horizontal_couleur_RVB.png")
         # Student profile
         # Level selection pills from course_levels
-        selected_level = st.pills(
-            "**🎓 Sélectionnez votre profil**",
+        selected_level = st.radio(
+            label="**🎓 Sélectionnez votre cours :**",
             # We use the internal level name as the option value
             options=list(course_levels.keys()),
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
             # Select the first level by default
-            default=next(iter(course_levels.keys())),
+            index=0,
             on_change=on_level_change,
             args=(logger,),
         )
@@ -153,7 +156,9 @@ def create_sidebar(
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsable")
+@st.dialog(
+    "💡 Guide d'utilisation responsable d'un assistant conversationnel pédagogique"
+)
 def show_disclaimer_dialog() -> None:
     """Display a dialog outlining responsible usage guidelines for the application.
 
@@ -161,19 +166,20 @@ def show_disclaimer_dialog() -> None:
 
     """
     st.caption("""
-    ### 🧠 Gardez la main sur votre réflexion
-    L'IA est un assistant, pas un expert infallible.
-    Le **copier-coller direct est déconseillé** :
-    utilisez les réponses comme une base de travail que vous devez valider et enrichir
-               par votre esprit critique.
+    ### 🧠 Conservez votre esprit critique
+    Cet assistant n'est pas infallible.
+    Il peut parfois générer des réponses incorrectes.
+    Soyez toujours vigilants et critiques quant aux réponses fournies.
 
-    ### 🛡️ Protégez votre vie privée
-    Ce service utilise des modèles externes.
-    **Ne partagez jamais de données personnelles**,
-    confidentielles ou sensibles dans vos échanges.
+    ### 🔗 Vérifiez les sources
+    Vérifiez dans le cours que les réponses suggérées sont correctes.
+    À la fin de chaque réponse, des liens vous emmenent directement
+    vers les rubriques du cours pertinentes.
 
-    ### 📜 Aller plus loin
-    Pour adopter les bonnes pratiques, consultez la [Charte d'utilisation](#).
+    ### 🛡️ Ne partagez pas d'informations sensibles
+    Ce assistant utilise des modèles externes.
+    Ne partagez jamais de données personnelles,
+    confidentielles ou sensibles dans vos échanges avec cet assistant.
     """)
 
 
@@ -203,7 +209,7 @@ def display_welcome_chat() -> None:
     st.button(
         (
             "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
-            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
+            " peuvent être incorrectes ou incomplètes, conservez votre esprit"
             " critique !]]"
         ),
         type="tertiary",

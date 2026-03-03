@@ -24,8 +24,8 @@ a:hover {
     margin-top: 5px;
 }
 
-.st-key-selected_level p {
-    font-size: 1.1rem;
+.st-key-selected_level label strong {
+    font-size: 1.2rem;
 }
 
 .st-key-sidebar-footer {
@@ -75,7 +75,7 @@ footer {
     padding: 0;
     margin-bottom: 5px;
     color: #555555;
-    font-size: 14.5px;
+    font-size: 0.7rem;
     line-height: 1.2;
     font-style: italic;
     text-align: center;
