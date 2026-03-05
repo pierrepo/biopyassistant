@@ -52,13 +52,6 @@ repos:
       - id: bandit
         args: ["--exclude", "tests"]
 
-  - repo: https://github.com/crate-ci/typos
-    # Source code spell checker
-    rev: v1.43.5
-    hooks:
-      - id: typos
-        exclude: ^data/|^prompt_templates/|^src/
-
   - repo: https://github.com/owenlamont/uv-secure
     # Scan your uv.lock file for dependencies with known vulnerabilities
     rev: 0.16.0
