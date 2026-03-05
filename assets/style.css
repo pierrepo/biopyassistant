@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Rubik+Iso:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
 
 a {
     font-weight: 500;
@@ -12,7 +12,7 @@ a:hover {
 .app-title {
     text-align: center;
     color: #8a1538;
-    font-family: "Rubik Iso", sans-serif;
+    font-family: "Luckiest Guy", cursive;
     font-size: 70px;
     margin-bottom: 0;
 }
@@ -24,18 +24,21 @@ a:hover {
     margin-top: 5px;
 }
 
-.sidebar-title {
-    font-weight: 700;
-    font-size: 1.5rem;
-    margin-top: 1.2rem;
-    margin-bottom: 0.4rem;
+.st-key-selected_level label strong {
+    font-size: 1.2rem;
 }
 
-.sidebar-about {
-    font-size: 1rem;
-    color: #444;
-    margin-top: 2rem;
-    text-align: center;
+.st-key-sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    left:0;
+    padding: 10px;
+}
+
+.st-key-sidebar-footer p{
+    font-size: 0.8rem;
+    color: #5a5a5a;
+    margin-bottom: 5px;
 }
 
 .sidebar-icons {
@@ -65,15 +68,14 @@ footer {
     visibility: hidden;
 }
 
-.app-footer {
+.st-key-app-footer {
     position: fixed;
     bottom: 0;
-    left: 0;
     width: 100%;
     padding: 0;
     margin-bottom: 5px;
     color: #555555;
-    font-size: 14.5px;
+    font-size: 0.7rem;
     line-height: 1.2;
     font-style: italic;
     text-align: center;
@@ -82,13 +84,13 @@ footer {
     z-index: 9999;
 }
 
-.app-footer a {
+.st-key-app-footer a {
     color: #8a1538;
     font-weight: 500;
     text-decoration: none;
 }
 
-.app-footer a:hover {
+.st-key-app-footer a:hover {
     opacity: 1;
     font-weight: 700;
 }

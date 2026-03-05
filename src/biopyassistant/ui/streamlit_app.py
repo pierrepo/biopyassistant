@@ -1,4 +1,4 @@
-"""Streamlit app for chatbot testing."""
+"""Streamlit app for chatbot."""
 
 import secrets
 import time
@@ -61,12 +61,11 @@ def create_header(app_name: str) -> None:
     st.markdown(
         """
         <div class="app-subtitle">
-            BioPyAssistant est un assistant pédagogique pour le cours de
+            Un assistant pédagogique pour le cours de
             <a href="https://python.sdv.u-paris.fr/" target="_blank">
-                programmation Python
+                programmation Python pour les biologistes
             </a>
-            <br>
-            pour les biologistes de Patrick Fuchs et Pierre Poulain.
+            de Patrick Fuchs et Pierre Poulain.
         </div>
         """,
         unsafe_allow_html=True,
@@ -76,19 +75,18 @@ def create_header(app_name: str) -> None:
 
 def create_footer() -> None:
     """Render the application footer with legal information."""
-    st.markdown(
-        """
-        <div class="app-footer">
-            Les résultats des votes sont collectés anonymement à des fins de recherche.
-            <br> Cette application web n'utilise pas de cookie.
-            <a href="https://u-paris.fr/politique-de-confidentialite/"
-            target="_blank">
-                Mentions légales.
-            </a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.container(key="app-footer"):
+        st.markdown(
+            """
+            Les interactions avec cet assistant sont collectées anonymement
+            à des fins de recherche.<br />
+            Ce site web n'utilise pas de cookie.
+            <a href="https://u-paris.fr/politique-de-confidentialite/" target="_blank">
+            Mentions légales
+            </a>.
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def on_level_change(logger: "loguru.Logger" = loguru.logger) -> None:
@@ -126,94 +124,58 @@ def create_sidebar(
         )
         # Display the University of Paris logo in the sidebar when expanded
         st.image("assets/UniversiteParisCite_logo_horizontal_couleur_RVB.png")
-
         # Student profile
-        st.markdown(
-            '<div class="sidebar-title">🎓 Profil étudiant</div>',
-            unsafe_allow_html=True,
-        )
         # Level selection pills from course_levels
-        selected_level = st.pills(
-            "Niveau :material/sort:",
+        selected_level = st.radio(
+            label="**🎓 Sélectionnez votre cours :**",
             # We use the internal level name as the option value
             options=list(course_levels.keys()),
             # But display the user-friendly name from the CourseLevel object
             format_func=lambda key: course_levels[key].display_name,
             key="selected_level",
             # Select the first level by default
-            default=next(iter(course_levels.keys())),
+            index=0,
             on_change=on_level_change,
             args=(logger,),
         )
-        st.space(300)
+        # About section at the bottom of the sidebar.
+        footer = st.sidebar.container(key="sidebar-footer")
+        footer.markdown(
+            """
+            **BioPyAssistant** est développé par
+            [Essmay Touami](https://www.linkedin.com/in/essmay-touami/)
+            et
+            [Pierre Poulain](https://www.linkedin.com/in/pierrepo/)
+            dans le cadre du projet pédagogique
+            [LLM@UPCité](https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/).
 
-        # About section
-        st.markdown(
+            Le code source est disponible sur [GitHub](https://github.com/pierrepo/biopyassistant)
+            sous licence BSD 3-clause.
             """
-            <div class="sidebar-about">
-                <strong>BioPyAssistant</strong> a été développé par
-                <strong>
-                    <a href="https://www.linkedin.com/in/essmay-touami/"
-                    target="_blank">
-                        Essmay Touami
-                    </a>
-                </strong>
-                et
-                <strong>
-                    <a href="https://www.linkedin.com/in/pierrepo/"
-                    target="_blank">
-                        Pierre Poulain
-                    </a>
-                </strong>
-                <br>
-                dans le cadre du projet pédagogique
-                <a href="https://u-paris.fr/aap-innovation-pedagogique-2023-decouvrez-les-projets-laureats/"
-                target="_blank">
-                    LLM@UPCité
-                </a>
-                <br><br>
-                Code source disponible sur GitHub<br>
-                sous licence BSD 3-clause.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        # Github and Python icons with links
-        st.markdown(
-            """
-            <div class="sidebar-icons">
-                <a href="https://github.com/pierrepo/biopyassistant" target="_blank">
-                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
-                         alt="GitHub">
-                </a>
-            </div>
-            """,
-            unsafe_allow_html=True,
         )
     return selected_level
 
 
-@st.dialog("💡 Guide d'utilisation responsable")
+@st.dialog(
+    "💡 Guide d'utilisation responsable d'un assistant conversationnel pédagogique"
+)
 def show_disclaimer_dialog() -> None:
-    """Display a dialog outlining responsible usage guidelines for the application.
-
-    # TODO: add a link to the charte d'utilisation when it's ready
-
-    """
+    """Display a dialog outlining responsible AI usage guidelines."""
     st.caption("""
-    ### 🧠 Gardez la main sur votre réflexion
-    L'IA est un assistant, pas un expert infallible.
-    Le **copier-coller direct est déconseillé** :
-    utilisez les réponses comme une base de travail que vous devez valider et enrichir
-               par votre esprit critique.
+    ### 🧠 Conservez votre esprit critique
+    Cet assistant n'est pas infallible.
+    Il peut parfois générer des réponses incorrectes.
+    Soyez toujours vigilants et critiques quant aux réponses fournies.
 
-    ### 🛡️ Protégez votre vie privée
-    Ce service utilise des modèles externes.
-    **Ne partagez jamais de données personnelles**,
-    confidentielles ou sensibles dans vos échanges.
+    ### 🔗 Vérifiez les sources
+    Vérifiez dans le cours que les réponses suggérées sont correctes.
+    À la fin de chaque réponse, des liens vous emmènent directement
+    vers les rubriques du cours pertinentes.
 
-    ### 📜 Aller plus loin
-    Pour adopter les bonnes pratiques, consultez la [Charte d'utilisation](#).
+    ### 🛡️ Ne partagez pas d'informations sensibles
+    Cet assistant utilise des modèles externes.
+    Ne partagez jamais de données personnelles,
+    confidentielles ou sensibles dans vos échanges avec cet assistant.
     """)
 
 
@@ -243,7 +205,7 @@ def display_welcome_chat() -> None:
     st.button(
         (
             "&nbsp;:small[:gray[:material/chat_error: Les réponses générées "
-            " peuvent être incorrectes ou incomplètes, gardez toujours un esprit"
+            " peuvent être incorrectes ou incomplètes, conservez votre esprit"
             " critique !]]"
         ),
         type="tertiary",
