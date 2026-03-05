@@ -47,7 +47,7 @@ uv sync
 git clone --depth 1 https://github.com/bioinfo-prog/cours-python.git
 rm -f data/course_raw/*.md
 cp cours-python/cours/*.md data/course_raw/
-rm -rf course-python
+rm -rf cours-python
 ```
 
 ### Process raw Markdown files
