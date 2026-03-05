@@ -54,7 +54,7 @@ def get_vector_db(
 def create_header(app_name: str) -> None:
     """Render the application header and subtitle."""
     st.markdown(
-        f'<div class="app-title">{app_name}</div>',
+        f'<div class="app-title">🐍 {app_name} 🐍</div>',
         unsafe_allow_html=True,
     )
 
