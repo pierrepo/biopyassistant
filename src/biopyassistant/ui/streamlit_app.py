@@ -539,7 +539,9 @@ def send_telemetry(
 
 def _render_sources_buttons(sources: list[dict[str, str]]) -> None:
     """Display clickable source buttons."""
-    st.markdown("Pour plus d'informations, consultez les rubriques du cours :")
+    st.markdown(
+        "Pour plus d'informations, consultez les rubriques du cours suivantes :"
+    )
 
     for source in sources:
         st.link_button(

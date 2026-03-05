@@ -78,7 +78,7 @@ OPENROUTER_API_KEY=<your-openrouter-api-key>
 
 ```bash
 uv run create-database --course-yaml data/chapters_and_levels.yaml \
-                       --chroma-path vectorstores/chroma_db \
+                       --chroma-path chroma_db \
                        --embedding-model text-embedding-3-large \
                        --model-provider openai \
                        --chunk-size 1000 --chunk-overlap 200

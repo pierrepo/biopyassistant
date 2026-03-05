@@ -1,4 +1,4 @@
-"""CLI application for searching answers in a vectorial database.
+"""CLI application for searching answers in a vector database.
 
 This program allows users to search for answers in a textual database based on a given
 query text. It utilizes a similarity search algorithm to find relevant documents in the
@@ -44,7 +44,7 @@ Arguments:
 
     --db-path (str):
             File path to the Chroma database containing the context embeddings.
-            Default: "vectorstores/chroma_db"
+            Default: "chroma_db"
 
     --embedding-model (str):
             Name of the embedding model to use.
@@ -67,13 +67,13 @@ Example:
     uv run query-chatbot  --query "D'où vient le nom Python ?" \
                           --level "beginner" --model "gpt-4o" \
                           --course-yaml "data/chapters_and_levels.yaml" \
-                          --provider-llm "openai" --db-path "vectorstores/chroma_db" \
+                          --provider-llm "openai" --db-path "chroma_db" \
                           --provider-emb "openai" \
                           --embedding-model "text-embedding-3-large" \
                           --include-metadata
 
 This command will search for answers to the query "Qu'est-ce que Python ?" from a
-beginner user in the Chroma database located at "vectorstores/chroma_db",
+beginner user in the Chroma database located at "chroma_db",
 using the "text-embedding-3-large" embedding model from the "openai" provider,
 The answer will be generated using the "gpt-4o" model from the "openai" provider,
 and the response will include metadata from the relevant documents.
@@ -663,7 +663,7 @@ def display_answer(
     "--db-path",
     "database_path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
-    default="vectorstores/chroma_db",
+    default="chroma_db",
     show_default=True,
     help="File path to the Chroma database containing the context embeddings.",
 )
