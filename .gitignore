@@ -1,5 +1,6 @@
 # logging files
 logs/
+*.log
 
 # vector database
 chroma_*
