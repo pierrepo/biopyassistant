@@ -133,7 +133,7 @@ levels:
   - name: "beginner"
     display_name: "Simulation en biologie (L2 / L3)"
     comment: >
-      Les érudiants concernés sont en licence de biologie.
+      Les étudiants concernés sont en licence de biologie.
       Ils sont grands débutants en programmation Python.
       Ils ont besoin d'exemples concrets d'utilisation de la programmation en biologie.
 
@@ -183,7 +183,7 @@ levels:
     display_name: "Python 2 (M1 BI / M1 ISDD)"
     comment: >
       Les étudiants concernés ont des connaissances ultérieures en programmation Python.
-      Sans être experts, ces étudiants maitrisent les concepts de base.
+      Sans être experts, ces étudiants maîtrisent les concepts de base.
       Ils ont besoin de devenir d'excellents programmeurs en Python, notamment pour la biologie.
 
     prompt_file: "common.txt"

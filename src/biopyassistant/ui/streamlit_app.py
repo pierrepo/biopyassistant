@@ -169,11 +169,11 @@ def show_disclaimer_dialog() -> None:
 
     ### 🔗 Vérifiez les sources
     Vérifiez dans le cours que les réponses suggérées sont correctes.
-    À la fin de chaque réponse, des liens vous emmenent directement
+    À la fin de chaque réponse, des liens vous emmènent directement
     vers les rubriques du cours pertinentes.
 
-    ### 🛡️ Ne partagez pas d'information sensible
-    Ce assistant utilise des modèles externes.
+    ### 🛡️ Ne partagez pas d'informations sensibles
+    Cet assistant utilise des modèles externes.
     Ne partagez jamais de données personnelles,
     confidentielles ou sensibles dans vos échanges avec cet assistant.
     """)

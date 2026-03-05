@@ -4,7 +4,7 @@ MSGS_QUERY_NOT_RELATED = [
     (
         "Je suis désolé, je ne peux pas répondre à cette question. "
         "Mon domaine d'expertise est la programmation Python. "
-        "N'hésitez pas à me poser des questions liées à ce sujet,"
+        "N'hésitez pas à me poser des questions liées à ce sujet, "
         "je serai ravi de vous aider."
     ),
     (
@@ -21,7 +21,7 @@ MSGS_QUERY_NOT_RELATED = [
 MSGS_QUERY_OUT_OF_SCOPE_LEVEL = [
     (
         "Cette question fait référence à des notions qui ne sont pas "
-        "dans le cadre de ce cours. Voici néanmoins quelques élements de réponse :"
+        "dans le cadre de ce cours. Voici néanmoins quelques éléments de réponse :"
     ),
     (
         "Cette notion n'a pas encore abordée en cours. "
