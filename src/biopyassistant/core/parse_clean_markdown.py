@@ -131,19 +131,7 @@ def load_chapters_from_yaml(
 
 
 def clean_python_comments(content: str, logger: "loguru.Logger" = loguru.logger) -> str:
-    """Remove spaces between '#' and comments in Python code blocks in Markdown content.
-
-    Example:
-
-    ```python
-    # This is a comment.
-    ```
-
-    will be converted to:
-
-    ```python
-    # This is a comment.
-    ```
+    """Remove spaces between '#' and the start of comments in Python code blocks.
 
     Parameters
     ----------
