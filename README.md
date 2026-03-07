@@ -57,10 +57,12 @@ rm -f data/course_processed/*.md
 uv run parse-clean-markdown --config data/chapters_and_levels.yaml
 ```
 
-In this step, Python comments (`#`) are slightly changed
-to avoid confusion with Markdown headers (`#`, `##`...) and
-headers are numbered (from `## Title` to `## 1.1 Title`).
-Processed Markdown files are stored in `data/course_processed`
+In this step:
+
+- Python comments `# Like this.` are changed to `#Like this.` to avoid confusion with Markdown headers (`#`, `##`...).
+- Headers are numbered (from `## Title` to `## 1.1 Title`).
+
+Processed Markdown files are stored in `data/course_processed`.
 
 ### Add OpenAI and OpenRouter API key
 
