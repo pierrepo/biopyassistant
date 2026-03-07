@@ -421,7 +421,6 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
             "is_copied": ":material/content_copy:",
             "has_voted_up": ":material/thumb_up:",
             "has_voted_down": ":material/thumb_down:",
-            "has_report_msg": ":material/report:",
         }
         selection = st.pills(
             "assistant message options",
@@ -443,26 +442,7 @@ def show_feedback_controls(message_index: int, assistant_msg: str) -> None:
                 logger.warning(f"Feedback {selection}")
                 logger.warning(f"Message: {assistant_msg}")
                 logger.debug(f"Context: {relevant_history}")
-                st.toast("Merci pour votre vote !", icon="✅", duration="short")
-
-            # Handle report message option with a form to collect additional details
-            elif selection == "has_report_msg":
-                with st.form(key=f"report-form-{message_index}", clear_on_submit=True):
-                    details = st.text_area(
-                        "Signaler / Ajouter un commentaire (optionnel)",
-                        height=60,
-                    )
-                    if st.form_submit_button("Envoyer"):
-                        logger.critical(
-                            "Report: User reported an issue with the "
-                            "assistant's response."
-                        )
-                        logger.critical(f"Comments: {details or 'Aucun'}")
-                        logger.critical(f"Message: {assistant_msg}")
-                        logger.debug(f"Context: {relevant_history}")
-                        st.toast(
-                            "Merci pour votre signalement !", icon="⚠️", duration="short"
-                        )
+                st.toast("Merci pour votre retour !", icon="✅", duration="short")
 
 
 def avg_chars_in_responses(messages: list[dict[str, str]], role: str) -> int:
